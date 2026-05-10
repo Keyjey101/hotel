@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://thrown_weapon"]
+
+[node name="ThrownWeapon" type="RigidBody2D"]
+collision_layer = 8
+collision_mask = 7
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+
+[node name="Sprite" type="Sprite2D" parent="."]
+
+[node name="Lifetime" type="Timer" parent="."]
+wait_time = 5.0
+autostart = true

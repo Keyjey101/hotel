@@ -1,0 +1,61 @@
+class_name SeedManager
+extends RefCounted
+
+## SeedManager — Deterministic per-run randomization.
+## Same seed = same enemy spawns, same loot, same gate config.
+
+var _seed: int
+var _rng: RandomNumberGenerator
+
+
+func _init(run_seed: int) -> void:
+	_seed = run_seed
+	_rng = RandomNumberGenerator.new()
+	_rng.seed = run_seed
+
+
+func get_seed() -> int:
+	return _seed
+
+
+func get_floor_rng(floor_number: int) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _seed * floor_number + floor_number * 7
+	return rng
+
+
+func get_room_rng(floor_number: int, room_index: int) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _seed * floor_number + room_index * 31
+	return rng
+
+
+func get_room_enemy_config(floor_number: int, room_index: int, spawn_points: int) -> Dictionary:
+	var rng := get_room_rng(floor_number, room_index)
+	# Decide how many enemies (60-100% of spawn points)
+	var count := rng.randi_range(ceili(spawn_points * 0.6), spawn_points)
+	# Decide which spawn points are active
+	var active_points: Array[int] = []
+	var all_points := range(spawn_points)
+	all_points.shuffle()
+	for i in range(mini(count, all_points.size())):
+		active_points.append(all_points[i])
+	return {"count": count, "active_points": active_points}
+
+
+func get_room_loot_config(floor_number: int, room_index: int, loot_zones: int) -> Dictionary:
+	var rng := get_room_rng(floor_number, room_index)
+	rng.seed += 999  # Different stream from enemy config
+	var loot_count := rng.randi_range(1, maxi(1, loot_zones - 1))
+	return {"count": loot_count, "seed": rng.seed}
+
+
+func get_gate_config(floor_number: int, total_branches: int) -> Dictionary:
+	var rng := get_floor_rng(floor_number)
+	rng.seed += 777
+	# Open 2 of 3 branches, close 1
+	var branches := range(total_branches)
+	branches.shuffle()
+	var open_branches := branches.slice(0, total_branches - 1)
+	var closed_branch := branches[total_branches - 1]
+	return {"open": open_branches, "closed": closed_branch}

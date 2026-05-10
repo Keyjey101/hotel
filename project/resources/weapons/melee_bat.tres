@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Bat"
+weapon_type = 0
+damage = 18.0
+limb_damage_multiplier = 0.8
+attack_speed = 0.23
+attack_range = 55.0
+knockback = 60.0
+stun_chance = 0.35
+stun_duration = 0.6
+sever_chance = 0.05
+ammo = -1
+throw_damage = 15.0
+throw_speed = 350.0
+throw_arc = 3
+throw_effect = "bounce"
+throw_effect_chance = 1.0
+attack_frame_count = 5
+throw_frame_count = 4

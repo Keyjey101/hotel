@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://projectile"]
+
+[node name="Projectile" type="CharacterBody2D"]
+collision_layer = 6
+collision_mask = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+
+[node name="Sprite" type="Sprite2D" parent="."]
+
+[node name="Lifetime" type="Timer" parent="."]
+wait_time = 3.0
+autostart = true

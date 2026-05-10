@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Pistol"
+weapon_type = 1
+damage = 15.0
+limb_damage_multiplier = 1.0
+attack_speed = 0.17
+attack_range = 350.0
+knockback = 10.0
+stun_chance = 0.15
+stun_duration = 0.3
+sever_chance = 0.1
+ammo = 12
+projectile_speed = 700.0
+projectile_spread = 2.0
+projectile_count = 1
+throw_damage = 8.0
+throw_speed = 400.0
+throw_arc = 3
+throw_effect = "discharge"
+throw_effect_chance = 0.25
+attack_frame_count = 3
+throw_frame_count = 3

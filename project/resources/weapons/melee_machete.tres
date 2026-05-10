@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Machete"
+weapon_type = 0
+damage = 20.0
+limb_damage_multiplier = 1.5
+attack_speed = 0.2
+attack_range = 45.0
+knockback = 15.0
+stun_chance = 0.1
+stun_duration = 0.3
+sever_chance = 0.25
+ammo = -1
+throw_damage = 18.0
+throw_speed = 400.0
+throw_arc = 2
+throw_effect = "stick_bleed"
+attack_frame_count = 5
+throw_frame_count = 4
