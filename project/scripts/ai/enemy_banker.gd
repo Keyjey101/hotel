@@ -189,6 +189,8 @@ func _activate_lockdown() -> void:
 	AudioManager.SFXPlayer.play_sfx_2d("door_close", global_position, 200.0)
 	# Unlock after 4 seconds
 	get_tree().create_timer(4.0).timeout.connect(func() -> void:
+		if not is_instance_valid(room):
+			return
 		for door in room.doors:
 			if door is Area2D and door.get_meta("lockdown_sealed", false):
 				door.set_meta("lockdown_sealed", false)

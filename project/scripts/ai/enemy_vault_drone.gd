@@ -40,16 +40,13 @@ func _ready() -> void:
 	aggression = 8.0
 	coordination = 6.0
 
-	_initial_move_speed = move_speed
 	add_to_group("vault_drones")
-	_init_health_drone()
-	_connect_signals()
+	super._ready()
 	_create_glowing_eye()
 	_create_spark_rect()
-	_enter_state("patrol")
 
 
-func _init_health_drone() -> void:
+func _init_health() -> void:
 	# Only TORSO has real HP — all limbs are pre-severed with 0 HP
 	limb_health = {
 		DamageZone.Zone.HEAD: 0.0,

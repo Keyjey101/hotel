@@ -44,6 +44,8 @@ func _ready() -> void:
 	if _bridges_connected:
 		return
 	_bridges_connected = true
-	# Bridge existing signals to counter signals
+	# Bridge existing signals to counter signals.
+	# NOTE: EventBus must remain a singleton/Autoload to ensure these lambdas
+	# persist for the entire session. Do NOT instantiate EventBus manually.
 	enemy_limb_severed.connect(func(_e, _z): limb_severed.emit())
 	weapon_thrown.connect(func(_w, _o, _d): weapon_was_thrown.emit())

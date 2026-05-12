@@ -349,11 +349,17 @@ static func _destroy_chandelier(chandelier: Area2D, room: RoomInstance) -> void:
 
 	room.add_child(hazard)
 
-	# Apply AoE damage to all bodies in radius
-	var bodies := hazard.get_overlapping_bodies()
-	for body in bodies:
-		if body.has_method("receive_damage"):
-			body.receive_damage(damage, 0, false, 80.0, Vector2.ZERO)
+	# Apply AoE damage after one physics frame so Area2D can detect overlapping bodies
+	var tree := room.get_tree()
+	if tree:
+		tree.create_timer(0.0).timeout.connect(func() -> void:
+			if not is_instance_valid(hazard):
+				return
+			var bodies := hazard.get_overlapping_bodies()
+			for body in bodies:
+				if body.has_method("receive_damage"):
+					body.receive_damage(damage, 0, false, 80.0, Vector2.ZERO)
+		)
 
 	# Remove hazard after 0.5s
 	var tree := room.get_tree()

@@ -17,6 +17,7 @@ var _facing: Vector2 = Vector2.DOWN
 var _aim_direction: Vector2 = Vector2.DOWN
 var _is_attacking: bool = false
 var _attack_cooldown: float = 0.0
+var _attack_end_timer: SceneTreeTimer = null
 var _is_hurt: bool = false
 var _hurt_timer: float = 0.0
 var _is_dead: bool = false
@@ -193,7 +194,7 @@ func apply_slow(mult: float, duration: float) -> void:
 	_current_speed = base_speed * mult
 	get_tree().create_timer(duration).timeout.connect(func() -> void:
 		if is_instance_valid(self):
-			_current_speed = base_speed
+			_current_speed = GameManager.run_state.player_speed if GameManager.run_state else base_speed
 	)
 
 
@@ -292,11 +293,15 @@ func _attack() -> void:
 	elif weapon.weapon_type == WeaponData.WeaponType.RANGED:
 		weapon_manager.ranged_attack(weapon, _aim_direction)
 
-	# End attack after brief delay
-	get_tree().create_timer(weapon.attack_speed).timeout.connect(func():
-		if is_instance_valid(self):
-			_is_attacking = false
-	)
+	# End attack after brief delay — cancel previous timer if any
+	if _attack_end_timer != null and is_instance_valid(_attack_end_timer):
+		_attack_end_timer.timeout.disconnect(_on_attack_end)
+	_attack_end_timer = get_tree().create_timer(weapon.attack_speed)
+	_attack_end_timer.timeout.connect(_on_attack_end)
+
+
+func _on_attack_end() -> void:
+	_is_attacking = false
 
 
 func _try_pickup() -> void:

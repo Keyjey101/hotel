@@ -43,6 +43,7 @@ var _collapse_radius: float = 200.0
 
 # ── Final offer ──
 var _final_offer_shown: bool = false
+var _rng := RandomNumberGenerator.new()
 var _final_choice_made: bool = false
 var _dialogue_label: Label = null
 
@@ -64,6 +65,13 @@ var _p2_dialogue: Array[String] = [
 	"You think this is about GOOD and EVIL?",
 	"It's about PROFIT.",
 	"EVERYTHING has a cost.",
+]
+
+# ── Phase 3 dialogue pool ──
+var _p3_dialogue: Array[String] = [
+	"You cannot afford to walk away.",
+	"THE MARKET NEVER CLOSES.",
+	"I own your debt. I own YOU.",
 ]
 
 
@@ -97,6 +105,8 @@ func _ready() -> void:
 	# Check if Sister was spared — spawn as ally
 	if GameManager.run_state and GameManager.run_state.run_meta.get("sister_spared", false):
 		_spawn_sister_ally()
+
+	_rng.seed = hash("satan") + (GameManager.seed_manager.get_seed() if GameManager.seed_manager else 0)
 
 	super._ready()
 
@@ -166,13 +176,12 @@ func _physics_process(delta: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _update_phase() -> void:
-	var hp := limb_health[DamageZone.Zone.TORSO]
 	var total := _phase_1_hp + _phase_2_hp + _phase_3_hp
-	var pct := hp / total
+	var lost_pct := _total_hp_lost / total
 	var new_phase: int
-	if pct > 0.66:
+	if lost_pct < 0.34:
 		new_phase = 1
-	elif pct > 0.33:
+	elif lost_pct < 0.67:
 		new_phase = 2
 	else:
 		new_phase = 3
@@ -311,7 +320,7 @@ func _summon_demon(count: int) -> void:
 		var demon := _demon_scene.instantiate() as CharacterBody2D
 		if demon == null:
 			continue
-		demon.global_position = global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80))
+		demon.global_position = global_position + Vector2(_rng.randf_range(-80, 80), _rng.randf_range(-80, 80))
 		get_tree().current_scene.add_child(demon)
 
 
@@ -357,21 +366,15 @@ func _reality_warp() -> void:
 	for obs in obstacles:
 		if is_instance_valid(obs) and obs is Node2D:
 			var tween := obs.create_tween()
-			var new_pos := Vector2(randf_range(50, 500), randf_range(50, 400))
+			var new_pos := Vector2(_rng.randf_range(50, 500), _rng.randf_range(50, 400))
 			tween.tween_property(obs, "position", new_pos, 1.0)
 
 
 func _fiscal_year() -> void:
 	if _target == null or not is_instance_valid(_target):
 		return
-	# Slow player speed by 50% for 3 seconds
-	if "move_speed" in _target:
-		var original_speed: float = _target.move_speed
-		_target.move_speed *= 0.5
-		get_tree().create_timer(3.0).timeout.connect(func():
-			if is_instance_valid(_target):
-				_target.move_speed = original_speed
-		)
+	if _target.has_method("apply_slow"):
+		_target.apply_slow(0.5, 3.0)
 
 
 func _attempt_steal() -> void:
@@ -578,13 +581,9 @@ func _move_projectile(bolt: Area2D) -> void:
 			if body.is_in_group("player") and body.has_method("receive_damage"):
 				body.receive_damage(damage, DamageZone.Zone.TORSO, false)
 				# Fine print: speed reduction
-				if bolt.get_meta("applies_fine_print", false) and "move_speed" in body:
-					var orig_speed: float = body.move_speed
-					body.move_speed *= 0.85
-					get_tree().create_timer(5.0).timeout.connect(func():
-						if is_instance_valid(body):
-							body.move_speed = orig_speed
-					)
+				if bolt.get_meta("applies_fine_print", false):
+					if body.has_method("apply_slow"):
+						body.apply_slow(0.85, 5.0)
 				if is_instance_valid(bolt):
 					bolt.queue_free()
 				return
@@ -636,7 +635,7 @@ func _on_reject_deal() -> void:
 # ---------------------------------------------------------------------------
 
 func _show_random_dialogue() -> void:
-	var pool: Array[String] = _p1_dialogue if _phase == 1 else _p2_dialogue if _phase == 2 else _p1_dialogue
+	var pool: Array[String] = _p1_dialogue if _phase == 1 else _p2_dialogue if _phase == 2 else _p3_dialogue
 	var text := pool[randi() % pool.size()]
 	_show_dialogue_text(text, 2.5)
 
@@ -756,6 +755,7 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 			EventBus.weapon_dropped.emit(_stolen_weapon)
 		_stolen_weapon = null
 
+	_total_hp_lost += damage
 	super.receive_damage(damage, zone, sever, knockback_force, knockback_dir)
 
 

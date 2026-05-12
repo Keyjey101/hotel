@@ -31,7 +31,6 @@ func spawn_severed_limb(position: Vector2, limb_type: int, owner: CharacterBody2
 	if not limb_scene:
 		_create_placeholder_limb(position, limb_type, owner)
 		return
-	return
 
 	var limb: RigidBody2D = limb_scene.instantiate()
 	limb.global_position = position
@@ -156,6 +155,7 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 		var angle_offset := randf_range(-0.524, 0.524)  # ~±30°
 		var drop_dir := direction.rotated(angle_offset)
 		drop.linear_velocity = drop_dir * randf_range(50, 150)
+		get_tree().current_scene.add_child(drop)
 		# Freeze on contact with StaticBody2D, lifetime 5s
 		drop.body_entered.connect(func(body):
 			if body is StaticBody2D or body is TileMapLayer:
@@ -168,7 +168,6 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 			tween.tween_property(drop, "modulate:a", 0.0, 0.5)
 			tween.tween_callback(drop.queue_free)
 		)
-		get_tree().current_scene.add_child(drop)
 
 
 func _spawn_placeholder_pool(position: Vector2) -> void:

@@ -102,6 +102,16 @@ func _on_limb_lost(zone: int) -> void:
 	super._on_limb_lost(zone)
 	var damage_zones = load("res://scripts/combat/damage_zones.gd")
 
+	# Check all-severed condition FIRST — lie down, act as alert beacon
+	var arms_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_ARM, false) and \
+		severed_limbs.get(damage_zones.DamageZone.RIGHT_ARM, false)
+	var legs_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_LEG, false) and \
+		severed_limbs.get(damage_zones.DamageZone.RIGHT_LEG, false)
+	if arms_severed and legs_severed:
+		# Scream continuously as alert beacon
+		_alert_nearby()
+		return
+
 	# Lost arm → drop weapon, flee toward nearest Guard
 	if zone == damage_zones.DamageZone.LEFT_ARM or zone == damage_zones.DamageZone.RIGHT_ARM:
 		if _current_state != "retreat":
@@ -113,15 +123,6 @@ func _on_limb_lost(zone: int) -> void:
 		if _current_state != "retreat":
 			_enter_state("retreat")
 		return
-
-	# Lost everything — lie down, act as alert beacon
-	var arms_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_ARM, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_ARM, false)
-	var legs_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_LEG, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_LEG, false)
-	if arms_severed and legs_severed:
-		# Scream continuously as alert beacon
-		_alert_nearby()
 
 
 # ---------------------------------------------------------------------------

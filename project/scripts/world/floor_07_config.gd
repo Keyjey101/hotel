@@ -254,13 +254,15 @@ static func apply_floor_07_extras(room: RoomInstance) -> void:
 
 ## Darkness overlay: ColorRect covering full room, #000000 alpha 0.6
 static func _add_darkness_overlay(room: RoomInstance) -> void:
+	var canvas := CanvasLayer.new()
+	canvas.layer = 50
 	var overlay := ColorRect.new()
 	overlay.name = "DarknessOverlay"
 	overlay.color = Color(0.0, 0.0, 0.0, 0.6)
 	overlay.size = room.room_bounds.size
-	overlay.z_index = 50
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	room.add_child(overlay)
+	canvas.add_child(overlay)
+	room.add_child(canvas)
 
 
 ## Light sources: 1-2 per dark room. Area2D with circle radius 40px.
@@ -391,6 +393,6 @@ static func _on_light_body_entered(body: Node2D) -> void:
 	if body.is_in_group("spies") or body.is_in_group("shadow_stalkers"):
 		if "sprite" in body and body.sprite:
 			body.sprite.modulate.a = 1.0
-			if body.has("_revealed"):
+			if body.get("_revealed") != null:
 				body._revealed = true
 				body._reveal_timer = 3.0

@@ -61,7 +61,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_resume() -> void:
-	GameManager.unpause_game()
+	if GameManager.current_state == GameManager.GameState.PAUSED:
+		GameManager.unpause_game()
 	queue_free()
 
 

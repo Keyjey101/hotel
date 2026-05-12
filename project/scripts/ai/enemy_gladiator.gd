@@ -212,10 +212,7 @@ func _perform_unarmed_attack(dir_to_target: Vector2) -> void:
 # ---------------------------------------------------------------------------
 
 func _on_limb_lost(zone: int) -> void:
-	super._on_limb_lost(zone)
-
-	# Mark as severed in base data (override base debuffs with our own)
-	severed_limbs[zone] = true
+	super._on_limb_lost(zone)  # Already sets severed_limbs[zone] = true
 
 	# Weapon arm lost (RIGHT_ARM) — can't hold weapon
 	if zone == DamageZone.Zone.RIGHT_ARM:
@@ -256,7 +253,7 @@ func _on_limb_lost(zone: int) -> void:
 		if not severed_limbs.get(z, false):
 			all_severed = false
 			break
-	if all_severed and limb_health[DamageZone.Zone.TORSO] <= torso_hp * 0.3:
+	if all_severed and limb_health.get(DamageZone.Zone.TORSO, torso_hp) <= torso_hp * 0.3:
 		_disable_enemy()
 
 

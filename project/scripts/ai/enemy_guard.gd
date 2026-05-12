@@ -37,11 +37,21 @@ func _ready() -> void:
 
 func _find_partner() -> void:
 	var guards := get_tree().get_nodes_in_group("guards")
+	var best: Node2D = null
+	var best_dist := INF
 	for g in guards:
-		if g == self:
+		if g == self or not is_instance_valid(g):
 			continue
-		_partner = g
-		return
+		# Prefer guards that don't already have a partner assigned
+		if g.get("_partner") != null and is_instance_valid(g.get("_partner")) and g._partner != self:
+			continue
+		var dist := global_position.distance_to(g.global_position)
+		if dist < best_dist:
+			best = g
+			best_dist = dist
+	if best != null:
+		_partner = best
+		best._partner = self
 
 
 func _check_partner_alive() -> bool:
@@ -66,7 +76,7 @@ func _state_chase(delta: float) -> void:
 	if not has_alive_partner and _partner != null:
 		aggression = _base_aggression + 3.0
 
-	if has_alive_partner and _partner.has_method("_target") and _partner._target == _target:
+	if has_alive_partner and _partner.get("_target") != null and _partner._target == _target:
 		# Flanking: offset perpendicular to the player direction
 		var to_player := (target_pos - global_position).normalized()
 		var perpendicular := Vector2(-to_player.y, to_player.x)

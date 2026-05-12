@@ -114,4 +114,4 @@ func _on_restart_pressed() -> void:
 
 func _on_quit_pressed() -> void:
 	AudioManager.SFXPlayer.play_sfx("ui_cancel")
-	GameManager.restart_run()
+	GameManager.go_to_title()

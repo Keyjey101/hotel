@@ -128,7 +128,7 @@ func check_cleared() -> bool:
 	if is_cleared:
 		return true
 	for enemy in active_enemies:
-		if is_instance_valid(enemy) and not enemy._disabled:
+		if is_instance_valid(enemy) and not enemy.is_disabled():
 			return false
 	is_cleared = true
 	room_cleared.emit(self)

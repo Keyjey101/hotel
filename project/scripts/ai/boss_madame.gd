@@ -652,7 +652,7 @@ func _process_shard_projectile(data: Dictionary) -> void:
 
 func _continue_shard(node: CharacterBody2D, dir: Vector2, speed: float,
 		damage: float, elapsed: float, max_time: float) -> void:
-	if _disabled or not is_instance_valid(node):
+	if not is_instance_valid(self) or _disabled or not is_instance_valid(node):
 		return
 	var delta := 0.016
 	var collision := node.move_and_collide(dir * speed * delta)
@@ -851,7 +851,6 @@ func _disable_enemy() -> void:
 	# Clean up shard timers
 	for t in _shard_timers:
 		if is_instance_valid(t):
-			if t.timeout.is_connected(_continue_shard):
-				t.timeout.disconnect(_continue_shard)
+			t.timeout.disconnect_all()
 	_shard_timers.clear()
 	_shard_count = 0

@@ -10,9 +10,12 @@ const FIRE_HAZARD_DURATION: float = 4.0
 const FIRE_HAZARD_RADIUS: float = 48.0
 const FIRE_HAZARD_COLOR: Color = Color(1.0, 0.33, 0.0, 0.5)  # #FF5500 ember orange
 
+var _rng: RandomNumberGenerator
+
 
 func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 	super.load_floor(floor_num, seed_mgr)
+	_rng = seed_mgr.get_floor_rng(floor_num)
 
 	if floor_num != 6:
 		return
@@ -56,8 +59,8 @@ func _get_hazard_positions(room: RoomInstance, count: int) -> Array[Vector2]:
 		positions.append(candidates[i])
 	while positions.size() < count:
 		positions.append(Vector2(
-			randf_range(margin, size.x - margin),
-			randf_range(margin, size.y - margin)
+			_rng.randf_range(margin, size.x - margin),
+			_rng.randf_range(margin, size.y - margin)
 		))
 	return positions
 
@@ -108,7 +111,10 @@ func _ignite_brazier(brazier: Area2D) -> void:
 	brazier.set_meta("fire_active", true)
 
 	# Create the active fire hazard zone
-	var fire_zone := HazardZone.new()
+	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
+	if hazard_scene == null:
+		return
+	var fire_zone := hazard_scene.instantiate()
 	fire_zone.damage_per_second = brazier.get_meta("fire_dps", FIRE_HAZARD_DPS)
 	fire_zone.duration = brazier.get_meta("fire_duration", FIRE_HAZARD_DURATION)
 	fire_zone.zone_radius = brazier.get_meta("fire_radius", FIRE_HAZARD_RADIUS)

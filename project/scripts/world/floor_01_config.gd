@@ -62,9 +62,10 @@ static func _gen_spawn_points(size_px: Vector2, count: int, margin: float = 48.0
 	while points.size() > count:
 		points.pop_back()
 	while points.size() < count:
+		var idx := points.size()
 		points.append(Vector2(
-			randf_range(margin, size_px.x - margin),
-			randf_range(margin, size_px.y - margin)
+			margin + fposmod(float(hash(str(idx) + "x")), size_px.x - 2.0 * margin),
+			margin + fposmod(float(hash(str(idx) + "y")), size_px.y - 2.0 * margin)
 		))
 	return points
 
@@ -86,9 +87,10 @@ static func _gen_loot_zones(size_px: Vector2, count: int) -> Array[Vector2]:
 	for i in range(mini(count, candidates.size())):
 		zones.append(candidates[i])
 	while zones.size() < count:
+		var idx := zones.size()
 		zones.append(Vector2(
-			randf_range(margin, size_px.x - margin),
-			randf_range(margin, size_px.y - margin)
+			margin + fposmod(float(hash(str(idx + 100) + "lx")), size_px.x - 2.0 * margin),
+			margin + fposmod(float(hash(str(idx + 100) + "ly")), size_px.y - 2.0 * margin)
 		))
 	return zones
 

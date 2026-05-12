@@ -148,10 +148,11 @@ func _apply_settings(s: Dictionary) -> void:
 	AudioServer.set_bus_volume_db(sfx_idx, linear_to_db(sfx))
 
 	# Screen effects
-	if ScreenEffects:
-		ScreenEffects.set_meta("shake_enabled", s.get("screen_shake", true))
-		ScreenEffects.set_meta("flash_enabled", s.get("screen_flash", true))
-		ScreenEffects.set_meta("blood_intensity", s.get("blood_intensity", 1.0))
+	var screen_effects := get_node_or_null("/root/ScreenEffects")
+	if screen_effects:
+		screen_effects.set_meta("shake_enabled", s.get("screen_shake", true))
+		screen_effects.set_meta("flash_enabled", s.get("screen_flash", true))
+		screen_effects.set_meta("blood_intensity", s.get("blood_intensity", 1.0))
 
 	# Fullscreen
 	if s.get("fullscreen", false):

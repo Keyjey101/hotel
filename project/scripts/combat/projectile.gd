@@ -87,4 +87,6 @@ func _pick_random_limb() -> int:
 	var zones := [DamageZone.Zone.TORSO, DamageZone.Zone.HEAD,
 		DamageZone.Zone.LEFT_ARM, DamageZone.Zone.RIGHT_ARM,
 		DamageZone.Zone.LEFT_LEG, DamageZone.Zone.RIGHT_LEG]
-	return zones[randi() % zones.size()]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(global_position) + hash(_weapon.resource_name if _weapon else "")
+	return zones[rng.randi() % zones.size()]

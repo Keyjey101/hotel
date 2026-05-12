@@ -148,10 +148,9 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 
 func _on_reset_defaults() -> void:
 	SaveManager.save_and_apply(SaveManager._default_settings())
-	# Rebuild UI with defaults
+	# Rebuild UI with defaults — free all children first to prevent duplicate Background nodes
 	for child in get_children():
-		if child.name != "Background":
-			child.queue_free()
+		child.queue_free()
 	_build_ui()
 
 

@@ -67,8 +67,7 @@ func _create_chain_visuals() -> void:
 # ---------------------------------------------------------------------------
 
 func _on_limb_lost(zone: int) -> void:
-	super._on_limb_lost(zone)
-	severed_limbs[zone] = true  # Mark as severed but override base debuffs
+	super._on_limb_lost(zone)  # Already sets severed_limbs[zone] = true
 
 	var lost_count := _count_missing_limbs()
 	_initial_move_speed = 140.0 + (lost_count * 30.0)
@@ -89,7 +88,7 @@ func _on_limb_lost(zone: int) -> void:
 		if not severed_limbs.get(z, false):
 			all_severed = false
 			break
-	if all_severed and limb_health[DamageZone.Zone.TORSO] <= torso_hp * 0.3:
+	if all_severed and limb_health.get(DamageZone.Zone.TORSO, torso_hp) <= torso_hp * 0.3:
 		_disable_enemy()
 
 

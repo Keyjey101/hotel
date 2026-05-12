@@ -15,12 +15,15 @@ var _elapsed: float = 0.0
 
 
 func _ready() -> void:
-	# Collision shape
-	var collision_shape := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = zone_radius
-	collision_shape.shape = circle
-	add_child(collision_shape)
+	# Collision shape — only create if not already present
+	var existing_col := get_node_or_null("CollisionShape2D")
+	if existing_col == null:
+		var collision_shape := CollisionShape2D.new()
+		collision_shape.name = "CollisionShape2D"
+		var circle := CircleShape2D.new()
+		circle.radius = zone_radius
+		collision_shape.shape = circle
+		add_child(collision_shape)
 
 	# Visual placeholder
 	var visual := ColorRect.new()

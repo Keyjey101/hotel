@@ -7,6 +7,8 @@ signal continue_pressed()
 var _floor_label: Label
 var _stats_label: Label
 var _personal_best_label: Label
+var _auto_timer: Timer = null
+var _continued: bool = false
 
 
 func _ready() -> void:
@@ -95,6 +97,9 @@ func _build_ui() -> void:
 
 	btn.pressed.connect(func():
 		AudioManager.SFXPlayer.play_sfx("ui_confirm")
+		_continued = true
+		if _auto_timer and is_instance_valid(_auto_timer):
+			_auto_timer.stop()
 		continue_pressed.emit()
 	)
 
@@ -106,8 +111,10 @@ func show_summary(floor_number: int) -> void:
 	_refresh_stats()
 	AudioManager.SFXPlayer.play_sfx("ui_floor_complete")
 	# Auto-continue after 3 seconds
-	get_tree().create_timer(3.0).timeout.connect(func():
-		continue_pressed.emit()
+	_auto_timer = get_tree().create_timer(3.0)
+	_auto_timer.timeout.connect(func():
+		if not _continued:
+			continue_pressed.emit()
 	)
 
 

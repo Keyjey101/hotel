@@ -232,8 +232,14 @@ func _try_smoke_bomb() -> void:
 
 	# Teleport away in a random direction
 	var random_dir := Vector2.RIGHT.rotated(randf() * TAU)
-	# Try to avoid teleporting into walls: just offset position
-	global_position += random_dir * 200.0
+	var target_pos := global_position + random_dir * 200.0
+	# Validate teleport destination with physics ray check
+	var space_state := get_world_2d().direct_space_state
+	var query := PhysicsRayQueryParameters2D.create(global_position, target_pos, collision_mask)
+	var result := space_state.intersect_ray(query)
+	if result:
+		target_pos = global_position + random_dir * 80.0
+	global_position = target_pos
 	# Reset navigation after teleport
 	navigation.target_position = global_position
 

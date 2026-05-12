@@ -3,6 +3,7 @@ extends Node2D
 ## Game — Main game scene. Orchestrates game loop.
 
 @onready var gore_system: Node = %GoreSystem
+var _vignette_pulse_tween: Tween = null
 
 
 func _ready() -> void:
@@ -72,7 +73,7 @@ func _show_low_hp_vignette() -> void:
 	if not vignette_layer:
 		vignette_layer = CanvasLayer.new()
 		vignette_layer.name = "LowHPVignetteLayer"
-		vignette_layer.layer = -1
+		vignette_layer.layer = 50
 		add_child(vignette_layer)
 
 	var vignette: ColorRect = vignette_layer.get_node_or_null("Vignette")
@@ -102,10 +103,12 @@ func _show_low_hp_vignette() -> void:
 
 	# Pulse when HP < 30%
 	if hp_percent < 0.3:
-		var tween := vignette.create_tween()
-		tween.set_loops()
-		tween.tween_property(vignette, "modulate:a", alpha * 1.3, 0.6)
-		tween.tween_property(vignette, "modulate:a", alpha * 0.7, 0.6)
+		if _vignette_pulse_tween and _vignette_pulse_tween.is_valid():
+			_vignette_pulse_tween.kill()
+		_vignette_pulse_tween = vignette.create_tween()
+		_vignette_pulse_tween.set_loops()
+		_vignette_pulse_tween.tween_property(vignette, "modulate:a", alpha * 1.3, 0.6)
+		_vignette_pulse_tween.tween_property(vignette, "modulate:a", alpha * 0.7, 0.6)
 	else:
 		# Fade out smoothly
 		var tween := vignette.create_tween()

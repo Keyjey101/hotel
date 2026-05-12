@@ -140,7 +140,10 @@ func _perform_fog_breath() -> void:
 	if _arms_lost >= 1:
 		fog_radius = 30.0  # Weaker fog with one arm
 
-	var hz := HazardZone.new()
+	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
+	if hazard_scene == null:
+		return
+	var hz := hazard_scene.instantiate()
 	hz.damage_per_second = 0.0
 	hz.slow_factor = 0.6
 	hz.duration = 4.0

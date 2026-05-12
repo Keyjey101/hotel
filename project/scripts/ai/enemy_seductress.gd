@@ -96,9 +96,14 @@ func _update_decoy_positions(delta: float) -> void:
 
 
 func _on_decoy_hit(decoy: Node2D) -> void:
-	if not is_instance_valid(decoy):
+	if not is_instance_valid(self) or not is_instance_valid(decoy):
 		return
 	decoys.erase(decoy)
+	# Re-check self validity before creating tween (parent may be freed between calls)
+	if not is_instance_valid(self):
+		if is_instance_valid(decoy):
+			decoy.queue_free()
+		return
 	var tween := create_tween()
 	tween.tween_property(decoy, "color:a", 0.0, 0.3)
 	tween.tween_callback(decoy.queue_free)

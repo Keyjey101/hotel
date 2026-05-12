@@ -43,6 +43,11 @@ func _ready() -> void:
 	EventBus.enemy_damaged.connect(_on_any_enemy_damaged)
 
 
+func _exit_tree() -> void:
+	if EventBus.enemy_damaged.is_connected(_on_any_enemy_damaged):
+		EventBus.enemy_damaged.disconnect(_on_any_enemy_damaged)
+
+
 func _create_shield_visual() -> void:
 	_shield_visual = ColorRect.new()
 	_shield_visual.name = "ShieldVisual"
@@ -193,9 +198,6 @@ func _perform_attack() -> void:
 	# Apply damage
 	if _target.has_method("receive_damage"):
 		_target.receive_damage(attack_damage, 0, false, 100.0, dir_to_target * -1.0)
-
-	# Stun via EventBus
-	EventBus.player_captured.emit()
 
 	# Apply stun to player if they support it
 	if _target.has_method("apply_stun"):

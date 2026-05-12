@@ -26,6 +26,7 @@ var _dialogue_label: Label = null
 # ── Choice labels ──
 var _choice_labels: Array[Label] = []
 var _choice_made: bool = false
+var _choice_timer: float = 0.0
 
 # ── Hesitation mechanic ──
 var _hesitation_thresholds: Array[float] = [0.8, 0.6, 0.4, 0.2]
@@ -204,10 +205,11 @@ func _show_choices() -> void:
 		_choice_labels.append(label)
 
 
-func _process_confrontation(_delta: float) -> void:
+func _process_confrontation(delta: float) -> void:
 	velocity = Vector2.ZERO
+	_choice_timer += delta
 
-	if _choice_made:
+	if _choice_made or _choice_timer < 0.3:
 		return
 
 	# Check for input
@@ -285,8 +287,9 @@ func _process_combat(delta: float) -> void:
 			_show_dialogue("You're still you.", 3.0)
 			_disable_enemy()  # Disable combat, stop attacking
 			# Signal ending B path - proceeds to Satan fight
-			GameManager.run_state.mini_boss_defeated[9] = true
-			GameManager.run_state.run_meta["sister_spared"] = true if GameManager.run_state else null
+			if GameManager.run_state:
+				GameManager.run_state.mini_boss_defeated[9] = true
+				GameManager.run_state.run_meta["sister_spared"] = true
 			EventBus.mini_boss_defeated.emit(9)
 		return
 

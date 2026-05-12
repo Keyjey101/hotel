@@ -283,9 +283,10 @@ func _process_pan_projectiles(delta: float) -> void:
 				node.queue_free()
 				to_remove.append(i)
 
-	for i in to_remove:
-		if i < _active_pan_projectiles.size():
-			_active_pan_projectiles.remove_at(i)
+	for i in range(to_remove.size() - 1, -1, -1):
+		var idx: int = to_remove[i]
+		if idx < _active_pan_projectiles.size():
+			_active_pan_projectiles.remove_at(idx)
 
 
 func _pan_impact(pos: Vector2) -> void:

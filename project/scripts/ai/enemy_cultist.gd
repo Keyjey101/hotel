@@ -58,7 +58,6 @@ func _perform_attack() -> void:
 		_throw_knife()
 		_throw_ready = false
 		_throw_cooldown = 3.0
-		attack_damage = 12.0
 	else:
 		# Melee hit
 		if _target.has_method("receive_damage"):
@@ -103,8 +102,9 @@ func _move_projectile(bolt: Area2D) -> void:
 	var lifetime := 3.0
 	var elapsed := 0.0
 
-	while is_instance_valid(bolt) and elapsed < lifetime:
+	while is_instance_valid(bolt) and is_instance_valid(self) and elapsed < lifetime:
 		await get_tree().process_frame
+		if not is_instance_valid(self): return
 		elapsed += get_process_delta_time()
 		var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
 		bolt.global_position += dir * speed * get_process_delta_time()

@@ -27,6 +27,7 @@ var allowed_weapon_id: String = ""
 var enter_time: float = 0.0
 var rooms: Dictionary = {}
 var _rng: RandomNumberGenerator
+var _basement_active: bool = false
 
 
 func _ready() -> void:
@@ -38,6 +39,7 @@ func _ready() -> void:
 
 ## Called when player enters basement from a specific floor.
 func enter_basement(floor_number: int) -> void:
+	_basement_active = true
 	source_floor = floor_number
 	timer = 60.0
 	reinforcements_spawned = false
@@ -57,6 +59,8 @@ func enter_basement(floor_number: int) -> void:
 
 
 func _process(delta: float) -> void:
+	if not _basement_active:
+		return
 	timer -= delta
 
 	# 60s: reinforcements (2 extra enemies)
@@ -94,15 +98,12 @@ func _on_exit_reached(_body: Node2D) -> void:
 	if fast_clear:
 		print("[BasementManager] Fast escape! (%.1fs) Bonus artifact earned." % clear_time)
 		# Bonus: random cult artifact (applied by game_manager)
-		GameManager.run_state.add_artifact(_random_bonus_artifact())
+		var art := _random_bonus_artifact()
+		if art and GameManager.run_state and not GameManager.run_state.has_artifact(art.resource_name):
+			GameManager.run_state.add_artifact(art)
 
 	# Transition back to source floor
 	GameManager.transition_to_floor(source_floor)
-	var floor_path := "res://scenes/floors/floor_%02d.tscn" % [clampi(source_floor, 1, 9)]
-	if ResourceLoader.exists(floor_path):
-		get_tree().change_scene_to_file(floor_path)
-	else:
-		get_tree().change_scene_to_file("res://scenes/floors/floor_01.tscn")
 
 
 ## Player died in basement — run over.
@@ -413,7 +414,18 @@ func _create_room(rdef: Dictionary) -> Node2D:
 	light.color = LIGHT_COLOR
 	light.energy = 0.3
 	light.position = size_px * 0.5
-	light.texture = null  # Uses default procedural texture
+	# Create a simple procedural circle texture for the light
+	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	for y in range(64):
+		for x in range(64):
+			var dx := float(x) - 32.0
+			var dy := float(y) - 32.0
+			var dist := sqrt(dx * dx + dy * dy) / 32.0
+			var alpha := maxf(0.0, 1.0 - dist)
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, alpha))
+	var tex := ImageTexture.create_from_image(img)
+	light.texture = tex
 	room.add_child(light)
 
 	# Obstacles in room_a and room_b

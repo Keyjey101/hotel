@@ -43,9 +43,6 @@ func grab_attempt() -> void:
 		EventBus.player_captured.emit()
 		# Player slowed 70% for 1.5s — handled by player script listening to signal
 		# If another enemy nearby → emit drag signal (full drag in M4)
-		if _has_nearby_ally():
-			EventBus.player_captured.emit()  # signal for drag-to-basement trigger
-		# Auto-release after 1.5s
 		get_tree().create_timer(1.5).timeout.connect(_release_grab)
 
 

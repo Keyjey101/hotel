@@ -15,7 +15,7 @@ func _build_ui() -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0, 0, 0, 0.7)
 	bg.size = viewport_size
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	# Center container

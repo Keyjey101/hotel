@@ -16,10 +16,9 @@ var _phase_duration: float = 1.0
 var _shadow_mark_cooldown: float = 0.0
 var _shadow_mark_cooldown_max: float = 10.0
 
-# Original collision mask (set from base enemy: 71)
-var _original_collision_mask: int = 71
-# Mask without environment layer (layer 7 bit = 64): 71 - 64 = 7
-var _phase_collision_mask: int = 7
+# Collision masks — populated dynamically in _ready() from actual collision_mask
+var _original_collision_mask: int = 0
+var _phase_collision_mask: int = 0
 
 # Mutilation tracking
 var _arms_lost: int = 0
@@ -47,6 +46,8 @@ func _ready() -> void:
 
 	add_to_group("shadow_stalkers")
 	super._ready()
+	_original_collision_mask = collision_mask
+	_phase_collision_mask = collision_mask & ~64  # Remove environment layer (bit 6)
 
 
 # ---------------------------------------------------------------------------

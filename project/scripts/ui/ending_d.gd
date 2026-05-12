@@ -8,7 +8,17 @@ const TITLE_TEXT := "ASCENDED"
 const ENDING_TEXT := "The Hotel continues. The blood flows. The system perpetuates. But now... you're the one signing the contracts. Was it worth it? You'll have eternity to decide."
 
 
+func _save_ending(ending_id: String) -> void:
+	var meta := SaveManager.get_meta()
+	var endings: Array = meta.get("secret_endings_seen", [])
+	if not endings.has(ending_id):
+		endings.append(ending_id)
+	meta["secret_endings_seen"] = endings
+	SaveManager.save_meta(meta)
+
+
 func _ready() -> void:
+	_save_ending("d")
 	_build_ui()
 
 

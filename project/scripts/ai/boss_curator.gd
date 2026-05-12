@@ -42,6 +42,9 @@ var _shadow_realm_overlay: ColorRect = null
 var _shadow_clone: CharacterBody2D = null
 var _clone_scene: PackedScene = null
 
+# Clone flag — set before add_child to skip full boss initialization
+var is_clone: bool = false
+
 # Mutilation
 var _arms_lost: int = 0
 var _legs_lost: int = 0
@@ -51,6 +54,10 @@ var _drop_weapon_on_hit_chance: float = 0.5
 
 
 func _ready() -> void:
+	if is_clone:
+		super._ready()
+		return
+
 	enemy_name = "The Curator"
 	enemy_type = "boss"
 
@@ -386,8 +393,9 @@ func _move_projectile(bolt: Area2D) -> void:
 	var lifetime := 3.0
 	var elapsed := 0.0
 
-	while is_instance_valid(bolt) and elapsed < lifetime:
+	while is_instance_valid(bolt) and is_instance_valid(self) and elapsed < lifetime:
 		await get_tree().process_frame
+		if not is_instance_valid(self): return
 		elapsed += get_process_delta_time()
 		bolt.global_position += dir * speed * get_process_delta_time()
 
@@ -484,8 +492,8 @@ func _create_shadow_clone() -> void:
 	if _shadow_clone == null:
 		return
 
-	# Mark as clone BEFORE add_child so _ready can check the meta
-	_shadow_clone.set_meta("is_clone", true)
+	# Mark as clone BEFORE add_child so _ready can skip boss initialization
+	_shadow_clone.is_clone = true
 	# Reduce clone stats
 	_shadow_clone.set("torso_hp", 80.0)
 	_shadow_clone.set("attack_damage", 5.0)  # 25% of Curator's

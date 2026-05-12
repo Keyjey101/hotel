@@ -8,6 +8,7 @@ var _shake_tween: Tween
 var _flash_tween: Tween
 var _zoom_tween: Tween
 var _vignette_tween: Tween
+var _hit_stop_count: int = 0
 
 var _flash_overlay: ColorRect
 var _vignette_overlay: ColorRect
@@ -112,10 +113,14 @@ func flash(color: Color = Color.WHITE, duration: float = 0.05, max_alpha: float 
 func hit_stop(duration: float = 0.05) -> void:
 	if Engine.time_scale < 1.0:
 		return  # Already in slow-mo, don't stack
+	_hit_stop_count += 1
 	Engine.time_scale = 0.01
 	# Use a scene tree timer that respects time scale so it fires correctly
 	await get_tree().create_timer(duration, true, false, true).timeout
-	Engine.time_scale = 1.0
+	_hit_stop_count -= 1
+	if _hit_stop_count <= 0:
+		_hit_stop_count = 0
+		Engine.time_scale = 1.0
 
 
 # ============================================================

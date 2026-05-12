@@ -410,6 +410,7 @@ func _move_projectile(proj: Area2D) -> void:
 		proj.position += dir * speed * get_process_delta_time()
 		elapsed += get_process_delta_time()
 		await get_tree().process_frame
+		if not is_instance_valid(self): return
 
 	if is_instance_valid(proj):
 		proj.queue_free()

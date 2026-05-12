@@ -278,4 +278,32 @@ static func _create_pickup_node(loot_item: Dictionary, pos: Vector2) -> Area2D:
 	pickup.set_meta("loot_type", loot_item.get("type", ""))
 	pickup.set_meta("loot_id", loot_item.get("id", ""))
 
+	# Connect body_entered for pickup collection
+	pickup.body_entered.connect(func(body: Node2D):
+		if not body.is_in_group("player"):
+			return
+		var loot_type_local: String = loot_item.get("type", "")
+		var loot_id_local: String = loot_item.get("id", "")
+		# Delegate to FloorManager if available
+		var fm := _find_floor_manager(body.get_tree().root)
+		if fm == null:
+			fm = body.get_tree().current_scene as Node
+		if fm and fm.has_method("_on_pickup_collected"):
+			fm._on_pickup_collected(body, pickup)
+		else:
+			pickup.queue_free()
+	)
+
 	return pickup
+
+## Find FloorManager by walking the scene tree
+static func _find_floor_manager(node: Node) -> Node:
+	if node == null:
+		return null
+	if node.has_method("_on_pickup_collected") and node.is_class("Node"):
+		return node
+	for child in node.get_children():
+		var result := _find_floor_manager(child)
+		if result != null:
+			return result
+	return null

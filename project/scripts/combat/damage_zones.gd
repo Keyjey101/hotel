@@ -36,7 +36,7 @@ static func name(zone: Zone) -> String:
 
 ## All limb zones.
 static func all_limbs() -> Array[int]:
-	return [Zone.HEAD, Zone.LEFT_ARM, Zone.RIGHT_ARM, Zone.LEFT_LEG, Zone.RIGHT_LEG]
+	return [Zone.LEFT_ARM, Zone.RIGHT_ARM, Zone.LEFT_LEG, Zone.RIGHT_LEG]
 
 ## Identify zone from a hurtbox area node name.
 ## Expected names: "TorsoHurtbox", "HeadHurtbox", "LeftArmHurtbox",

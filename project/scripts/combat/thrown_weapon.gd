@@ -115,6 +115,8 @@ func _on_body_entered(body: Node2D) -> void:
 
 
 func _return_to_pool() -> void:
+	if not visible and not is_physics_processing():
+		return  # Already returned to pool
 	linear_velocity = Vector2.ZERO
 	angular_velocity = 0.0
 	_has_hit = false
@@ -220,10 +222,13 @@ func _apply_embed(target: Node2D) -> void:
 		freeze = true
 		# Apply 40% slow (0.6x speed) for 7 seconds
 		if "move_speed" in target:
-			target.move_speed *= 0.6
+			if not target.has_meta("_original_speed"):
+				target.set_meta("_original_speed", target.move_speed)
+			target.move_speed = target.get_meta("_original_speed") * 0.6
 			get_tree().create_timer(7.0).timeout.connect(func():
-				if is_instance_valid(target) and "move_speed" in target:
-					target.move_speed /= 0.6
+				if is_instance_valid(target) and target.has_meta("_original_speed"):
+					target.move_speed = target.get_meta("_original_speed")
+					target.remove_meta("_original_speed")
 				if is_instance_valid(self):
 					_return_to_pool()
 			)
@@ -277,10 +282,13 @@ func _apply_tangle(target: Node2D) -> void:
 	if target is CharacterBody2D:
 		var slow_mult := 0.5
 		if "move_speed" in target:
-			target.move_speed *= slow_mult
+			if not target.has_meta("_original_speed"):
+				target.set_meta("_original_speed", target.move_speed)
+			target.move_speed = target.get_meta("_original_speed") * slow_mult
 			get_tree().create_timer(4.0).timeout.connect(func():
-				if is_instance_valid(target) and "move_speed" in target:
-					target.move_speed /= slow_mult
+				if is_instance_valid(target) and target.has_meta("_original_speed"):
+					target.move_speed = target.get_meta("_original_speed")
+					target.remove_meta("_original_speed")
 			)
 	# Visual: wire line from throw origin to target (fades)
 	var wire := ColorRect.new()

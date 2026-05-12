@@ -134,7 +134,6 @@ func handle_player_death() -> void:
 
 
 func transition_to_basement() -> void:
-	current_state = GameState.BASEMENT
 	basement_entered.emit()
 	get_tree().change_scene_to_file("res://scenes/basement/basement.tscn")
 	print("[GameManager] Player captured. Entering basement.")
@@ -384,7 +383,7 @@ func _show_unlock_toast(message: String) -> void:
 
 
 func _is_unlocked(unlocked_list: Array, id: String) -> bool:
-	return unlocked_list.has(id) or _pending_artifact_unlocks.has(id) or _pending_stat_unlocks.has(id)
+	return unlocked_list.has(id)
 
 
 func _commit_run_end(ending_id: String) -> void:

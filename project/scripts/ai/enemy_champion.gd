@@ -339,7 +339,8 @@ func _perform_attack() -> void:
 	var windup := _combo_windup[step]
 
 	# Apply windup delay then strike
-	_attack_cooldown = windup + (1.0 / attack_speed)
+	_attack_cooldown = windup + attack_speed
+
 	_combo_cooldown = windup + 0.1  # Small gap between combo hits
 
 	# Windup visual: flash brighter for bigger hits
@@ -362,6 +363,8 @@ func _perform_attack() -> void:
 
 
 func _deliver_combo_hit(step: int, damage: float) -> void:
+	if _disabled or not is_instance_valid(self):
+		return
 	if _target == null or not is_instance_valid(_target):
 		_combo_count = 0
 		_combo_active = false

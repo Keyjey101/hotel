@@ -13,6 +13,7 @@ var route_gates: Dictionary = {}    # branch -> bool (true = open)
 var key_location: String = ""       # room_id where the key spawns
 var has_key: bool = false
 var _boss_unlocked: bool = false
+var _floor_completed_emitted: bool = false
 
 # Enemy scene paths
 const ENEMY_SCENES: Dictionary = {
@@ -78,6 +79,11 @@ func _ready() -> void:
 		var settings := SaveManager.get_settings()
 		if not settings.get("tutorial_shown", false):
 			_show_tutorial()
+
+
+func _exit_tree() -> void:
+	if EventBus.room_cleared.is_connected(_on_event_bus_room_cleared):
+		EventBus.room_cleared.disconnect(_on_event_bus_room_cleared)
 
 
 func spawn_player(spawn_pos: Vector2) -> void:
@@ -412,23 +418,48 @@ func _on_pickup_collected(body: Node2D, pickup: Area2D) -> void:
 	AudioManager.SFXPlayer.play_sfx_2d("item_pickup", pickup.global_position)
 
 	var loot_type: String = pickup.get_meta("loot_type", "")
+	var loot_id: String = pickup.get_meta("loot_id", "")
 
 	# Handle key pickup
 	if pickup.get_meta("is_key", false):
 		has_key = true
 		print("[FloorManager] Key collected!")
 
+	var player := get_tree().get_first_node_in_group("player")
+
 	match loot_type:
 		"weapon":
-			print("[FloorManager] Weapon picked up: %s" % pickup.get_meta("loot_id", "unknown"))
+			print("[FloorManager] Weapon picked up: %s" % loot_id)
+			if player and player.has_node("WeaponManager"):
+				var path := "res://resources/weapons/%s.tres" % loot_id
+				if ResourceLoader.exists(path):
+					var weapon: WeaponData = load(path)
+					player.get_node("WeaponManager").equip_weapon(weapon)
 		"ammo":
 			print("[FloorManager] Ammo picked up")
+			if player and player.has_node("WeaponManager"):
+				var wm: Node = player.get_node("WeaponManager")
+				if wm.has_method("refill_ammo"):
+					wm.refill_ammo()
 		"stat_upgrade":
 			print("[FloorManager] Stat upgrade collected")
-			EventBus.upgrade_collected.emit(null)
+			if UpgradeRegistry:
+				var upg = UpgradeRegistry.get_upgrade(loot_id)
+				if upg and GameManager.run_state:
+					GameManager.run_state.apply_upgrade(upg)
+					EventBus.upgrade_collected.emit(upg)
 		"cult_artifact":
 			print("[FloorManager] Cult artifact collected!")
-			EventBus.artifact_collected.emit(null)
+			if ArtifactRegistry:
+				var art = null
+				if loot_id == "random":
+					var rng := RandomNumberGenerator.new()
+					art = ArtifactRegistry.get_random_artifact({1:0.3, 2:0.5, 3:0.2}, rng)
+				else:
+					art = ArtifactRegistry.get_artifact(loot_id)
+				if art and GameManager.run_state:
+					GameManager.run_state.apply_artifact(art)
+					EventBus.artifact_collected.emit(art)
 		"key":
 			pass  # Handled above
 
@@ -479,8 +510,10 @@ func _check_clear_progress(rid: String) -> void:
 		elif rid == "boss" and not rooms.has("boss1"):
 			# Single boss floor (1-8): just floor_completed, no mini_boss
 			pass
-		EventBus.floor_completed.emit(floor_number)
-		print("[FloorManager] Floor %d complete!" % floor_number)
+		if not _floor_completed_emitted:
+			_floor_completed_emitted = true
+			EventBus.floor_completed.emit(floor_number)
+			print("[FloorManager] Floor %d complete!" % floor_number)
 
 
 func _show_tutorial() -> void:

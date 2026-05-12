@@ -332,6 +332,10 @@ func _fire_crossbow() -> void:
 	var tween := create_tween()
 	tween.tween_property(bolt, "global_position", target_pos, travel_time)
 	tween.tween_callback(func() -> void:
+		if _disabled or not is_instance_valid(self):
+			if is_instance_valid(bolt):
+				bolt.queue_free()
+			return
 		if is_instance_valid(bolt):
 			bolt.queue_free()
 		# Apply damage on arrival

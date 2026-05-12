@@ -233,8 +233,8 @@ func _on_limb_lost(zone: int) -> void:
 	if severed_limbs[DamageZone.Zone.LEFT_LEG]: lost_legs += 1
 	if severed_limbs[DamageZone.Zone.RIGHT_LEG]: lost_legs += 1
 	match lost_legs:
-		1: move_speed *= 0.5
-		2: move_speed *= 0.15
+		1: move_speed = _initial_move_speed * 0.5
+		2: move_speed = _initial_move_speed * 0.15
 
 	# Arm effects
 	if DamageZone.is_arm(zone):
@@ -405,7 +405,6 @@ func _state_patrol(_delta: float) -> void:
 
 func _state_alert(delta: float) -> void:
 	velocity = Vector2.ZERO
-	_state_timer -= delta
 	if _state_timer <= 0.0:
 		if _target:
 			_enter_state("chase")
@@ -525,13 +524,21 @@ func _disable_enemy() -> void:
 	EventBus.enemy_disabled.emit(self)
 
 
+func is_disabled() -> bool:
+	return _disabled
+
+
+func is_patrolling() -> bool:
+	return _current_state == "patrol"
+
+
 func _alert_nearby() -> void:
 	# Alert enemies in radius
 	var bodies := detection_area.get_overlapping_bodies()
 	for body in bodies:
 		if body == self:
 			continue
-		if body.has_method("on_nearby_alert") and body._current_state == "patrol":
+		if body.has_method("on_nearby_alert") and body.is_patrolling():
 			body.on_nearby_alert(global_position)
 
 
@@ -553,9 +560,16 @@ func _on_detection_entered(body: Node2D) -> void:
 
 func _on_detection_exited(body: Node2D) -> void:
 	if body == _target:
-		_target = null
+		# Don't immediately forget — keep target for a grace period
+		# Target will be cleared only if truly lost (e.g. far away or scene change)
 		if _current_state in ["chase", "engage"]:
-			_enter_state("patrol")
+			# Schedule target loss after a short delay
+			get_tree().create_timer(1.5).timeout.connect(func():
+				if _target == null or not is_instance_valid(_target) or global_position.distance_to(_target.global_position) > detection_range * 1.5:
+					_target = null
+					if _current_state in ["chase", "engage"]:
+						_enter_state("patrol")
+			)
 
 
 # ============================================================
@@ -570,3 +584,10 @@ func _flash_hurt() -> void:
 
 func set_patrol_points(points: Array[Vector2]) -> void:
 	_patrol_points = points
+
+
+func _exit_tree() -> void:
+	if detection_area and detection_area.body_entered.is_connected(_on_detection_entered):
+		detection_area.body_entered.disconnect(_on_detection_entered)
+	if detection_area and detection_area.body_exited.is_connected(_on_detection_exited):
+		detection_area.body_exited.disconnect(_on_detection_exited)

@@ -33,6 +33,12 @@ var floor_names := {
 
 var _low_hp_tween: Tween = null
 var _floor_tween: Tween = null
+var _conn_damaged: Callable
+var _conn_healed: Callable
+var _conn_weapon_changed: Callable
+var _conn_room_entered: Callable
+var _conn_upgrade_collected: Callable
+var _conn_artifact_collected: Callable
 
 
 func _ready() -> void:
@@ -140,27 +146,33 @@ func _build_ui() -> void:
 
 
 func _connect_events() -> void:
-	EventBus.player_damaged.connect(func(_a): _update_hp_bar())
-	EventBus.player_healed.connect(func(_a): _update_hp_bar())
-	EventBus.player_weapon_changed.connect(func(_s, _w): _update_weapon_slots())
-	EventBus.room_entered.connect(func(_f, _r): _update_floor_indicator())
-	EventBus.upgrade_collected.connect(func(_u): _update_buffs())
-	EventBus.artifact_collected.connect(func(_a): _update_buffs())
+	_conn_damaged = func(_a): _update_hp_bar()
+	_conn_healed = func(_a): _update_hp_bar()
+	_conn_weapon_changed = func(_s, _w): _update_weapon_slots()
+	_conn_room_entered = func(_f, _r): _update_floor_indicator()
+	_conn_upgrade_collected = func(_u): _update_buffs()
+	_conn_artifact_collected = func(_a): _update_buffs()
+	EventBus.player_damaged.connect(_conn_damaged)
+	EventBus.player_healed.connect(_conn_healed)
+	EventBus.player_weapon_changed.connect(_conn_weapon_changed)
+	EventBus.room_entered.connect(_conn_room_entered)
+	EventBus.upgrade_collected.connect(_conn_upgrade_collected)
+	EventBus.artifact_collected.connect(_conn_artifact_collected)
 
 
 func _exit_tree() -> void:
-	if EventBus.player_damaged.is_connected(_update_hp_bar):
-		EventBus.player_damaged.disconnect(_update_hp_bar)
-	if EventBus.player_healed.is_connected(_update_hp_bar):
-		EventBus.player_healed.disconnect(_update_hp_bar)
-	if EventBus.player_weapon_changed.is_connected(_update_weapon_slots):
-		EventBus.player_weapon_changed.disconnect(_update_weapon_slots)
-	if EventBus.room_entered.is_connected(_update_floor_indicator):
-		EventBus.room_entered.disconnect(_update_floor_indicator)
-	if EventBus.upgrade_collected.is_connected(_update_buffs):
-		EventBus.upgrade_collected.disconnect(_update_buffs)
-	if EventBus.artifact_collected.is_connected(_update_buffs):
-		EventBus.artifact_collected.disconnect(_update_buffs)
+	if EventBus.player_damaged.is_connected(_conn_damaged):
+		EventBus.player_damaged.disconnect(_conn_damaged)
+	if EventBus.player_healed.is_connected(_conn_healed):
+		EventBus.player_healed.disconnect(_conn_healed)
+	if EventBus.player_weapon_changed.is_connected(_conn_weapon_changed):
+		EventBus.player_weapon_changed.disconnect(_conn_weapon_changed)
+	if EventBus.room_entered.is_connected(_conn_room_entered):
+		EventBus.room_entered.disconnect(_conn_room_entered)
+	if EventBus.upgrade_collected.is_connected(_conn_upgrade_collected):
+		EventBus.upgrade_collected.disconnect(_conn_upgrade_collected)
+	if EventBus.artifact_collected.is_connected(_conn_artifact_collected):
+		EventBus.artifact_collected.disconnect(_conn_artifact_collected)
 
 
 func _refresh_all() -> void:
@@ -231,12 +243,9 @@ func _update_weapon_slots() -> void:
 			_:
 				weapon_icons[i].color = Color(0.5, 0.5, 0.5)
 
-		# Ammo dots for ranged weapons
-		if weapon.weapon_type == WeaponData.WeaponType.RANGED and weapon.max_ammo > 0:
-			var dots := ""
-			for j in range(weapon.max_ammo):
-				dots += "●" if j < weapon.current_ammo else "○"
-			ammo_displays[i].text = dots
+		# Ammo display for ranged weapons
+		if weapon.weapon_type == WeaponData.WeaponType.RANGED and weapon.ammo > 0:
+			ammo_displays[i].text = "ammo"
 		else:
 			ammo_displays[i].text = ""
 

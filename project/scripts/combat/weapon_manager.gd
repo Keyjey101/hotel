@@ -32,6 +32,17 @@ func _ready() -> void:
 	add_child(_projectile_pool)
 	add_child(_thrown_pool)
 
+	# Sync weapons from run_state
+	if GameManager.run_state:
+		for i in range(mini(GameManager.run_state.weapon_slots.size(), max_slots)):
+			equipped[i] = GameManager.run_state.weapon_slots[i]
+			if equipped[i] != null and equipped[i].ammo > 0:
+				var ammo_bonus := 1.0 + float(GameManager.run_state.stat_upgrades.get("ammo_bonus", 0.0))
+				_ammo[i] = ceili(equipped[i].ammo * ammo_bonus)
+			else:
+				_ammo[i] = -1
+		active_slot = GameManager.run_state.active_slot
+
 
 func get_active_weapon() -> WeaponData:
 	return equipped[active_slot]
@@ -91,7 +102,10 @@ func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
 	# Reparent to scene tree if pooled
 	if hit.get_parent() != get_tree().current_scene:
 		hit.get_parent().remove_child(hit)
-		get_tree().current_scene.add_child(hit)
+		if is_instance_valid(get_tree().current_scene):
+			get_tree().current_scene.call_deferred("add_child", hit)
+		else:
+			call_deferred("add_child", hit)
 
 	# Get melee damage multiplier from upgrades
 	var dmg_mult := _get_melee_damage_mult()

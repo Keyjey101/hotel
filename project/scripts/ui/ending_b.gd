@@ -8,7 +8,17 @@ const TITLE_TEXT := "ESCAPED"
 const ENDING_TEXT := "The Hotel is gone. She's not the same. Neither are you. But you're together. That has to be enough."
 
 
+func _save_ending(ending_id: String) -> void:
+	var meta := SaveManager.get_meta()
+	var endings: Array = meta.get("secret_endings_seen", [])
+	if not endings.has(ending_id):
+		endings.append(ending_id)
+	meta["secret_endings_seen"] = endings
+	SaveManager.save_meta(meta)
+
+
 func _ready() -> void:
+	_save_ending("b")
 	_build_ui()
 
 

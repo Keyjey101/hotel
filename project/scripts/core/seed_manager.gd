@@ -24,7 +24,7 @@ func get_floor_rng(floor_number: int) -> RandomNumberGenerator:
 	if _floor_rng_cache.has(floor_number):
 		return _floor_rng_cache[floor_number]
 	var rng := RandomNumberGenerator.new()
-	rng.seed = _seed * floor_number + floor_number * 7
+	rng.seed = hash(_seed + floor_number * 65536)
 	_floor_rng_cache[floor_number] = rng
 	return rng
 
@@ -34,7 +34,7 @@ func get_room_rng(floor_number: int, room_index: int) -> RandomNumberGenerator:
 	if _room_rng_cache.has(key):
 		return _room_rng_cache[key]
 	var rng := RandomNumberGenerator.new()
-	rng.seed = _seed * floor_number + room_index * 31
+	rng.seed = hash(_seed + floor_number * 65536 + room_index * 256)
 	_room_rng_cache[key] = rng
 	return rng
 
@@ -54,17 +54,18 @@ func get_room_enemy_config(floor_number: int, room_index: int, spawn_points: int
 
 func get_room_loot_config(floor_number: int, room_index: int, loot_zones: int) -> Dictionary:
 	var rng := get_room_rng(floor_number, room_index)
-	rng.seed += 999  # Different stream from enemy config
-	var loot_count := rng.randi_range(1, maxi(1, loot_zones - 1))
-	return {"count": loot_count, "seed": rng.seed}
+	var loot_rng := RandomNumberGenerator.new()
+	loot_rng.seed = rng.seed + 999  # Offset without mutating original
+	var loot_count := loot_rng.randi_range(1, maxi(1, loot_zones - 1))
+	return {"count": loot_count, "seed": loot_rng.seed}
 
 
 func get_gate_config(floor_number: int, total_branches: int) -> Dictionary:
 	var rng := get_floor_rng(floor_number)
-	rng.seed += 777
-	# Open 2 of 3 branches, close 1
+	var gate_rng := RandomNumberGenerator.new()
+	gate_rng.seed = rng.seed + 777  # Offset without mutating original
 	var branches: Array = range(total_branches)
-	_deterministic_shuffle(branches, rng)
+	_deterministic_shuffle(branches, gate_rng)
 	var open_branches := branches.slice(0, total_branches - 1)
 	var closed_branch: int = int(branches[total_branches - 1])
 	return {"open": open_branches, "closed": closed_branch}

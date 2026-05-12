@@ -48,6 +48,8 @@ func take_damage(amount: float, _dir: Vector2 = Vector2.ZERO, _kb: float = 0.0) 
 
 
 func _destroy_corpse() -> void:
+	if is_consumed:
+		return
 	is_consumed = true
 	# Quick destroy animation
 	var tween := create_tween()

@@ -148,7 +148,7 @@ func _check_wave_cleared() -> void:
 	# Filter out invalid/dead enemies
 	var alive: Array[CharacterBody2D] = []
 	for enemy in active_enemies:
-		if is_instance_valid(enemy) and not enemy._disabled:
+		if is_instance_valid(enemy) and enemy.get("_disabled") != true:
 			alive.append(enemy)
 
 	if alive.is_empty():

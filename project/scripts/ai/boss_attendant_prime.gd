@@ -147,7 +147,7 @@ func _update_fog_visibility() -> void:
 	if is_in_fog:
 		# Invisible in fog — but visible for 0.5s when attacking in phase 3
 		if _phase >= 3 and _attack_cooldown > 0.5:
-			sprite.modulate.a = 0.1
+			sprite.modulate.a = 1.0
 		else:
 			sprite.modulate.a = 0.1
 	else:

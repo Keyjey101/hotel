@@ -120,6 +120,7 @@ func _find_player() -> Node2D:
 
 func _physics_process(delta: float) -> void:
 	if _disabled:
+		super._physics_process(delta)
 		return
 	# Always tick regen
 	_process_regen(delta)

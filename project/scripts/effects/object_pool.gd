@@ -43,8 +43,7 @@ func get_instance() -> Node:
 	if not is_instance_valid(instance):
 		if _active.size() < _max_size:
 			_expand()
-			instance = _scene.instantiate()
-			add_child(instance)
+			instance = _pool.pop_back()
 		else:
 			return null
 	_active.append(instance)

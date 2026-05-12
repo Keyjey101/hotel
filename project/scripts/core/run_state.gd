@@ -90,7 +90,7 @@ func _on_mini_boss_defeated(floor_number: int) -> void:
 func apply_stat_upgrade(stat_name: String, value: float) -> void:
 	var current: float = float(stat_upgrades.get(stat_name, 0.0))
 	# Diminishing returns after 2 stacks
-	var stack_count := int(current / _base_value(stat_name))
+	var stack_count: int = _upgrade_stack_counts.get(stat_name, 0)
 	if stack_count >= 2:
 		value *= 0.5
 	stat_upgrades[stat_name] = current + value
@@ -110,7 +110,7 @@ func apply_artifact(art: Resource) -> void:
 		var val = art.stat_mods[key]
 		if val is float or val is int:
 			stat_upgrades[key] = float(stat_upgrades.get(key, 0.0)) + float(val)
-	cult_artifacts.append(art)
+	# Note: does NOT append to cult_artifacts — use add_artifact() for that
 	_recalculate_stats()
 
 
@@ -194,6 +194,9 @@ func to_dict() -> Dictionary:
 
 
 static func from_dict(d: Dictionary) -> RunState:
+	# Clean up existing RunState if any
+	if GameManager and GameManager.run_state and GameManager.run_state.has_method("cleanup"):
+		GameManager.run_state.cleanup()
 	var script := load("res://scripts/core/run_state.gd")
 	var rs = script.new()
 	rs.current_floor = d.get("current_floor", 1)

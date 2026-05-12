@@ -13,6 +13,7 @@ var _detection_land: float = 150.0
 var _regen_water: float = 1.5
 var _regen_land: float = 0.5
 var _emerging: bool = false
+var _water_mult: float = 1.0
 
 
 func _ready() -> void:
@@ -62,14 +63,14 @@ func _update_water_state() -> void:
 
 func _on_water_changed() -> void:
 	if is_in_water:
-		move_speed = _move_speed_water
+		_water_mult = _move_speed_water / _initial_move_speed
 		detection_range = _detection_water
 		regen_speed_mult = _regen_water
 		# Enter ambush mode if in patrol
 		if _current_state == "patrol":
 			_enter_ambush()
 	else:
-		move_speed = _move_speed_land
+		_water_mult = _move_speed_land / _initial_move_speed
 		detection_range = _detection_land
 		regen_speed_mult = _regen_land
 		_ambush_mode = false
@@ -77,6 +78,7 @@ func _on_water_changed() -> void:
 		# Restore visibility
 		if sprite:
 			sprite.modulate.a = 1.0
+	_recalc_move_speed()
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +236,9 @@ func _on_limb_lost(zone: int) -> void:
 			elif legs_lost >= 2:
 				move_speed = _move_speed_land * 0.1
 
+
+func _recalc_move_speed() -> void:
+	move_speed = _initial_move_speed * _water_mult
 
 func get_enemy_type() -> String:
 	return enemy_type

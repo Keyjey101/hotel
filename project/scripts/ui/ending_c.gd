@@ -8,7 +8,17 @@ const TITLE_TEXT := "THE TRUTH"
 const ENDING_TEXT := "You came here to save her. But you were never outside. You were always inside. The Hotel doesn't have guests. It has inmates. And you... you were the first."
 
 
+func _save_ending(ending_id: String) -> void:
+	var meta := SaveManager.get_meta()
+	var endings: Array = meta.get("secret_endings_seen", [])
+	if not endings.has(ending_id):
+		endings.append(ending_id)
+	meta["secret_endings_seen"] = endings
+	SaveManager.save_meta(meta)
+
+
 func _ready() -> void:
+	_save_ending("c")
 	_build_ui()
 
 
