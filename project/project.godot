@@ -6,7 +6,7 @@
 
 config/name="Hotel"
 config/description="The Raid meets Hotline Miami in a satanic luxury hotel"
-run/main_scene="res://scenes/core/game.tscn"
+run/main_scene="res://scenes/ui/title_screen.tscn"
 config/features=PackedStringArray("4.3", "Forward+")
 config/icon="res://icon.svg"
 
@@ -15,6 +15,9 @@ config/icon="res://icon.svg"
 GameManager="*res://scripts/core/game_manager.gd"
 EventBus="*res://scripts/core/event_bus.gd"
 SaveManager="*res://scripts/core/save_manager.gd"
+GoreSystem="*res://scripts/combat/gore_system.gd"
+ScreenEffects="*res://scripts/effects/screen_effects.gd"
+AudioManager="*res://scripts/audio/audio_manager.gd"
 
 [display]
 
@@ -81,3 +84,9 @@ ui_pause={
 textures/canvas_textures/default_texture_filter=0
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
+
+[debug]
+
+gdscript/warnings/enable=true
+gdscript/warnings/exclude_addons=false
+gdscript/warnings/treat_warnings_as_errors=false

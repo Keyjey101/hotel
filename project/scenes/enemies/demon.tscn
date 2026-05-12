@@ -1,0 +1,36 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_demon"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/enemy_demon.gd" id="2"]
+
+[node name="Demon" instance=ExtResource("1")]
+groups = ["enemy", "demons"]
+script = ExtResource("2")
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+color = Color(0.165, 0.039, 0.039, 1)
+offset_left = -12.0
+offset_top = -18.0
+offset_right = 12.0
+offset_bottom = 18.0
+
+[node name="LeftEye" type="ColorRect" parent="Sprite" index="1"]
+offset_left = -6.0
+offset_top = -16.0
+offset_right = -4.0
+offset_bottom = -14.0
+color = Color(1.0, 0.0, 0.0, 1)
+
+[node name="RightEye" type="ColorRect" parent="Sprite" index="2"]
+offset_left = 4.0
+offset_top = -16.0
+offset_right = 6.0
+offset_bottom = -14.0
+color = Color(1.0, 0.0, 0.0, 1)
+
+[node name="ShiftingFormOverlay" type="ColorRect" parent="Sprite" index="3"]
+offset_left = -9.0
+offset_top = -20.0
+offset_right = 9.0
+offset_bottom = 20.0
+color = Color(0.3, 0.0, 0.0, 0.3)

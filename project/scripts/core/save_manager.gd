@@ -18,7 +18,7 @@ func load_run() -> Dictionary:
 		return {}
 	var file := FileAccess.open(RUN_SAVE_PATH, FileAccess.READ)
 	if file:
-		var parsed := JSON.parse_string(file.get_as_text())
+		var parsed: Variant = JSON.parse_string(file.get_as_text())
 		return parsed if parsed is Dictionary else {}
 	return {}
 
@@ -39,7 +39,7 @@ func load_settings() -> Dictionary:
 		return _default_settings()
 	var file := FileAccess.open(SETTINGS_PATH, FileAccess.READ)
 	if file:
-		var parsed := JSON.parse_string(file.get_as_text())
+		var parsed: Variant = JSON.parse_string(file.get_as_text())
 		return parsed if parsed is Dictionary else {}
 	return _default_settings()
 
@@ -49,7 +49,7 @@ func load_records() -> Dictionary:
 		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
 	var file := FileAccess.open(RECORDS_PATH, FileAccess.READ)
 	if file:
-		var parsed := JSON.parse_string(file.get_as_text())
+		var parsed: Variant = JSON.parse_string(file.get_as_text())
 		return parsed if parsed is Dictionary else {}
 	return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
 
@@ -76,3 +76,8 @@ func _default_settings() -> Dictionary:
 		"blood_intensity": 1.0,
 		"fullscreen": false,
 	}
+
+
+func get_total_runs() -> int:
+	var records := load_records()
+	return int(records.get("total_runs", 0))

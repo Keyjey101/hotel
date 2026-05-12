@@ -37,3 +37,21 @@ static func name(zone: Zone) -> String:
 ## All limb zones.
 static func all_limbs() -> Array[int]:
 	return [Zone.HEAD, Zone.LEFT_ARM, Zone.RIGHT_ARM, Zone.LEFT_LEG, Zone.RIGHT_LEG]
+
+## Identify zone from a hurtbox area node name.
+## Expected names: "TorsoHurtbox", "HeadHurtbox", "LeftArmHurtbox",
+## "RightArmHurtbox", "LeftLegHurtbox", "RightLegHurtbox".
+static func get_zone_from_collision(hurtbox_area: Area2D) -> Zone:
+	var n: String = hurtbox_area.name.to_lower()
+	if "head" in n:
+		return Zone.HEAD
+	elif "arm_l" in n or "left_arm" in n:
+		return Zone.LEFT_ARM
+	elif "arm_r" in n or "right_arm" in n:
+		return Zone.RIGHT_ARM
+	elif "leg_l" in n or "left_leg" in n:
+		return Zone.LEFT_LEG
+	elif "leg_r" in n or "right_leg" in n:
+		return Zone.RIGHT_LEG
+	else:
+		return Zone.TORSO

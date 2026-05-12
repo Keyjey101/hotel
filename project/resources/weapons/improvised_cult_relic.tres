@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Cult Relic"
+weapon_type = 2
+damage = 40.0
+limb_damage_multiplier = 3.0
+attack_speed = 0.67
+attack_range = 60.0
+knockback = 80.0
+stun_chance = 0.6
+stun_duration = 1.2
+sever_chance = 0.8
+ammo = 1
+throw_damage = 50.0
+throw_speed = 200.0
+throw_arc = 4
+throw_effect = "reality_tear"
+throw_effect_chance = 1.0
+attack_frame_count = 6
+throw_frame_count = 5

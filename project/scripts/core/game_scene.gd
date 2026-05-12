@@ -9,6 +9,8 @@ func _ready() -> void:
 	EventBus.player_damaged.connect(_on_player_damaged)
 	EventBus.enemy_disabled.connect(_on_enemy_disabled)
 	GameManager.run_started.connect(_on_run_started)
+	EventBus.floor_completed.connect(_on_floor_completed)
+	EventBus.player_captured.connect(_on_player_captured)
 
 
 func _on_run_started(_seed: int) -> void:
@@ -30,6 +32,14 @@ func _on_enemy_disabled(_enemy: CharacterBody2D) -> void:
 		GameManager.run_state.enemies_mutilated += 1
 
 
+func _on_floor_completed(floor_num: int) -> void:
+	GameManager.handle_floor_completed(floor_num)
+
+
+func _on_player_captured() -> void:
+	pass  # GameManager.transition_to_basement() handles scene switch
+
+
 func _screen_shake(intensity: float) -> void:
 	var camera := get_tree().get_first_node_in_group("camera")
 	if camera and camera is Camera2D:
@@ -40,5 +50,50 @@ func _screen_shake(intensity: float) -> void:
 
 
 func _show_low_hp_vignette() -> void:
-	# TODO: Show red vignette overlay
-	pass
+	var hp_percent := 1.0
+	if GameManager.run_state:
+		hp_percent = GameManager.run_state.player_hp / GameManager.run_state.player_max_hp
+
+	# Ensure vignette overlay exists
+	var vignette_layer: CanvasLayer = get_node_or_null("LowHPVignetteLayer")
+	if not vignette_layer:
+		vignette_layer = CanvasLayer.new()
+		vignette_layer.name = "LowHPVignetteLayer"
+		vignette_layer.layer = -1
+		add_child(vignette_layer)
+
+	var vignette: ColorRect = vignette_layer.get_node_or_null("Vignette")
+	if not vignette:
+		vignette = ColorRect.new()
+		vignette.name = "Vignette"
+		vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Gradient vignette: transparent center, red edges
+		var grad := Gradient.new()
+		grad.colors = PackedColorArray([Color(0.5, 0.0, 0.0, 0.0), Color(0.5, 0.0, 0.0, 1.0)])
+		var tex := GradientTexture2D.new()
+		tex.gradient = grad
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(1.0, 0.5)
+		vignette.texture = tex
+		vignette_layer.add_child(vignette)
+
+	# Resize to fullscreen
+	var vp_size := get_viewport().get_visible_rect().size
+	vignette.size = vp_size
+	vignette.position = Vector2.ZERO
+
+	# Alpha based on HP: stronger at lower HP
+	var alpha := clampf(0.3 - hp_percent, 0.0, 0.3)
+	vignette.modulate.a = alpha
+
+	# Pulse when HP < 30%
+	if hp_percent < 0.3:
+		var tween := vignette.create_tween()
+		tween.set_loops()
+		tween.tween_property(vignette, "modulate:a", alpha * 1.3, 0.6)
+		tween.tween_property(vignette, "modulate:a", alpha * 0.7, 0.6)
+	else:
+		# Fade out smoothly
+		var tween := vignette.create_tween()
+		tween.tween_property(vignette, "modulate:a", 0.0, 0.5)

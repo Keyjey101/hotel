@@ -14,7 +14,7 @@ func test_is_limb_legs() -> void:
 
 
 func test_is_limb_head() -> void:
-	assert_true(DamageZone.is_limb(DamageZone.Zone.HEAD), "Head is a limb")
+	assert_false(DamageZone.is_limb(DamageZone.Zone.HEAD), "Head is NOT a limb (not severable)")
 
 
 func test_torso_not_limb() -> void:

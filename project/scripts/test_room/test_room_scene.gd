@@ -26,7 +26,6 @@ func _setup_run() -> void:
 	var sawed_off := load("res://resources/weapons/ranged_sawed_off.tres") as WeaponData
 	GameManager.run_state.weapon_slots[0] = machete
 	GameManager.run_state.weapon_slots[1] = sawed_off
-	GameManager.run_state._ammo = [0, 4]
 
 
 func _spawn_initial_enemies() -> void:
@@ -40,10 +39,11 @@ func _spawn_enemy(pos: Vector2) -> void:
 		return
 	var enemy := _enemy_scene.instantiate()
 	enemy.global_position = pos
-	enemy.set_patrol_points([
+	var pts: Array[Vector2] = [
 		pos + Vector2(-50, 0),
 		pos + Vector2(50, 0),
-	])
+	]
+	enemy.set_patrol_points(pts)
 	add_child(enemy)
 	_spawn_count += 1
 

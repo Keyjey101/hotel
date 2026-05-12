@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_spy"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/enemy_spy.gd" id="2"]
+
+[node name="Spy" instance=ExtResource("1")]
+groups = ["enemy", "spies"]
+script = ExtResource("2")
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+color = Color(0.165, 0.165, 0.227, 1)
+
+[node name="EyeGlint" type="ColorRect" parent="Sprite" index="1"]
+offset_left = 1.0
+offset_top = -16.0
+offset_right = 3.0
+offset_bottom = -14.0
+color = Color(1.0, 0.0, 0.0, 1)

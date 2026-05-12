@@ -1,0 +1,74 @@
+[gd_scene load_steps=12 format=3 uid="uid://boss_gourmand"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/boss_gourmand.gd" id="2"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(28, 28)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_torso"]
+size = Vector2(22, 22)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_head"]
+size = Vector2(12, 12)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_arm_l"]
+size = Vector2(8, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_arm_r"]
+size = Vector2(8, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_leg_l"]
+size = Vector2(8, 18)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_leg_r"]
+size = Vector2(8, 18)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hitbox"]
+radius = 35.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_detection"]
+radius = 300.0
+
+[node name="Gourmand" instance=ExtResource("1")]
+groups = ["enemy", "boss"]
+script = ExtResource("2")
+
+[node name="CollisionShape2D" parent="." index="0"]
+shape = SubResource("RectangleShape2D_body")
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
+color = Color(0.545, 0.271, 0.075, 1)
+
+[node name="CollisionShape2D" parent="Hitbox" index="0"]
+shape = SubResource("CircleShape2D_hitbox")
+
+[node name="CollisionShape2D" parent="HurtboxManager/TorsoHurtbox" index="0"]
+shape = SubResource("RectangleShape2D_torso")
+
+[node name="CollisionShape2D" parent="HurtboxManager/HeadHurtbox" index="0"]
+shape = SubResource("RectangleShape2D_head")
+transform = Transform2D(1, 0, 0, 1, 0, -16)
+
+[node name="CollisionShape2D" parent="HurtboxManager/LeftArmHurtbox" index="0"]
+shape = SubResource("RectangleShape2D_arm_l")
+transform = Transform2D(1, 0, 0, 1, -16, 2)
+
+[node name="CollisionShape2D" parent="HurtboxManager/RightArmHurtbox" index="0"]
+shape = SubResource("RectangleShape2D_arm_r")
+transform = Transform2D(1, 0, 0, 1, 16, 2)
+
+[node name="CollisionShape2D" parent="HurtboxManager/LeftLegHurtbox" index="0"]
+shape = SubResource("RectangleShape2D_leg_l")
+transform = Transform2D(1, 0, 0, 1, -8, 20)
+
+[node name="CollisionShape2D" parent="HurtboxManager/RightLegHurtbox" index="0"]
+shape = SubResource("RectangleShape2D_leg_r")
+transform = Transform2D(1, 0, 0, 1, 8, 20)
+
+[node name="CollisionShape2D" parent="DetectionArea" index="0"]
+shape = SubResource("CircleShape2D_detection")

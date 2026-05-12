@@ -82,7 +82,7 @@ func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback
 
 	if GameManager.run_state:
 		# Apply damage reduction from upgrades
-		var reduction := GameManager.run_state.stat_upgrades.get("damage_reduction", 0.0)
+		var reduction: float = float(GameManager.run_state.stat_upgrades.get("damage_reduction", 0.0))
 		amount *= (1.0 - reduction)
 		GameManager.run_state.player_hp -= amount
 	else:
@@ -93,12 +93,25 @@ func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback
 	_invulnerable = true
 	_invul_timer = 0.5
 
+	AudioManager.SFXPlayer.play_sfx_with_pitch("player_hurt", randf_range(0.85, 1.15))
+
 	# Knockback
 	if knockback_force > 0.0:
 		velocity = knockback_dir * knockback_force * 5.0
 
 	# Flash
 	_flash_white()
+
+	# Screen effects
+	ScreenEffects.shake(5.0, 0.2)
+	ScreenEffects.flash(Color.WHITE, 0.05, 0.4)
+	ScreenEffects.update_vignette(get_hp() / get_max_hp())
+
+	# Damage direction indicator on HUD
+	if knockback_force > 0.0:
+		var _hud := get_tree().get_first_node_in_group("hud")
+		if _hud and _hud.has_method("flash_damage_direction"):
+			_hud.flash_damage_direction(knockback_dir)
 
 	EventBus.player_damaged.emit(amount)
 
@@ -117,6 +130,8 @@ func heal(amount: float) -> void:
 			GameManager.run_state.player_max_hp
 		)
 	EventBus.player_healed.emit(amount)
+	ScreenEffects.update_vignette(get_hp() / get_max_hp())
+	AudioManager.SFXPlayer.play_sfx("player_heal")
 
 
 func get_hp() -> float:
@@ -132,7 +147,7 @@ func get_max_hp() -> float:
 
 
 func _attack() -> void:
-	var weapon := weapon_manager.get_active_weapon()
+	var weapon: WeaponData = weapon_manager.get_active_weapon()
 	if weapon == null:
 		return
 
@@ -161,7 +176,7 @@ func _try_pickup() -> void:
 				closest = body
 
 	if closest:
-		var weapon := closest.get_weapon_data()
+		var weapon: WeaponData = closest.get_weapon_data()
 		weapon_manager.equip_weapon(weapon)
 		closest.queue_free()
 		EventBus.weapon_picked_up.emit(weapon)
@@ -170,6 +185,7 @@ func _try_pickup() -> void:
 func _die() -> void:
 	_is_dead = true
 	velocity = Vector2.ZERO
+	AudioManager.SFXPlayer.play_sfx("player_death", 5.0)
 	# Trigger capture sequence after brief delay
 	get_tree().create_timer(0.5).timeout.connect(func():
 		GameManager.handle_player_death()

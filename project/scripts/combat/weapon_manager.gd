@@ -5,12 +5,16 @@ extends Node2D
 const MeleeHitScene := preload("res://scenes/weapons/melee_hit.tscn")
 const ProjectileScene := preload("res://scenes/weapons/projectile.tscn")
 const ThrowScene := preload("res://scenes/weapons/thrown_weapon.tscn")
+const ObjectPoolScript := preload("res://scripts/effects/object_pool.gd")
 
 @export var max_slots: int = 2
 
 var equipped: Array = [null, null]   # [WeaponData, WeaponData]
 var active_slot: int = 0
 var _ammo: Array = [0, 0]           # Current ammo per slot
+var _melee_pool: Node
+var _projectile_pool: Node
+var _thrown_pool: Node
 
 
 func _ready() -> void:
@@ -19,6 +23,14 @@ func _ready() -> void:
 		max_slots = 3
 		equipped.append(null)
 		_ammo.append(0)
+
+	# Initialize object pools
+	_melee_pool = ObjectPoolScript.new(MeleeHitScene, 8, 20)
+	_projectile_pool = ObjectPoolScript.new(ProjectileScene, 15, 30)
+	_thrown_pool = ObjectPoolScript.new(ThrowScene, 5, 15)
+	add_child(_melee_pool)
+	add_child(_projectile_pool)
+	add_child(_thrown_pool)
 
 
 func get_active_weapon() -> WeaponData:
@@ -55,9 +67,9 @@ func equip_weapon(weapon: WeaponData) -> void:
 
 	# Set ammo
 	if weapon.ammo > 0:
-		var ammo_bonus := 1.0
+		var ammo_bonus: float = 1.0
 		if GameManager.run_state:
-			ammo_bonus = 1.0 + GameManager.run_state.stat_upgrades.get("ammo_bonus", 0.0)
+			ammo_bonus = 1.0 + float(GameManager.run_state.stat_upgrades.get("ammo_bonus", 0.0))
 		_ammo[target_slot] = ceili(weapon.ammo * ammo_bonus)
 	else:
 		_ammo[target_slot] = -1  # Infinite (melee)
@@ -69,17 +81,24 @@ func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
 	if not weapon:
 		return
 
+	AudioManager.SFXPlayer.play_sfx_with_pitch("weapon_swing", randf_range(0.9, 1.1))
+
 	# Create melee hitbox
-	var hit := MeleeHitScene.instantiate()
+	var hit = _melee_pool.get_instance()
 	hit.setup(weapon, direction, get_parent())
-	get_tree().current_scene.add_child(hit)
+	# Reparent to scene tree if pooled
+	if hit.get_parent() != get_tree().current_scene:
+		hit.get_parent().remove_child(hit)
+		get_tree().current_scene.add_child(hit)
 
 	# Get melee damage multiplier from upgrades
 	var dmg_mult := _get_melee_damage_mult()
 
-	# Connect hit signal to apply damage
+	# Connect hit signal (clear old connections from pool reuse)
+	for conn in hit.hit.get_connections():
+		hit.hit.disconnect(conn.callable)
 	hit.hit.connect(func(target: Node2D, zone: int):
-		_apply_damage_to_target(target, zone, weapon.damage * dmg_mult, weapon)
+		_apply_damage_to_target(target, zone, weapon.damage * dmg_mult, weapon, true)
 	)
 
 
@@ -88,6 +107,8 @@ func ranged_attack(weapon: WeaponData, direction: Vector2) -> void:
 		return
 	if _ammo[active_slot] == 0:
 		return  # No ammo
+
+	AudioManager.SFXPlayer.play_sfx("weapon_shoot")
 
 	# Consume ammo
 	if _ammo[active_slot] > 0:
@@ -104,11 +125,15 @@ func ranged_attack(weapon: WeaponData, direction: Vector2) -> void:
 			angle_offset = spread_angle * (float(i) / float(weapon.projectile_count - 1) - 0.5) * 2.0
 
 		var dir := direction.rotated(angle_offset)
-		var proj := ProjectileScene.instantiate()
+		var proj = _projectile_pool.get_instance()
 		proj.setup(weapon, dir, dmg_mult, weapon.piercing)
 		proj.global_position = get_parent().global_position
-		get_tree().current_scene.add_child(proj)
+		if proj.get_parent() != get_tree().current_scene:
+			proj.get_parent().remove_child(proj)
+			get_tree().current_scene.add_child(proj)
 
+		for conn in proj.hit.get_connections():
+			proj.hit.disconnect(conn.callable)
 		proj.hit.connect(func(target: Node2D, zone: int):
 			_apply_damage_to_target(target, zone, weapon.damage * dmg_mult, weapon)
 		)
@@ -119,12 +144,19 @@ func throw_active_weapon(direction: Vector2) -> void:
 	if not weapon:
 		return
 
+	AudioManager.SFXPlayer.play_sfx("weapon_throw")
+
 	var throw_mult := _get_throw_damage_mult()
-	var thrown := ThrowScene.instantiate()
+	var thrown = _thrown_pool.get_instance()
 	thrown.setup(weapon, direction, throw_mult)
 	thrown.global_position = get_parent().global_position
-	get_tree().current_scene.add_child(thrown)
+	# Reparent to scene tree if pooled
+	if thrown.get_parent() != get_tree().current_scene:
+		thrown.get_parent().remove_child(thrown)
+		get_tree().current_scene.add_child(thrown)
 
+	for conn in thrown.hit.get_connections():
+		thrown.hit.disconnect(conn.callable)
 	thrown.hit.connect(func(target: Node2D, zone: int):
 		_apply_damage_to_target(target, zone, weapon.throw_damage * throw_mult, weapon)
 	)
@@ -137,12 +169,16 @@ func throw_active_weapon(direction: Vector2) -> void:
 
 
 func _drop_weapon(weapon: WeaponData, pos: Vector2) -> void:
-	# Create pickup at position
-	# TODO: spawn weapon pickup scene
+	# Spawn weapon pickup at player position
+	var pickup_scene := preload("res://scenes/weapons/weapon_pickup.tscn")
+	var pickup := pickup_scene.instantiate()
+	pickup.weapon_data = weapon
+	pickup.global_position = pos
+	get_tree().current_scene.add_child(pickup)
 	EventBus.weapon_dropped.emit(weapon)
 
 
-func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weapon: WeaponData) -> void:
+func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weapon: WeaponData, is_melee: bool = false) -> void:
 	if not target.has_method("receive_damage"):
 		return
 
@@ -151,7 +187,7 @@ func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weap
 	if zone != DamageZone.Zone.TORSO:
 		limb_mult = weapon.limb_damage_multiplier
 
-	var final_damage := base_damage * limb_mult
+	var final_damage: float = base_damage * limb_mult
 
 	# Calculate sever
 	var sever := false
@@ -161,15 +197,16 @@ func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weap
 	target.receive_damage(final_damage, zone, sever, weapon.knockback, global_position.direction_to(target.global_position))
 	EventBus.weapon_hit_target.emit(weapon, target, final_damage)
 
+	# Hunger Blade: 15% lifesteal on melee hits only
+	if is_melee and GameManager.run_state and GameManager.run_state.has_artifact("Hunger Blade"):
+		var heal_amount := ceili(final_damage * 0.15)
+		EventBus.player_healed.emit(heal_amount)
+
 
 func _get_melee_damage_mult() -> float:
 	var mult := 1.0
 	if GameManager.run_state:
-		mult += GameManager.run_state.stat_upgrades.get("damage_melee", 0.0)
-		# Hunger Blade artifact: melee heals
-		if GameManager.run_state.has_artifact("Hunger Blade"):
-			var heal_amount := final_damage * 0.15  # Will be applied in the hit callback
-			# TODO: heal after hit connects
+		mult += float(GameManager.run_state.stat_upgrades.get("damage_melee", 0.0))
 		# Demon Eye penalty
 		if GameManager.run_state.has_artifact("Demon Eye"):
 			mult -= 0.2
@@ -179,7 +216,7 @@ func _get_melee_damage_mult() -> float:
 func _get_ranged_damage_mult() -> float:
 	var mult := 1.0
 	if GameManager.run_state:
-		mult += GameManager.run_state.stat_upgrades.get("damage_ranged", 0.0)
+		mult += float(GameManager.run_state.stat_upgrades.get("damage_ranged", 0.0))
 		# Demon Eye bonus
 		if GameManager.run_state.has_artifact("Demon Eye"):
 			mult += 0.3
@@ -189,5 +226,5 @@ func _get_ranged_damage_mult() -> float:
 func _get_throw_damage_mult() -> float:
 	var mult := 1.0
 	if GameManager.run_state:
-		mult += GameManager.run_state.stat_upgrades.get("damage_throw", 0.0)
+		mult += float(GameManager.run_state.stat_upgrades.get("damage_throw", 0.0))
 	return maxf(mult, 0.1)

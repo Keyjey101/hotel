@@ -36,8 +36,8 @@ func get_room_enemy_config(floor_number: int, room_index: int, spawn_points: int
 	var count := rng.randi_range(ceili(spawn_points * 0.6), spawn_points)
 	# Decide which spawn points are active
 	var active_points: Array[int] = []
-	var all_points := range(spawn_points)
-	all_points.shuffle()
+	var all_points: Array = range(spawn_points)
+	_deterministic_shuffle(all_points, rng)
 	for i in range(mini(count, all_points.size())):
 		active_points.append(all_points[i])
 	return {"count": count, "active_points": active_points}
@@ -54,8 +54,16 @@ func get_gate_config(floor_number: int, total_branches: int) -> Dictionary:
 	var rng := get_floor_rng(floor_number)
 	rng.seed += 777
 	# Open 2 of 3 branches, close 1
-	var branches := range(total_branches)
-	branches.shuffle()
+	var branches: Array = range(total_branches)
+	_deterministic_shuffle(branches, rng)
 	var open_branches := branches.slice(0, total_branches - 1)
-	var closed_branch := branches[total_branches - 1]
+	var closed_branch: int = int(branches[total_branches - 1])
 	return {"open": open_branches, "closed": closed_branch}
+
+
+func _deterministic_shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var tmp = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp

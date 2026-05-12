@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_seductress"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/enemy_seductress.gd" id="2"]
+
+[node name="Seductress" instance=ExtResource("1")]
+script = ExtResource("2")
+groups = ["seductresses"]
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+color = Color(1, 0.412, 0.706, 1)
+offset_left = -11.0
+offset_top = -18.0
+offset_right = 11.0
+offset_bottom = 18.0

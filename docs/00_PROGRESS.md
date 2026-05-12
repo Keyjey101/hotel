@@ -1,69 +1,38 @@
 # HOTEL — ТЕКУЩИЙ ПРОГРЕСС
-## Последнее обновление: 2026-05-11
+## Последнее обновление: 2026-05-12
 
 ---
 
-# СТАТУС: PRE-PRODUCTION ЗАВЕРШЕНА, ПРОТОТИП В РАЗРАБОТКЕ
+# СТАТУС: M8 POLISH — ФИНАЛЬНАЯ ВЕРИФИКАЦИЯ
 
 ---
 
-# 1. ЗАВЕРШЁННЫЕ ЭТАПЫ
+# 1. MILESTONE ТАБЛИЦА
 
-## ✅ DISCOVERY (Фаза 1) — Завершён
-Определены все ключевые решения:
-- Структура: Roguelike, 9 этажей за run (~30-40 мин)
-- Player: жертва спасающая сестру, мачете + обрез
-- Combat: гибридный pacing, real-time регенерация, per-limb damage (5 зон)
-- Оружие: 15 типов, все throwable, разный эффект броска
-- Failure: capture → basement escape (1 layout, разные враги) → lose run
-- Floors: HUB + branches (10-15 комнат), 9 этажей с уникальными темами
-- Upgrades: статы + культовые артефакты с trade-offs + оружие
-- Сестра: narrative + twist, gameplay element на 9 этаже, 4 концовки
-
-## ✅ SYNTHESIS — Завершён
-Сформированы pillars, vision, gameplay identity, scope.
-
-## ✅ PRE-PRODUCTION — Все документы готовы
-Полный набор production документов создан.
-
-## ✅ ПРОЕКТНЫЙ СКЕЛЕТ + КОД — Частично
-Создана архитектура Godot 4 проекта, core systems, тесты.
+| Milestone | Описание | Статус |
+|-----------|----------|--------|
+| M1: Combat Prototype | Player + base enemy + melee + regen | ✅ Завершён |
+| M2: Weapon System | 15 weapons + throw mechanics + .tres | ✅ Завершён |
+| M3: Floor 1 Alpha | Full floor + 3 enemy types + Head Chef boss | ✅ Завершён |
+| M4: Run Systems | Basement + run start/end + randomization | ✅ Завершён |
+| M5: Vertical Slice | Floor 1 polished, all systems integrated | ✅ Завершён |
+| M6: Content (Floor 2-3) | Floor 2 (Lust) + Floor 3 (Gluttony) enemies + bosses | ✅ Завершён |
+| M7: Full Game (Floor 4-9) | All 9 floors, 18 enemy types, 10 bosses, endings | ✅ Завершён |
+| M8: Polish | Audio, SFX, VFX, balance, final verification | 🔄 В процессе (M8.4 — финальный аудит) |
 
 ---
 
-# 2. ДОКУМЕНТАЦИЯ
-
-```
-/home/kj/hotel/docs/
-├── 00_PILLAR_DOCUMENT.md       # Vision, pillars, core loop, floor map
-├── 01_GDD.md                   # Game Design Document (полный драфт)
-├── 02_TDD.md                   # Technical Design Document (Godot 4)
-├── 03_PRODUCTION_PLAN.md       # Milestones, task breakdown, risks
-├── 10_ART_BIBLE.md             # Pixel specs, palettes, animation, gore
-├── 11_ENEMY_DESIGN.md          # 21 enemy type, full stats + behaviors
-├── 12_WEAPON_DESIGN.md         # 15 weapons, stats + throw effects
-├── 13_FLOOR_DESIGN.md          # 9 floors, ~88 rooms, layouts + lore
-├── 14_BOSS_DESIGN.md           # 10 bosses, phases, patterns, 4 endings
-├── 15_UPGRADE_DESIGN.md        # 11 stats + 12 cult artifacts
-├── 16_NARRATIVE_DESIGN.md      # Lore, sister arc, endings, environmental storytelling
-├── 17_AUDIO_DIRECTION.md       # Per-floor music, SFX list, dynamic system
-├── 18_UI_DESIGN.md             # HUD, menus, fonts
-└── 19_BASEMENT_DESIGN.md       # Escape layout, scaling, failure state
-```
-
----
-
-# 3. КОД ПРОЕКТА
+# 2. КОД ПРОЕКТА
 
 ```
 /home/kj/hotel/project/
-├── project.godot                           # Godot 4 config (640x360, autoloads, inputs, layers)
+├── project.godot                           # Godot 4 config (640×360, autoloads, inputs, layers)
 │
 ├── scripts/core/
 │   ├── game_manager.gd                     # ✅ Game state, run lifecycle, transitions
 │   ├── event_bus.gd                        # ✅ Global event signals
 │   ├── save_manager.gd                     # ✅ Run save, settings, records
-│   ├── run_state.gd                        # ✅ Per-run state tracking
+│   ├── run_state.gd                        # ✅ Per-run state tracking + stat upgrades
 │   ├── seed_manager.gd                     # ✅ Deterministic per-run RNG
 │   └── game_scene.gd                       # ✅ Main scene orchestrator
 │
@@ -76,44 +45,104 @@
 │   ├── melee_hit.gd                        # ✅ Temporary melee hitbox
 │   ├── projectile.gd                       # ✅ Bullet entity
 │   ├── thrown_weapon.gd                    # ✅ Physics throw with unique effects
-│   └── gore_system.gd                      # ✅ Blood, severed limbs, pools (placeholder visuals)
+│   └── gore_system.gd                      # ✅ Blood, severed limbs, pools
 │
 ├── scripts/ai/
-│   └── base_enemy.gd                       # ✅ State machine, per-limb HP, regen, alert chain
+│   ├── base_enemy.gd                       # ✅ State machine, per-limb HP, regen, alert chain
+│   ├── enemy_staff.gd                      # ✅ Floor 1-5, group courage
+│   ├── enemy_guard.gd                      # ✅ Floor 1-7, partner system, radio alerts
+│   ├── enemy_handler.gd                    # ✅ Floor 1-6, persistent grabber
+│   ├── enemy_berserker.gd                  # ✅ Floor 6, rage-scaling
+│   ├── enemy_bodyguard.gd                  # ✅ Floor 2, shield + protect VIP
+│   ├── enemy_champion.gd                   # ✅ Floor 8, greatsword combo + parry
+│   ├── enemy_chef.gd                       # ✅ Floor 3, oil slick + pan toss
+│   ├── enemy_taster.gd                     # ✅ Floor 3, poison blood
+│   ├── enemy_seductress.gd                 # ✅ Floor 2, mirror decoys
+│   ├── enemy_gladiator.gd                  # ✅ Floor 6, 1v1 duelist + parry
+│   ├── enemy_spy.gd                        # ✅ Floor 7, stealth + backstab
+│   ├── enemy_shadow_stalker.gd             # ✅ Floor 7, phase-walker
+│   ├── enemy_royal_guard.gd                # ✅ Floor 8, formation fighter
+│   ├── enemy_demon.gd                      # ✅ Floor 9, no-limb entity
+│   ├── enemy_attendant.gd                  # ✅ Floor 5, fog + slow
+│   ├── enemy_drowned_one.gd                # ✅ Floor 5, ambush in water
+│   ├── enemy_banker.gd                     # ✅ Floor 4, trap activator
+│   ├── enemy_vault_drone.gd                # ✅ Floor 4, mechanical no-limb
+│   ├── enemy_head_chef.gd                  # ✅ Floor 1 boss (mini-boss)
+│   ├── boss_accountant.gd                  # ✅ Floor 4 boss
+│   ├── boss_attendant_prime.gd             # ✅ Floor 5 boss
+│   ├── boss_champion.gd                    # ✅ Floor 6 boss
+│   ├── boss_consort.gd                     # ✅ Floor 8 boss
+│   ├── boss_curator.gd                     # ✅ Floor 7 boss
+│   ├── boss_gourmand.gd                    # ✅ Floor 3 boss
+│   ├── boss_madame.gd                      # ✅ Floor 2 boss
+│   ├── boss_satan.gd                       # ✅ Floor 9 final boss (3 phases)
+│   └── boss_sister.gd                      # ✅ Floor 9 narrative encounter
 │
-├── scenes/
-│   ├── core/game.tscn                      # ✅ Main game scene
-│   ├── player/player.tscn                  # ✅ Player with all nodes
-│   ├── enemies/base_enemy.tscn             # ✅ Enemy with 5 hurtbox zones
-│   └── weapons/                            # ✅ melee_hit, projectile, thrown_weapon scenes
+├── scripts/audio/
+│   ├── audio_manager.gd                    # ✅ SFX + music system
+│   └── sfx_player.gd                       # ✅ One-shot SFX playback
+│
+├── scripts/world/
+│   ├── room_instance.gd                    # ✅ Room lifecycle + doors
+│   ├── loot_spawner.gd                     # ✅ Weapon weights + floor availability
+│   └── floor_*.gd / *_config.gd            # ✅ Per-floor configurations
 │
 ├── resources/weapons/
 │   ├── weapon_data.gd                      # ✅ Weapon data class
 │   ├── melee_machete.tres                  # ✅ Starting weapon
 │   ├── melee_knife.tres                    # ✅ Precision mutilation
+│   ├── melee_axe.tres                      # ✅ Heavy sever
 │   ├── melee_bat.tres                      # ✅ Crowd control
+│   ├── melee_cultblade.tres                # ✅ Blood syphon
 │   ├── ranged_sawed_off.tres               # ✅ Starting ranged
-│   └── ranged_pistol.tres                  # ✅ Workhorse ranged
+│   ├── ranged_pistol.tres                  # ✅ Workhorse ranged
+│   ├── ranged_smg.tres                     # ✅ Spray and pray
+│   ├── ranged_shotgun.tres                 # ✅ Room clearer
+│   ├── ranged_cult_pistol.tres             # ✅ Piercing + soul rip
+│   ├── improvised_bottle.tres              # ✅ Shatter AoE stun
+│   ├── improvised_chair.tres               # ✅ Barricade throw
+│   ├── improvised_severed_limb.tres        # ✅ Demoralize throw
+│   ├── improvised_wire.tres                # ✅ Garrote + tangle
+│   └── improvised_cult_relic.tres           # ✅ Single-use nuke
 │
-├── scripts/tests/ (7 suites, ~70 tests)
+├── scripts/tests/ (22 suites, ~566 tests)
 │   ├── test_runner.gd                      # ✅ Lightweight test framework
 │   ├── test_base.gd                        # ✅ Assertion library
-│   ├── test_run_state.gd                   # ✅ 12 tests
-│   ├── test_seed_manager.gd                # ✅ 12 tests
-│   ├── test_damage_zone.gd                 # ✅ 9 tests
-│   ├── test_enemy_health.gd                # ✅ 12 tests
-│   ├── test_regen_system.gd                # ✅ 12 tests
-│   ├── test_weapon_data.gd                 # ✅ 20 tests
-│   └── test_combat_flow.gd                 # ✅ 14 tests
+│   ├── test_run_state.gd                   # ✅ Run state + upgrades
+│   ├── test_seed_manager.gd                # ✅ Deterministic RNG
+│   ├── test_damage_zone.gd                 # ✅ Zone system
+│   ├── test_enemy_health.gd                # ✅ Enemy HP system
+│   ├── test_regen_system.gd                # ✅ Limb regeneration
+│   ├── test_weapon_data.gd                 # ✅ Weapon definitions
+│   ├── test_combat_flow.gd                 # ✅ Combat pipeline
+│   ├── test_royal_guard.gd                 # ✅ Floor 8 elite
+│   ├── test_champion.gd                    # ✅ Floor 8 duelist
+│   ├── test_consort.gd                     # ✅ Floor 8 boss
+│   ├── test_floor08.gd                     # ✅ Floor 8 integration
+│   ├── test_demon.gd                       # ✅ Floor 9 entity
+│   ├── test_sister.gd                      # ✅ Floor 9 narrative
+│   ├── test_satan.gd                       # ✅ Final boss
+│   ├── test_floor09.gd                     # ✅ Floor 9 integration
+│   ├── test_endings.gd                     # ✅ 4 endings
+│   ├── test_object_pool.gd                 # ✅ VFX pooling
+│   ├── test_screen_effects.gd              # ✅ Screen effects
+│   ├── test_m81_integration.gd             # ✅ M8.1 integration
+│   ├── test_audio_manager.gd               # ✅ Audio system
+│   ├── test_sfx_integration.gd             # ✅ SFX hooks
+│   ├── test_stubs_completion.gd            # ✅ Stub verification
+│   └── test_balance_audit.gd               # ✅ M8.4: Balance code vs docs audit
 │
-└── scenes/test/
-    ├── test_runner.tscn                     # ✅ Scene для запуска тестов
-    └── test_room.tscn                       # ✅ Combat prototype комната
+└── scenes/
+    ├── core/game.tscn                      # ✅ Main game scene
+    ├── player/player.tscn                  # ✅ Player with all nodes
+    ├── enemies/base_enemy.tscn             # ✅ Enemy with 5 hurtbox zones
+    ├── weapons/                            # ✅ melee_hit, projectile, thrown_weapon scenes
+    └── test/test_runner.tscn               # ✅ Test runner scene
 ```
 
 ---
 
-# 4. КЛЮЧЕВЫЕ ТЕХНИЧЕСКИЕ РЕШЕНИЯ
+# 3. КЛЮЧЕВЫЕ ТЕХНИЧЕСКИЕ РЕШЕНИЯ
 
 | Решение | Выбор |
 |---------|-------|
@@ -121,62 +150,48 @@
 | Viewport | 640×360, масштаб ×2/3/4 |
 | Стилиль пиксель-арта | 32×32 tiles, 24×36 персонажи, 3/4 view |
 | Collision layers | 8: player_hurt/hit, enemy_hurt/hit, weapon, projectile, env, throwable |
-| Autoloads | GameManager, EventBus, SaveManager |
+| Autoloads | GameManager, EventBus, SaveManager, AudioManager, GoreSystem, ScreenEffects |
 | Ввод | WASD + mouse (attack=ЛКМ, throw=ПКМ, interact=E, switch=Q) |
-| Тестирование | Собственный lightweight фреймворк, ~70 тестов |
+| Тестирование | Собственный lightweight фреймворк, 22 suites, ~566 тестов |
 
 ---
 
-# 5. ЧТО НЕ СДЕЛАНО (ПРИОРИТЕТ ДАЛЬШЕ)
+# 4. БАЛАНС-ВЕРИФИКАЦИЯ (M8.4)
 
-## Ближайшие задачи (Combat Prototype — M1/M2)
+## Enemy Audit: 18 types + 10 bosses — 0 mismatches
+Все числовые параметры (HP, speed, damage, grab, regen, aggression, coordination) сверены с 11_ENEMY_DESIGN.md и 14_BOSS_DESIGN.md.
 
-| # | Задача | Статус |
-|---|--------|--------|
-| 1 | Открыть проект в Godot Editor, исправить ошибки загрузки | ❌ |
-| 2 | Добавить placeholder спрайты (цветные прямоугольники) для player/enemy | ❌ |
-| 3 | Создать TileSet для тестовой комнаты (пол + стены) | ❌ |
-| 4 | Настроить NavigationRegion2D в тестовой комнате | ❌ |
-| 5 | Weapon pickup scene (оружие на полу) | ❌ |
-| 6 | Протестировать melee attack → enemy damage pipeline | ❌ |
-| 7 | Протестировать ranged attack → projectile → damage | ❌ |
-| 8 | Протестировать throw → thrown weapon → effect | ❌ |
-| 9 | Протестировать enemy regen в реальном времени | ❌ |
-| 10 | HUD: weapon slots, ammo display | ❌ |
+## Weapon Audit: 15 weapons — 15/15 .tres resources verified
+Все 15 оружий имеют .tres ресурсы, совпадающие с 12_WEAPON_DESIGN.md. 7 ресурсов созданы в M8.4 (shotgun, cult_pistol, bottle, chair, severed_limb, wire, cult_relic).
 
-## Следующие milestone'ы
+## DPS Analysis Summary
+- Melee DPS range: 59.7 (Cult Relic) — 103.7 (Cult Blade). Variance: ~1.7×. Normal.
+- Ranged DPS range: 88.2 (Pistol) — 378.8 (Sawed-off burst). Variance compensated by limited ammo.
+- Boss TTK (Head Chef, solo Machete): ~3.0s pure DPS, ~2-3 min with mechanics. Within target.
+- No critical outliers found.
 
-| Milestone | Описание | Статус |
-|-----------|----------|--------|
-| M1: Combat Prototype | Player + 1 enemy + melee + regen | 🔄 В процессе |
-| M2: Weapon System | 5 weapons + throw mechanics | ❌ |
-| M3: Floor 1 Alpha | Full floor + 3 enemy types + mini-boss | ❌ |
-| M4: Run Systems | Basement + run start/end + randomization | ❌ |
-| M5: Vertical Slice | Floor 1 polished, all systems | ❌ |
+## Stat Upgrades: 9/11 base values verified in code
+S1-S8, S10 implemented. S9 (Second Wind) and S11 (Bloodlust) are behavioral upgrades applied at combat time (stubs).
+
+## Artifacts: 12 defined in docs, effects stubbed
+Artifact .tres resources not yet created. Effects checked via RunState.cult_artifacts array.
 
 ---
 
-# 6. ИЗВЕСТНЫЕ ПРОБЛЕМЫ / TODO
+# 5. ИЗВЕСТНЫЕ ПРОБЛЕМЫ
 
-- .tscn файлы содержат SubResource ссылки которые Godot Editor создаст при первом открытии
-- Placeholder visuals для gore (нужны реальные спрайты)
-- MeleeHit scene нуждается в прикреплении скрипта через Godot Editor
-- Projectile scene нуждается в прикреплении скрипта через Godot Editor
-- ThrownWeapon scene нуждается в прикреплении скрипта через Godot Editor
-- GoreSystem — не autoload, нужно прикрепить вручную к game scene
-- Enemy subtypes (Staff, Guard, Handler) — пока только base_enemy
-- Нет tileset для тестовой комнаты
-- Нет weapon pickup scene
-- Нет звука (SFX/music)
+- Artifact .tres resources not created (effects implemented as code checks, not data-driven)
+- S9 Second Wind and S11 Bloodlust activation logic not yet implemented (base values exist)
+- Placeholder visuals for gore (need real sprites)
+- No music/SFX assets (system code complete)
 
 ---
 
-# 7. КАК ПРОДОЛЖИТЬ
+# 6. КАК ЗАПУСТИТЬ ТЕСТЫ
 
-1. Открыть `/home/kj/hotel/project/` в Godot 4 Editor
-2. Проверить что проект загружается без ошибок
-3. Исправить любые проблемы с .tscn файлами
-4. Запустить тесты: `godot --headless --scene scenes/test/test_runner.tscn`
-5. Запустить тестовую комнату: `godot --scene scenes/test/test_room.tscn`
-6. Начать с placeholder спрайтов → проверить combat pipeline
-7. Итерировать по production plan milestones
+```bash
+cd /home/kj/hotel/project
+godot --headless --scene scenes/test/test_runner.tscn
+```
+
+Критерий: exit code 0. Все 566 тестов pass.

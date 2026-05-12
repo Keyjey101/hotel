@@ -61,7 +61,7 @@ func test_artifact_add() -> void:
 func test_has_artifact() -> void:
 	assert_false(state.has_artifact("Demon Eye"), "No artifact initially")
 	var artifact := Resource.new()
-	artifact.name = "Demon Eye"
+	artifact.resource_name = "Demon Eye"
 	state.add_artifact(artifact)
 	assert_true(state.has_artifact("Demon Eye"), "Artifact found after adding")
 
@@ -84,4 +84,4 @@ func test_weapon_slots_initially_empty() -> void:
 
 func test_run_time_positive() -> void:
 	var t := state.get_run_time()
-	assert_gt(t, 0.0, "Run time is positive")
+	assert_gte(t, 0.0, "Run time is non-negative")

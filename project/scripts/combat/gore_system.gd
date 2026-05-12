@@ -9,7 +9,7 @@ var blood_pool_scene: PackedScene
 
 var _active_pools: Array[Node2D] = []
 var _active_limbs: Array[RigidBody2D] = []
-var max_pools_per_room: int = 50
+var max_pools_per_room: int = 15
 var max_limbs: int = 30
 
 
@@ -18,10 +18,16 @@ func _ready() -> void:
 	# blood_particles_scene = preload("res://scenes/effects/blood_splash.tscn")
 	# limb_scene = preload("res://scenes/effects/severed_limb.tscn")
 	# blood_pool_scene = preload("res://scenes/effects/blood_pool.tscn")
-	pass
+	EventBus.room_entered.connect(_on_room_entered)
+
+
+func _on_room_entered(_floor_number: int, _room_name: String) -> void:
+	# Reset blood pools for new room
+	_active_pools.clear()
 
 
 func spawn_severed_limb(position: Vector2, limb_type: int, owner: CharacterBody2D) -> void:
+	AudioManager.SFXPlayer.play_sfx_2d("limb_sever", position, 3.0)
 	if not limb_scene:
 		_create_placeholder_limb(position, limb_type, owner)
 		return
@@ -43,8 +49,12 @@ func spawn_severed_limb(position: Vector2, limb_type: int, owner: CharacterBody2
 	# Spawn blood pool
 	spawn_blood_pool(position)
 
+	# Extra splash at sever point (bigger than regular hit)
+	_spawn_placeholder_blood(position, Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized())
+
 
 func spawn_blood_splash(position: Vector2, direction: Vector2) -> void:
+	AudioManager.SFXPlayer.play_sfx_with_pitch("blood_splash", randf_range(0.7, 1.3))
 	# Placeholder until particle scene exists
 	_spawn_placeholder_blood(position, direction)
 
@@ -63,60 +73,116 @@ func spawn_blood_pool(position: Vector2) -> void:
 
 
 func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: CharacterBody2D) -> void:
-	# Simple colored rectangle as placeholder
+	# Severed limb as RigidBody2D with proper physics
 	var limb := RigidBody2D.new()
+	limb.mass = 0.5
+	limb.gravity_scale = 1.0
+
 	var shape := CollisionShape2D.new()
-	var rect := RectangleShape2D.new()
+	var rect_shape := RectangleShape2D.new()
 	var vis := ColorRect.new()
+	var stump := ColorRect.new()
 
 	match limb_type:
 		DamageZone.Zone.LEFT_ARM, DamageZone.Zone.RIGHT_ARM:
-			rect.size = Vector2(4, 12)
-			vis.size = Vector2(4, 12)
+			rect_shape.size = Vector2(20, 6)
+			vis.size = Vector2(20, 6)
 			vis.color = Color(0.7, 0.2, 0.2)
+			stump.size = Vector2(2, 3)
+			stump.color = Color(0.545, 0.0, 0.0)  # #8B0000
+			stump.position = Vector2(0, 3)
 		DamageZone.Zone.LEFT_LEG, DamageZone.Zone.RIGHT_LEG:
-			rect.size = Vector2(6, 14)
-			vis.size = Vector2(6, 14)
+			rect_shape.size = Vector2(6, 20)
+			vis.size = Vector2(6, 20)
 			vis.color = Color(0.6, 0.15, 0.15)
+			stump.size = Vector2(2, 3)
+			stump.color = Color(0.545, 0.0, 0.0)
+			stump.position = Vector2(2, 17)
 		DamageZone.Zone.HEAD:
-			rect.size = Vector2(6, 6)
-			vis.size = Vector2(6, 6)
+			rect_shape.size = Vector2(12, 12)
+			vis.size = Vector2(12, 12)
 			vis.color = Color(0.7, 0.25, 0.2)
+			stump.size = Vector2(2, 3)
+			stump.color = Color(0.545, 0.0, 0.0)
+			stump.position = Vector2(5, 12)
 
-	shape.shape = rect
+	shape.shape = rect_shape
 	limb.add_child(shape)
 	limb.add_child(vis)
+	limb.add_child(stump)
 	limb.global_position = position
-	limb.apply_impulse(Vector2(randf_range(-80, 80), randf_range(-150, -50)))
+	# Random initial velocity
+	var impulse_dir := Vector2(randf_range(-1, 1), randf_range(-1, -0.3)).normalized()
+	limb.apply_impulse(impulse_dir * randf_range(100, 200))
+	limb.angular_velocity = randf_range(-5.0, 5.0)
 
-	# Auto-cleanup after 20 seconds
-	limb.set_meta("despawn_time", 20.0)
+	# Freeze after 1s (lands on ground)
+	get_tree().create_timer(1.0).timeout.connect(func():
+		if is_instance_valid(limb):
+			limb.freeze = true
+	)
+
+	# Lifetime: 30s, then fadeout 1s
+	limb.set_meta("despawn_time", 30.0)
+	get_tree().create_timer(30.0).timeout.connect(func():
+		if not is_instance_valid(limb):
+			return
+		var tween := limb.create_tween()
+		tween.tween_property(limb, "modulate:a", 0.0, 1.0)
+		tween.tween_callback(limb.queue_free)
+	)
 
 	get_tree().current_scene.add_child(limb)
 	_active_limbs.append(limb)
 	_cleanup_limbs()
 
 
-func _spawn_placeholder_blood(position: Vector2, _direction: Vector2) -> void:
-	# Simple blood dots as placeholder
-	for i in range(5):
-		var dot := ColorRect.new()
-		dot.size = Vector2(2, 2)
-		dot.color = Color(0.8, 0.1, 0.1)
-		dot.global_position = position + Vector2(randf_range(-15, 15), randf_range(-15, 15))
-		get_tree().current_scene.add_child(dot)
-		# Fade and remove
-		var tween := dot.create_tween()
-		tween.tween_interval(2.0)
-		tween.tween_callback(dot.queue_free)
+func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
+	# Blood splash: 3-5 RigidBody2D droplets
+	var count := randi_range(3, 5)
+	for i in range(count):
+		var drop := RigidBody2D.new()
+		drop.gravity_scale = 1.0
+		var vis := ColorRect.new()
+		vis.size = Vector2(2, 2)
+		var r_variation := randf_range(0.6, 1.0)
+		vis.color = Color(r_variation, 0.0, 0.0)
+		drop.add_child(vis)
+		drop.global_position = position
+		# Random velocity in a cone ±30° around direction
+		var angle_offset := randf_range(-0.524, 0.524)  # ~±30°
+		var drop_dir := direction.rotated(angle_offset)
+		drop.linear_velocity = drop_dir * randf_range(50, 150)
+		# Freeze on contact with StaticBody2D, lifetime 5s
+		drop.body_entered.connect(func(body):
+			if body is StaticBody2D or body is TileMapLayer:
+				drop.freeze = true
+		)
+		get_tree().create_timer(5.0).timeout.connect(func():
+			if not is_instance_valid(drop):
+				return
+			var tween := drop.create_tween()
+			tween.tween_property(drop, "modulate:a", 0.0, 0.5)
+			tween.tween_callback(drop.queue_free)
+		)
+		get_tree().current_scene.add_child(drop)
 
 
 func _spawn_placeholder_pool(position: Vector2) -> void:
-	var pool := ColorRect.new()
-	var size := randf_range(6, 14)
-	pool.size = Vector2(size, size)
-	pool.color = Color(0.5, 0.05, 0.05, 0.7)
-	pool.global_position = position - pool.size / 2.0
+	var pool := StaticBody2D.new()
+	var vis := ColorRect.new()
+	var size := randf_range(6, 16)
+	vis.size = Vector2(size, size)
+	vis.color = Color(0.353, 0.0, 0.0, 0.7)  # #5A0000 dark blood
+	pool.add_child(vis)
+	# Collision shape so characters step on it
+	var col := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(size, size)
+	col.shape = rect
+	pool.add_child(col)
+	# Organic offset
+	pool.global_position = position + Vector2(randf_range(-4, 4), randf_range(-4, 4)) - vis.size / 2.0
 	pool.z_index = -1
 	get_tree().current_scene.add_child(pool)
 	_active_pools.append(pool)
@@ -125,19 +191,27 @@ func _spawn_placeholder_pool(position: Vector2) -> void:
 
 func _cleanup_pools() -> void:
 	while _active_pools.size() > max_pools_per_room:
-		var oldest := _active_pools.pop_front()
+		var oldest: Node2D = _active_pools.pop_front()
 		if is_instance_valid(oldest):
 			oldest.queue_free()
 
 
 func _cleanup_limbs() -> void:
 	while _active_limbs.size() > max_limbs:
-		var oldest := _active_limbs.pop_front()
+		var oldest: RigidBody2D = _active_limbs.pop_front()
 		if is_instance_valid(oldest):
 			oldest.queue_free()
 
 
 func clear_room_effects() -> void:
+	# Blood pools are persistent — only clear limbs between rooms
+	for limb in _active_limbs:
+		if is_instance_valid(limb):
+			limb.queue_free()
+	_active_limbs.clear()
+
+
+func clear_all_effects() -> void:
 	for pool in _active_pools:
 		if is_instance_valid(pool):
 			pool.queue_free()

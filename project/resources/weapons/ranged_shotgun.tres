@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Shotgun"
+weapon_type = 1
+damage = 20.0
+limb_damage_multiplier = 1.5
+attack_speed = 0.5
+attack_range = 150.0
+knockback = 70.0
+stun_chance = 0.4
+stun_duration = 0.6
+sever_chance = 0.2
+ammo = 6
+projectile_speed = 500.0
+projectile_spread = 22.5
+projectile_count = 8
+throw_damage = 12.0
+throw_speed = 250.0
+throw_arc = 1
+throw_effect = "discharge"
+throw_effect_chance = 0.5
+attack_frame_count = 5
+throw_frame_count = 4

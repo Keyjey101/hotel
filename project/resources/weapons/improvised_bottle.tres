@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Bottle"
+weapon_type = 2
+damage = 8.0
+limb_damage_multiplier = 0.5
+attack_speed = 0.17
+attack_range = 35.0
+knockback = 10.0
+stun_chance = 0.3
+stun_duration = 0.4
+sever_chance = 0.0
+ammo = -1
+throw_damage = 10.0
+throw_speed = 450.0
+throw_arc = 1
+throw_effect = "shatter"
+throw_effect_chance = 1.0
+attack_frame_count = 4
+throw_frame_count = 4

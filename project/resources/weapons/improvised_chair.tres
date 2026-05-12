@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Chair"
+weapon_type = 2
+damage = 15.0
+limb_damage_multiplier = 0.6
+attack_speed = 0.3
+attack_range = 50.0
+knockback = 45.0
+stun_chance = 0.25
+stun_duration = 0.5
+sever_chance = 0.0
+ammo = -1
+throw_damage = 12.0
+throw_speed = 250.0
+throw_arc = 1
+throw_effect = "barricade"
+throw_effect_chance = 1.0
+attack_frame_count = 5
+throw_frame_count = 4

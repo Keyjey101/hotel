@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://hazard_zone"]
+
+[ext_resource type="Script" path="res://scripts/combat/hazard_zone.gd" id="1"]
+
+[node name="HazardZone" type="Area2D" groups=["hazard_zone"]]
+collision_layer = 0
+collision_mask = 1
+script = ExtResource("1")

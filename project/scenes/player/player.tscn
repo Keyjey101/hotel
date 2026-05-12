@@ -1,9 +1,19 @@
-[gd_scene load_steps=2 format=3 uid="uid://player_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://player_scene"]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/combat/weapon_manager.gd" id="2"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
+size = Vector2(16, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurtbox"]
+size = Vector2(18, 24)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_pickup"]
+radius = 30.0
 
 [node name="Player" type="CharacterBody2D" groups=["player"]]
-collision_mask = 7
+collision_mask = 71
 script = ExtResource("1")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
@@ -15,9 +25,16 @@ texture = null
 region_enabled = true
 region_rect = Rect2(0, 0, 24, 36)
 
+[node name="PlaceholderSprite" type="ColorRect" parent="Sprite"]
+offset_left = -12.0
+offset_top = -18.0
+offset_right = 12.0
+offset_bottom = 18.0
+color = Color(0.29, 0.478, 0.29, 1)
+
 [node name="WeaponManager" type="Node2D" parent="."]
 unique_name_in_owner = true
-script = ExtResource("res://scripts/combat/weapon_manager.gd")
+script = ExtResource("2")
 
 [node name="Hurtbox" type="Area2D" parent="."]
 unique_name_in_owner = true
@@ -50,12 +67,3 @@ monitorable = false
 
 [node name="AnimPlayer" type="AnimationPlayer" parent="."]
 unique_name_in_owner = true
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
-size = Vector2(16, 20)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurtbox"]
-size = Vector2(18, 24)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_pickup"]
-radius = 30.0

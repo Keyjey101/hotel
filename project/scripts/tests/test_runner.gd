@@ -22,7 +22,7 @@ func _ready() -> void:
 
 	# Exit with code
 	if _failed > 0:
-		OS.exit_code = 1
+		get_tree().quit(1 if _failed > 0 else 0)
 
 
 func _register_suites() -> void:
@@ -34,14 +34,37 @@ func _register_suites() -> void:
 		preload("res://scripts/tests/test_regen_system.gd").new(),
 		preload("res://scripts/tests/test_weapon_data.gd").new(),
 		preload("res://scripts/tests/test_combat_flow.gd").new(),
+		# Floor 8 (M7.5)
+		preload("res://scripts/tests/test_royal_guard.gd").new(),
+		preload("res://scripts/tests/test_champion.gd").new(),
+		preload("res://scripts/tests/test_consort.gd").new(),
+		preload("res://scripts/tests/test_floor08.gd").new(),
+		# Floor 9 (M7.6)
+		preload("res://scripts/tests/test_demon.gd").new(),
+		preload("res://scripts/tests/test_sister.gd").new(),
+		preload("res://scripts/tests/test_satan.gd").new(),
+		preload("res://scripts/tests/test_floor09.gd").new(),
+		preload("res://scripts/tests/test_endings.gd").new(),
+		# M8.1: Game Feel & VFX
+		preload("res://scripts/tests/test_object_pool.gd").new(),
+		preload("res://scripts/tests/test_screen_effects.gd").new(),
+		preload("res://scripts/tests/test_m81_integration.gd").new(),
+		# M8.1: Audio Manager
+		preload("res://scripts/tests/test_audio_manager.gd").new(),
+		# M8.2: SFX Integration
+		preload("res://scripts/tests/test_sfx_integration.gd").new(),
+		# M8.3: Stubs Completion
+		preload("res://scripts/tests/test_stubs_completion.gd").new(),
+		# M8.4: Balance Audit
+		preload("res://scripts/tests/test_balance_audit.gd").new(),
 	]
 
 
 func _run_all() -> void:
 	for suite in _suites:
 		_current_suite = suite.get_script().resource_path.get_file().replace(".gd", "")
-		var methods := suite.get_method_list()
-		var test_methods := methods.filter(func(m): return m.name.begins_with("test_"))
+		var methods: Array = suite.get_method_list()
+		var test_methods: Array = methods.filter(func(m): return m.name.begins_with("test_"))
 
 		if test_methods.is_empty():
 			continue

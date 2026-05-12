@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_chef"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/enemy_chef.gd" id="2"]
+
+[node name="Chef" instance=ExtResource("1")]
+groups = ["enemy", "chefs"]
+script = ExtResource("2")
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+color = Color(0.545, 0.271, 0.075, 1)
+offset_left = -13.0
+offset_top = -17.0
+offset_right = 13.0
+offset_bottom = 17.0

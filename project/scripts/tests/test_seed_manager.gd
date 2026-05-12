@@ -65,8 +65,10 @@ func test_gate_config_deterministic() -> void:
 
 func test_gate_config_has_2_open_1_closed() -> void:
 	var config := sm.get_gate_config(1, 3)
-	assert_eq(config.open.size(), 2, "2 branches open")
-	assert_eq(config.closed.size(), 1, "1 branch closed")
+	assert_eq(config["open"].size(), 2, "2 branches open")
+	# closed is a single int (branch index), not an array
+	assert_true(config["closed"] is int, "closed is a branch index")
+	assert_true(config["open"].has(config["closed"]) == false, "closed branch not in open list")
 
 
 func test_different_seeds_produce_different_results() -> void:

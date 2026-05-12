@@ -114,8 +114,8 @@ func test_upgrade_damage_mult_applied() -> void:
 	state.apply_stat_upgrade("damage_melee", 0.20)
 
 	var base_damage := 20.0
-	var mult := 1.0 + state.stat_upgrades.get("damage_melee", 0.0)
-	var final_damage := base_damage * mult
+	var mult: float = 1.0 + float(state.stat_upgrades.get("damage_melee", 0.0))
+	var final_damage: float = base_damage * mult
 
 	assert_eq(final_damage, 24.0, "20% melee upgrade = 24 damage from 20 base")
 

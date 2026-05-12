@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_drowned_one"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/enemy_drowned_one.gd" id="2"]
+
+[node name="DrownedOne" instance=ExtResource("1")]
+groups = ["enemy", "drowned_ones"]
+script = ExtResource("2")
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+color = Color(0.690, 0.769, 0.871, 1)

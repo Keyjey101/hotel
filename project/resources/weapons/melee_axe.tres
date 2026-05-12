@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Axe"
+weapon_type = 0
+damage = 35.0
+limb_damage_multiplier = 1.8
+attack_speed = 0.4
+attack_range = 50.0
+knockback = 40.0
+stun_chance = 0.4
+stun_duration = 0.8
+sever_chance = 0.5
+ammo = -1
+throw_damage = 30.0
+throw_speed = 300.0
+throw_arc = 1
+throw_effect = "embed"
+throw_effect_chance = 1.0
+attack_frame_count = 5
+throw_frame_count = 4

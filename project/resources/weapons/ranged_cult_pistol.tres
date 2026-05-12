@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/weapons/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Cult Pistol"
+weapon_type = 1
+damage = 22.0
+limb_damage_multiplier = 1.5
+attack_speed = 0.23
+attack_range = 400.0
+knockback = 15.0
+stun_chance = 0.2
+stun_duration = 0.4
+sever_chance = 0.25
+ammo = 8
+projectile_speed = 700.0
+projectile_spread = 1.0
+projectile_count = 1
+piercing = true
+throw_damage = 15.0
+throw_speed = 500.0
+throw_arc = 0
+throw_effect = "soul_rip"
+throw_effect_chance = 0.25
+attack_frame_count = 5
+throw_frame_count = 4

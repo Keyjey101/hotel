@@ -1,0 +1,25 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_shadow_stalker"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/enemy_shadow_stalker.gd" id="2"]
+
+[node name="ShadowStalker" instance=ExtResource("1")]
+groups = ["enemy", "shadow_stalkers"]
+script = ExtResource("2")
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+color = Color(0.227, 0.102, 0.353, 1)
+
+[node name="LeftClaw" type="ColorRect" parent="Sprite" index="1"]
+offset_left = -16.0
+offset_top = -1.0
+offset_right = -10.0
+offset_bottom = 2.0
+color = Color(0.416, 0.227, 0.541, 1)
+
+[node name="RightClaw" type="ColorRect" parent="Sprite" index="2"]
+offset_left = 10.0
+offset_top = -1.0
+offset_right = 16.0
+offset_bottom = 2.0
+color = Color(0.416, 0.227, 0.541, 1)

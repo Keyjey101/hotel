@@ -12,6 +12,7 @@ signal enemy_disabled(enemy: CharacterBody2D)
 signal player_damaged(amount: float)
 signal player_healed(amount: float)
 signal player_captured
+signal player_marked(duration: float)
 signal player_weapon_changed(slot: int, weapon_data: Resource)
 
 signal weapon_thrown(weapon_data: Resource, origin: Vector2, direction: Vector2)

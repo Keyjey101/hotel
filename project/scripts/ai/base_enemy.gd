@@ -50,9 +50,13 @@ var _patrol_points: Array[Vector2] = []
 var _patrol_index: int = 0
 var _direction: Vector2 = Vector2.DOWN
 var _knockback_vel: Vector2 = Vector2.ZERO
+var _initial_move_speed: float = 0.0
+var _alert_sfx_played: bool = false
+var _regen_sfx_played: bool = false
 
 
 func _ready() -> void:
+	_initial_move_speed = move_speed
 	_init_health()
 	_connect_signals()
 	_enter_state("patrol")
@@ -156,6 +160,15 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	# Visual feedback
 	_flash_hurt()
 
+	AudioManager.SFXPlayer.play_sfx_with_pitch("enemy_hurt", randf_range(0.8, 1.2))
+
+	# Blood splash on every hit
+	GoreSystem.spawn_blood_splash(global_position, knockback_dir)
+
+	# Hit stop on significant limb damage
+	if DamageZone.is_limb(zone) and damage > 15.0:
+		ScreenEffects.hit_stop(0.05)
+
 	# Alert on damage
 	if not _alerted:
 		_alert_nearby()
@@ -176,6 +189,11 @@ func _sever_limb(zone: int) -> void:
 
 	# Adjust behavior based on lost limb
 	_on_limb_lost(zone)
+
+	# Enhanced screen effects on sever
+	ScreenEffects.shake(6.0, 0.2)
+	ScreenEffects.flash(Color(1.0, 0.0, 0.0), 0.1, 0.5)
+	ScreenEffects.zoom(1.15, 0.05, 0.03, 0.15)
 
 	EventBus.enemy_limb_severed.emit(self, zone)
 
@@ -263,6 +281,10 @@ func _regenerate_limb(zone: int) -> void:
 	severed_limbs[zone] = false
 	regen_timers[zone] = {"current": 0.0, "max": base_regen_time / regen_speed_mult, "paused": false}
 
+	if not _regen_sfx_played:
+		AudioManager.SFXPlayer.play_sfx("enemy_regen")
+		_regen_sfx_played = true
+
 	# Restore speed
 	var legs_lost := int(severed_limbs[DamageZone.Zone.LEFT_LEG]) + int(severed_limbs[DamageZone.Zone.RIGHT_LEG])
 	match legs_lost:
@@ -288,8 +310,9 @@ func _get_max_limb_hp(zone: int) -> float:
 
 
 func _get_base_speed() -> float:
-	# Return base speed from export
-	return 120.0  # Will be overridden
+	if _initial_move_speed > 0.0:
+		return _initial_move_speed
+	return move_speed
 
 
 # ============================================================
@@ -304,8 +327,13 @@ func _enter_state(state_name: String) -> void:
 	match state_name:
 		"patrol":
 			_patrol_index = 0
+			_alert_sfx_played = false
+			_regen_sfx_played = false
 		"alert":
 			_alerted = true
+			if not _alert_sfx_played:
+				AudioManager.SFXPlayer.play_sfx("enemy_alert")
+				_alert_sfx_played = true
 			_alert_nearby()
 		"chase":
 			if _target:
@@ -435,6 +463,8 @@ func _disable_enemy() -> void:
 	_disabled = true
 	_disabled_timer = 60.0  # Full regen takes 60-90s
 	velocity = Vector2.ZERO
+	AudioManager.SFXPlayer.play_sfx_2d("enemy_death", global_position, 5.0)
+	ScreenEffects.flash(Color(1.0, 0.2, 0.2), 0.08, 0.3)
 	EventBus.enemy_disabled.emit(self)
 
 

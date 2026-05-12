@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_taster"]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/base_enemy.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/ai/enemy_taster.gd" id="2"]
+
+[node name="Taster" instance=ExtResource("1")]
+script = ExtResource("2")
+groups = ["tasters"]
+
+[node name="PlaceholderSprite" parent="Sprite" index="0"]
+offset_left = -11.0
+offset_top = -18.0
+offset_right = 11.0
+offset_bottom = 18.0
+color = Color(0.565, 0.933, 0.565, 1)
