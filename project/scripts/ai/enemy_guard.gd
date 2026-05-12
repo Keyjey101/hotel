@@ -143,7 +143,7 @@ func _perform_attack() -> void:
 		return
 	_attack_cooldown = 1.0 / attack_speed
 	# Baton strike — base attack_damage handles it
-	EventBus.enemy_damaged.emit(self, 0, 0)  # placeholder attack event
+	_deal_melee_damage_to_player()
 
 
 func get_enemy_type() -> String:

@@ -1,0 +1,23 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a9_third_eye"
+display_name = "Third Eye"
+description = "Reveals enemy aggro ranges, HP bars, hidden enemies, and trap zones, but causes periodic screen glitches."
+flavor_text = "Третий глаз видит правду. Правда не всегда красива."
+rarity = 2
+stat_mods = {
+"show_aggro_ranges": 1.0,
+"show_enemy_hp": 1.0,
+"reveal_hidden": 1.0,
+"show_trap_zones": 1.0,
+"screen_glitch_duration": 0.5,
+"screen_glitch_interval": 15.0
+}
+trigger = "passive"
+trade_off_text = "Screen glitches for 0.5s every 15 seconds."
+unlock_condition = "reach floor 6"
+visual_id = "third_eye_chakra_gem"

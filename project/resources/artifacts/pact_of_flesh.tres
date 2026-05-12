@@ -1,0 +1,21 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a8_pact_of_flesh"
+display_name = "Pact of Flesh"
+description = "Auto-equip severed limbs as weapons with 2x damage, but player drains 2 HP/sec."
+flavor_text = "Плоть — это оружие. Твоя или чужая — неважно."
+rarity = 3
+stat_mods = {
+"auto_equip_limbs": 1.0,
+"limb_weapon_damage_mult": 2.0,
+"limb_weapon_sever_mult": 1.5,
+"player_hp_drain": 2.0
+}
+trigger = "on_limb_sever"
+trade_off_text = "Player loses 2 HP per second continuously."
+unlock_condition = "clear floor 5 mini-boss"
+visual_id = "pact_of_flesh_flesh_rune"

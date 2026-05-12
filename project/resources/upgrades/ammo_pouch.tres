@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s10_ammo_pouch"
+display_name = "Ammo Pouch"
+description = "+50% Ammo Bonus"
+stat_key = "ammo_bonus"
+delta = 0.50
+type = "multiplicative_percent"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 5
+spawn_floors = "1-9"
+visual_id = "ammo_pouch_brown_sack"
+behavioral_id = ""

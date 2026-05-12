@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s11_bloodlust"
+display_name = "Bloodlust"
+description = "+10% damage after a kill"
+stat_key = "kill_damage_buff"
+delta = 0.10
+type = "conditional_temporary"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 3
+spawn_floors = "3-9"
+visual_id = "bloodlust_crimson_eye"
+behavioral_id = "bloodlust"

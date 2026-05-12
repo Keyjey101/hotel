@@ -1,0 +1,20 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a6_golden_hand"
+display_name = "Golden Hand"
+description = "2x pickup multiplier and +50% ammo, but improvised weapons degrade 2x faster."
+flavor_text = "Золото блестит. Всё остальное тускнеет."
+rarity = 2
+stat_mods = {
+"pickup_mult": 2.0,
+"ammo_mult": 0.5,
+"improvised_degrade_mult": 2.0
+}
+trigger = "on_pickup"
+trade_off_text = "Improvised weapons break twice as fast."
+unlock_condition = ""
+visual_id = "golden_hand_gilded_palm"

@@ -12,6 +12,8 @@ var floor_label: Label
 var buff_container: HFlowContainer
 var dmg_edges: Dictionary = {}
 var interaction_prompt: Label
+var timer_label: Label
+var weapon_name_labels: Array[Label] = []
 
 const HP_BAR_WIDTH := 120.0
 const VIEWPORT_W := 640.0
@@ -40,6 +42,14 @@ func _ready() -> void:
 	_refresh_all()
 
 
+func _process(_delta: float) -> void:
+	if GameManager.run_state:
+		var run_time := GameManager.run_state.get_run_time()
+		var minutes := int(run_time) / 60
+		var seconds := int(run_time) % 60
+		timer_label.text = "%d:%02d" % [minutes, seconds]
+
+
 func _build_ui() -> void:
 	# --- HP Bar (bottom-left) ---
 	var hp_frame := _make_rect(8, 344, HP_BAR_WIDTH, 8, Color(0.102, 0.102, 0.102))
@@ -57,30 +67,50 @@ func _build_ui() -> void:
 	# --- Weapon Slots (top-left) ---
 	for i in range(2):
 		var slot := Panel.new()
-		slot.position = Vector2(8, 8 + i * 32)
-		slot.size = Vector2(40, 28)
+		slot.position = Vector2(8, 8 + i * 36)
+		slot.size = Vector2(56, 32)
 		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(slot)
 		weapon_slots.append(slot)
 
-		var icon := _make_rect(12, 2, 16, 16, Color(0.15, 0.15, 0.15))
+		var icon := _make_rect(4, 2, 16, 16, Color(0.15, 0.15, 0.15))
 		slot.add_child(icon)
 		weapon_icons.append(icon)
 
 		var ammo := Label.new()
-		ammo.position = Vector2(2, 20)
+		ammo.position = Vector2(2, 22)
 		ammo.size = Vector2(36, 8)
+		ammo.add_theme_font_size_override("font_size", 6)
 		slot.add_child(ammo)
 		ammo_displays.append(ammo)
 
+		var wname := Label.new()
+		wname.position = Vector2(22, 4)
+		wname.size = Vector2(32, 14)
+		wname.add_theme_font_size_override("font_size", 6)
+		wname.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		wname.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(wname)
+		weapon_name_labels.append(wname)
+
 	# --- Floor Indicator (bottom-center) ---
 	floor_label = Label.new()
-	floor_label.position = Vector2(200, 348)
+	floor_label.position = Vector2(200, 342)
 	floor_label.size = Vector2(240, 10)
 	floor_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	floor_label.modulate.a = 0.7
 	floor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(floor_label)
+
+	# --- Run Timer (top-right) ---
+	timer_label = Label.new()
+	timer_label.position = Vector2(580, 8)
+	timer_label.size = Vector2(52, 10)
+	timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	timer_label.add_theme_font_size_override("font_size", 8)
+	timer_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(timer_label)
 
 	# --- Buff Container (bottom-right) ---
 	buff_container = HFlowContainer.new()
@@ -170,7 +200,12 @@ func _update_weapon_slots() -> void:
 		if weapon == null:
 			weapon_icons[i].color = Color(0.15, 0.15, 0.15)
 			ammo_displays[i].text = ""
+			weapon_name_labels[i].text = ""
 			continue
+
+		# Weapon name
+		var wname: String = weapon.resource_name if weapon.resource_name else ""
+		weapon_name_labels[i].text = wname
 
 		# Color by weapon type
 		match weapon.weapon_type:
@@ -208,7 +243,14 @@ func _update_floor_indicator() -> void:
 	var floor_num := 1
 	if GameManager.run_state:
 		floor_num = GameManager.run_state.current_floor
-	floor_label.text = "FLOOR %d · %s" % [floor_num, floor_names.get(floor_num, "UNKNOWN")]
+	var room_text := ""
+	# Try to get current room id from current scene (FloorManager)
+	var scene_root := get_tree().current_scene
+	if scene_root and scene_root.get("active_room_id") != null:
+		var rid: String = str(scene_root.active_room_id)
+		if not rid.is_empty():
+			room_text = " · %s" % rid.to_upper()
+	floor_label.text = "FLOOR %d · %s%s" % [floor_num, floor_names.get(floor_num, "UNKNOWN"), room_text]
 	floor_label.modulate.a = 0.7
 
 	if _floor_tween and _floor_tween.is_valid():

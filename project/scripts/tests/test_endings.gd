@@ -24,8 +24,7 @@ func test_ending_a_title_color() -> void:
 
 func test_ending_a_text_content() -> void:
 	var text := "The Hotel is gone. The system is destroyed. But the memory remains. Her face, at the end. She forgave you. You're not sure you forgive yourself."
-	assert_true(text.find("Hotel is gone") >= 0, "Ending A mentions Hotel destroyed")
-	assert_true(text.find("forgave") >= 0, "Ending A mentions forgiveness")
+	assert_eq(text, "The Hotel is gone. The system is destroyed. But the memory remains. Her face, at the end. She forgave you. You're not sure you forgive yourself.", "Ending A text matches design doc")
 
 
 func test_ending_a_requirements() -> void:
@@ -51,7 +50,7 @@ func test_ending_b_title() -> void:
 
 func test_ending_b_text_content() -> void:
 	var text := "The Hotel is gone. She's not the same. Neither are you. But you're together."
-	assert_true(text.find("together") >= 0, "Ending B mentions being together")
+	assert_eq(text, "The Hotel is gone. She's not the same. Neither are you. But you're together.", "Ending B text matches design doc")
 
 
 func test_ending_b_requirements() -> void:
@@ -82,8 +81,7 @@ func test_ending_c_title() -> void:
 
 func test_ending_c_text_content() -> void:
 	var text := "You came here to save her. But you were never outside. You were always inside. The Hotel doesn't have guests. It has inmates. And you... you were the first."
-	assert_true(text.find("never outside") >= 0, "Ending C mentions never being outside")
-	assert_true(text.find("first") >= 0, "Ending C mentions being the first")
+	assert_eq(text, "You came here to save her. But you were never outside. You were always inside. The Hotel doesn't have guests. It has inmates. And you... you were the first.", "Ending C text matches design doc")
 
 
 func test_ending_c_requirements() -> void:
@@ -120,8 +118,7 @@ func test_ending_d_title() -> void:
 
 func test_ending_d_text_content() -> void:
 	var text := "The Hotel continues. The blood flows. The system perpetuates. But now... you're the one signing the contracts. Was it worth it? You'll have eternity to decide."
-	assert_true(text.find("contracts") >= 0, "Ending D mentions signing contracts")
-	assert_true(text.find("eternity") >= 0, "Ending D mentions eternity")
+	assert_eq(text, "The Hotel continues. The blood flows. The system perpetuates. But now... you're the one signing the contracts. Was it worth it? You'll have eternity to decide.", "Ending D text matches design doc")
 
 
 func test_ending_d_requirements() -> void:
@@ -195,7 +192,7 @@ func test_trigger_ending_all_ids() -> void:
 	var ending_ids := ["a", "b", "c", "d"]
 	for eid in ending_ids:
 		var path := "res://scenes/endings/ending_%s.tscn" % eid
-		assert_true(path.begins_with("res://scenes/endings/ending_"), "Path valid for ending %s" % eid)
+		assert_eq(path, "res://scenes/endings/ending_%s.tscn" % eid, "Path valid for ending %s" % eid)
 
 
 # ── SaveManager total_runs ──

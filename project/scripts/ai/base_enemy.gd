@@ -249,6 +249,11 @@ func _evaluate_mutilated_behavior() -> void:
 # ============================================================
 
 func _process_regen(delta: float) -> void:
+	# Blood Pact: enemies regen 40% faster if player has the artifact
+	var blood_pact_mult := 1.0
+	if GameManager.run_state:
+		blood_pact_mult += GameManager.run_state.get_artifact_stat("enemy_regen_speed_mult", 0.0)
+
 	for zone in regen_timers:
 		if not severed_limbs[zone]:
 			continue
@@ -263,7 +268,7 @@ func _process_regen(delta: float) -> void:
 			continue
 
 		# Tick regen
-		timer.max -= delta * regen_speed_mult
+		timer.max -= delta * regen_speed_mult * blood_pact_mult
 
 		# Legs regen faster when both lost
 		if DamageZone.is_leg(zone):
@@ -276,10 +281,16 @@ func _process_regen(delta: float) -> void:
 
 
 func _regenerate_limb(zone: int) -> void:
+	# Gate: severed limbs require 3x longer regen timer on next cycle
+	var was_severed: bool = severed_limbs.get(zone, false)
 	var max_hp := _get_max_limb_hp(zone)
 	limb_health[zone] = max_hp
 	severed_limbs[zone] = false
-	regen_timers[zone] = {"current": 0.0, "max": base_regen_time / regen_speed_mult, "paused": false}
+	# Severed limbs get a much longer regen cooldown
+	var next_regen_time := base_regen_time / regen_speed_mult
+	if was_severed:
+		next_regen_time *= 3.0
+	regen_timers[zone] = {"current": 0.0, "max": next_regen_time, "paused": false}
 
 	if not _regen_sfx_played:
 		AudioManager.SFXPlayer.play_sfx("enemy_regen")
@@ -457,6 +468,26 @@ func get_attack_damage() -> float:
 func apply_stun(duration: float) -> void:
 	_stunned = true
 	_stun_timer = duration
+
+
+func drop_weapon() -> void:
+	# If this enemy conceptually holds a weapon, null it out
+	# Subtypes with weapon tracking should override this
+	pass
+
+
+func _deal_melee_damage_to_player() -> void:
+	# Check for player within attack radius and apply damage
+	if _target == null or not is_instance_valid(_target):
+		return
+	var dist := global_position.distance_to(_target.global_position)
+	if dist > attack_range * 1.2:
+		return
+	var knockback_dir := global_position.direction_to(_target.global_position)
+	if _target.has_method("take_damage"):
+		_target.take_damage(attack_damage, knockback_dir, 15.0)
+	elif _target.has_method("receive_damage"):
+		_target.receive_damage(attack_damage, DamageZone.Zone.TORSO, false, 15.0, knockback_dir)
 
 
 func _disable_enemy() -> void:

@@ -68,6 +68,8 @@ func _process(_delta: float) -> void:
 # ============================================================
 
 func shake(amplitude: float = 4.0, duration: float = 0.15, _decay: float = 0.9) -> void:
+	if has_meta("shake_enabled") and not get_meta("shake_enabled", true):
+		return
 	if not _camera:
 		_refresh_camera()
 	if not _camera:
@@ -91,6 +93,8 @@ func shake(amplitude: float = 4.0, duration: float = 0.15, _decay: float = 0.9) 
 # ============================================================
 
 func flash(color: Color = Color.WHITE, duration: float = 0.05, max_alpha: float = 0.6) -> void:
+	if has_meta("flash_enabled") and not get_meta("flash_enabled", true):
+		return
 	if _flash_tween and _flash_tween.is_valid():
 		_flash_tween.kill()
 

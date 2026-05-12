@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s4_razor_edge"
+display_name = "Razor Edge"
+description = "+20% Melee Damage"
+stat_key = "damage_melee"
+delta = 0.20
+type = "additive_percent"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 6
+spawn_floors = "1-9"
+visual_id = "razor_edge_orange_blade"
+behavioral_id = ""

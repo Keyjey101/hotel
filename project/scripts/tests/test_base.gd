@@ -83,3 +83,49 @@ func assert_between(value: float, low: float, high: float, message: String = "")
 		if message != "":
 			msg = message
 		_test_runner.report_failure(msg)
+
+
+func assert_lte(actual: float, expected: float, message: String = "") -> void:
+	if actual > expected:
+		var msg := "Expected %s <= %s" % [str(actual), str(expected)]
+		if message != "":
+			msg = message
+		_test_runner.report_failure(msg)
+
+
+func assert_node_exists(group_name: String, message: String = "") -> void:
+	var node := Engine.get_main_loop().get_first_node_in_group(group_name) if Engine.get_main_loop() else null
+	if node == null:
+		var msg := "Expected node in group '%s' to exist" % group_name
+		if message != "":
+			msg = message
+		_test_runner.report_failure(msg)
+
+
+func async_wait_for_signal(sig: Signal, timeout: float = 2.0) -> bool:
+	var result: bool = false
+	var done := func():
+		result = true
+	sig.connect(done, Object.CONNECT_ONE_SHOT)
+	# Wait with timeout
+	var timer := Engine.get_main_loop().create_timer(timeout)
+	timer.one_shot = true
+	await timer.timeout
+	if sig.is_connected(done):
+		sig.disconnect(done)
+	return result
+
+
+var _auto_free_nodes: Array[Node] = []
+
+
+func add_child_autoqfree(parent: Node, child: Node) -> void:
+	parent.add_child(child)
+	_auto_free_nodes.append(child)
+
+
+func teardown_autoqfree() -> void:
+	for node in _auto_free_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	_auto_free_nodes.clear()

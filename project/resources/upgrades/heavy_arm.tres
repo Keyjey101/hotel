@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s6_heavy_arm"
+display_name = "Heavy Arm"
+description = "+25% Throw Damage"
+stat_key = "damage_throw"
+delta = 0.25
+type = "additive_percent"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 4
+spawn_floors = "1-9"
+visual_id = "heavy_arm_purple_boulder"
+behavioral_id = ""

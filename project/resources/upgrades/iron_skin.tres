@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s3_iron_skin"
+display_name = "Iron Skin"
+description = "-15% Damage Reduction"
+stat_key = "damage_reduction"
+delta = -0.15
+type = "additive_percent"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 5
+spawn_floors = "1-9"
+visual_id = "iron_skin_gray_shield"
+behavioral_id = ""

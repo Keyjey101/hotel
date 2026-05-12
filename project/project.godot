@@ -18,6 +18,8 @@ SaveManager="*res://scripts/core/save_manager.gd"
 GoreSystem="*res://scripts/combat/gore_system.gd"
 ScreenEffects="*res://scripts/effects/screen_effects.gd"
 AudioManager="*res://scripts/audio/audio_manager.gd"
+ArtifactRegistry="*res://scripts/core/artifact_registry.gd"
+UpgradeRegistry="*res://scripts/core/upgrade_registry.gd"
 
 [display]
 

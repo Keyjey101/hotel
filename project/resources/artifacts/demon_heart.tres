@@ -1,0 +1,23 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a10_demon_heart"
+display_name = "Demon Heart"
+description = "Revive once on death at 50% HP with a stun burst, but enemies gain +25% limb HP and +15% damage."
+flavor_text = "Сердце демона бьётся даже после смерти."
+rarity = 3
+stat_mods = {
+"revive_on_death": 1.0,
+"revive_hp_pct": 0.50,
+"revive_stun_radius": 150.0,
+"revive_stun_duration": 2.0,
+"enemy_limb_hp_mult": 0.25,
+"enemy_damage_mult": 0.15
+}
+trigger = "on_player_death"
+trade_off_text = "Enemies gain +25% limb HP and +15% damage."
+unlock_condition = "reach floor 4 mini-boss"
+visual_id = "demon_heart_black_pulse"

@@ -167,8 +167,10 @@ func _perform_attack() -> void:
 		return
 
 	_attack_cooldown = 1.0 / attack_speed
-	# Apply slow effect via player_captured as placeholder for slow signal
-	EventBus.player_captured.emit()
+	# Sedative touch: apply slow directly to the player
+	if _target.has_method("apply_slow"):
+		_target.apply_slow(0.5, 3.0)		
+	AudioManager.SFXPlayer.play_sfx("enemy_attack")
 
 
 # ---------------------------------------------------------------------------

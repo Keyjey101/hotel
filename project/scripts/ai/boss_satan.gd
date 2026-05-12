@@ -95,7 +95,7 @@ func _ready() -> void:
 		_demon_scene = load("res://scenes/enemies/demon.tscn")
 
 	# Check if Sister was spared — spawn as ally
-	if GameManager.run_state and GameManager.run_state.get_meta("sister_spared", false):
+	if GameManager.run_state and GameManager.run_state.run_meta.get("sister_spared", false):
 		_spawn_sister_ally()
 
 	super._ready()
@@ -622,20 +622,24 @@ func _show_final_offer() -> void:
 	label2.z_index = 100
 	get_tree().current_scene.add_child(label2)
 
-	# Wait for choice
-	while not _final_choice_made:
-		if Input.is_key_pressed(KEY_1):
-			_final_choice_made = true
-			_on_accept_deal()
-		elif Input.is_key_pressed(KEY_2):
-			_final_choice_made = true
-			_on_reject_deal()
-		await get_tree().process_frame
+	# Show dialog choice UI and await signal
+	var dialog_scene := preload("res://scenes/ui/dialog_choice.tscn")
+	var dialog := dialog_scene.instantiate()
+	dialog.setup("Join the board. End this.", "[1] ACCEPT", "[2] REJECT", "accept", "reject")
+	dialog.z_index = 100
+	get_tree().current_scene.add_child(dialog)
 
 	if is_instance_valid(label1):
 		label1.queue_free()
 	if is_instance_valid(label2):
 		label2.queue_free()
+
+	var choice := await EventBus.dialog_choice_made
+	match choice:
+		"accept":
+			_on_accept_deal()
+		"reject":
+			_on_reject_deal()
 
 
 func _on_accept_deal() -> void:
@@ -803,33 +807,12 @@ func _disable_enemy() -> void:
 
 	# Determine ending
 	EventBus.mini_boss_defeated.emit(9)
-	_determine_ending()
+	# Delay for reality collapse visual to play out
+	get_tree().create_timer(1.5).timeout.connect(func():
+		GameManager.handle_final_boss_defeated()
+	)
 
 	super._disable_enemy()
-
-
-func _determine_ending() -> void:
-	var ending_id := "a"  # Default
-
-	if GameManager.run_state:
-		var sister_killed := GameManager.run_state.get_meta("sister_killed", false)
-		var sister_spared := GameManager.run_state.get_meta("sister_spared", false)
-		var sister_never_attacked := GameManager.run_state.get_meta("sister_never_attacked", false)
-		var player_embraced := GameManager.run_state.get_meta("player_embraced", false)
-
-		if player_embraced:
-			ending_id = "d"
-		elif sister_never_attacked:
-			ending_id = "c"
-		elif sister_spared:
-			ending_id = "b"
-		else:
-			ending_id = "a"
-
-	# Small delay then trigger ending
-	get_tree().create_timer(1.5).timeout.connect(func():
-		GameManager.trigger_ending(ending_id)
-	)
 
 
 # ---------------------------------------------------------------------------

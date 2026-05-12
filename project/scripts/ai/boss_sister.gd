@@ -285,7 +285,7 @@ func _process_combat(delta: float) -> void:
 			_show_dialogue("You're still you.", 3.0)
 			# Signal ending B path
 			GameManager.run_state.mini_boss_defeated[9] = true
-			GameManager.run_state.set_meta("sister_spared", true) if GameManager.run_state else null
+			GameManager.run_state.run_meta["sister_spared"] = true if GameManager.run_state else null
 			EventBus.mini_boss_defeated.emit(9)
 		return
 
@@ -330,7 +330,7 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 			# Signal ending A path
 			if GameManager.run_state:
 				GameManager.run_state.mini_boss_defeated[9] = true
-				GameManager.run_state.set_meta("sister_killed", true)
+				GameManager.run_state.run_meta["sister_killed"] = true
 			super.receive_damage(damage, zone, sever, knockback_force, knockback_dir)
 			EventBus.mini_boss_defeated.emit(9)
 			return
@@ -486,6 +486,9 @@ func _disable_enemy() -> void:
 	if not _sister_killed:
 		# Spared or non-combat path
 		_sister_spared = true
+		# Track if player never attacked her
+		if _sister_damage_dealt <= 0.0 and GameManager.run_state:
+			GameManager.run_state.run_meta["sister_never_attacked"] = true
 
 	EventBus.enemy_disabled.emit(self)
 
@@ -504,12 +507,12 @@ func _trigger_ending(ending_id: String) -> void:
 
 	if GameManager.run_state:
 		GameManager.run_state.mini_boss_defeated[9] = true
-		GameManager.run_state.set_meta("ending_id", ending_id)
+		GameManager.run_state.run_meta["ending_id"] = ending_id
 		match ending_id:
 			"c":
-				GameManager.run_state.set_meta("sister_never_attacked", true)
+				GameManager.run_state.run_meta["sister_never_attacked"] = true
 			"d":
-				GameManager.run_state.set_meta("player_embraced", true)
+				GameManager.run_state.run_meta["player_embraced"] = true
 
 	EventBus.mini_boss_defeated.emit(9)
 

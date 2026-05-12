@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s8_steady_grip"
+display_name = "Steady Grip"
+description = "-30% Grab Resist"
+stat_key = "grab_resist"
+delta = -0.30
+type = "additive_percent"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 4
+spawn_floors = "3-9"
+visual_id = "steady_grip_teal_chain"
+behavioral_id = ""

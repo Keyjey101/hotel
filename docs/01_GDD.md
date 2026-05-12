@@ -61,7 +61,7 @@ RUN START -> FLOOR -> ROOMS -> MINI-BOSS -> NEXT FLOOR -> ... -> FLOOR 9 -> ENDI
 
 ### 2.2.1 Damage Model
 
-Враги имеют 5 damage zones:
+Враги имеют 6 damage zones:
 - **Голова** (head) — отдельный HP
 - **Левая рука** (left arm)
 - **Правая рука** (right arm)
@@ -152,7 +152,7 @@ RUN START -> FLOOR -> ROOMS -> MINI-BOSS -> NEXT FLOOR -> ... -> FLOOR 9 -> ENDI
 
 ## 2.4 Enemy System
 
-### 2.4.1 Enemy Archetypes (15-20 total)
+### 2.4.1 Enemy Archetypes (21 total)
 
 **Base Types (перекрёстно используются на нескольких этажах):**
 
@@ -218,13 +218,17 @@ RUN START -> FLOOR -> ROOMS -> MINI-BOSS -> NEXT FLOOR -> ... -> FLOOR 9 -> ENDI
 
 **Stat Upgrades (найти на этажах):**
 - +25% HP
-- +15% speed
+- +12% speed
+- -15% damage taken
 - +20% melee damage
-- +20% throw damage
-- +10% fire rate
-- Reduced grab vulnerability
-- Faster interaction speed
-- Extended dodge frames
+- +20% ranged damage
+- +25% throw damage
+- +20% pickup/interact speed
+- -30% grab vulnerability
+- Regen when HP <30%
+- +50% ammo
+- +10% damage for 3s after kill
+*(Full spec: see 15_UPGRADE_DESIGN.md)*
 
 **Cult Artifacts (trade-offs):**
 
@@ -240,6 +244,8 @@ RUN START -> FLOOR -> ROOMS -> MINI-BOSS -> NEXT FLOOR -> ... -> FLOOR 9 -> ENDI
 | Pact of Flesh | Enemies drop limbs as weapons | Player HP drains slowly |
 | Third Eye | See enemy aggro range | Screen occasionally glitches |
 | Demon Heart | Second chance on death (once per run) | All enemies have +1 HP per limb |
+| Crown of Thorns | +1 weapon slot, +15% attack speed | +30% damage taken, blood pools damage |
+| Void Contract | +50% boss damage, +30% sever chance | Basement escape impossible |
 
 **Weapon Upgrades:**
 - Find better versions of weapons on higher floors

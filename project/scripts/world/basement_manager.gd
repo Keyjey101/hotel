@@ -265,9 +265,13 @@ func _position_player_at_start() -> void:
 	player.global_position = Vector2(48, 48)  # Center of 3×3 room (96×96 px)
 
 
-## Generate a random bonus cult artifact resource placeholder.
+## Generate a random bonus cult artifact from the registry.
 func _random_bonus_artifact() -> Resource:
-	# Placeholder: create a simple Resource with artifact metadata
+	if ArtifactRegistry:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = Time.get_ticks_msec()
+		return ArtifactRegistry.get_random_artifact({1: 0.0, 2: 0.7, 3: 0.3}, rng)
+	# Fallback: create a simple Resource with artifact metadata
 	var artifact := Resource.new()
 	artifact.resource_name = "basement_bonus_artifact"
 	artifact.set_meta("artifact_type", "cult_artifact")

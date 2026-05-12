@@ -63,6 +63,21 @@ func _build_ui() -> void:
 	vbox.add_child(new_run_btn)
 	new_run_btn.pressed.connect(_on_new_run_pressed)
 
+	# STATS button
+	var stats_btn := _make_button("STATS")
+	vbox.add_child(stats_btn)
+	stats_btn.pressed.connect(_on_stats_pressed)
+
+	# SETTINGS button
+	var settings_btn := _make_button("SETTINGS")
+	vbox.add_child(settings_btn)
+	settings_btn.pressed.connect(_on_settings_pressed)
+
+	# QUIT button
+	var quit_btn := _make_button("QUIT")
+	vbox.add_child(quit_btn)
+	quit_btn.pressed.connect(func(): get_tree().quit())
+
 	# Stats at bottom
 	var stats := Label.new()
 	stats.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
@@ -114,6 +129,20 @@ func _make_button(text: String) -> Button:
 	return btn
 
 
+func _on_stats_pressed() -> void:
+	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	var stats_scene := preload("res://scenes/ui/stats_screen.tscn")
+	var stats := stats_scene.instantiate()
+	add_child(stats)
+
+
 func _on_new_run_pressed() -> void:
 	AudioManager.SFXPlayer.play_sfx("ui_confirm")
-	GameManager.start_new_run()
+	GameManager.show_loadout()
+
+
+func _on_settings_pressed() -> void:
+	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	var settings_scene := preload("res://scenes/ui/settings_menu.tscn")
+	var settings := settings_scene.instantiate()
+	add_child(settings)

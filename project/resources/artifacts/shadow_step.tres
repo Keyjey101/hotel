@@ -1,0 +1,22 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a5_shadow_step"
+display_name = "Shadow Step"
+description = "+1 dash charge and 0.2s invulnerability on dash, but -40% throw distance and -30% throw speed."
+flavor_text = "Тень — твой щит. Рука — не твоя."
+rarity = 1
+stat_mods = {
+"dash_charges": 1.0,
+"dash_invuln_duration": 0.2,
+"dash_cooldown": 3.0,
+"throw_distance_mult": -0.40,
+"throw_speed_mult": -0.30
+}
+trigger = "on_dash_activate"
+trade_off_text = "Throw distance and speed heavily reduced."
+unlock_condition = ""
+visual_id = "shadow_step_wisp_trail"

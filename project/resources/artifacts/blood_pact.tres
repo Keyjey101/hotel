@@ -1,0 +1,20 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a2_blood_pact"
+display_name = "Blood Pact"
+description = "+50% max HP and +1.0 HP regen, but enemies also regenerate 40% faster."
+flavor_text = "Кровь питает всех. Даже врагов."
+rarity = 1
+stat_mods = {
+"max_hp_mult": 0.50,
+"hp_regen": 1.0,
+"enemy_regen_speed_mult": 0.40
+}
+trigger = "passive"
+trade_off_text = "Enemies regenerate health 40% faster."
+unlock_condition = ""
+visual_id = "blood_pact_crimson_seal"

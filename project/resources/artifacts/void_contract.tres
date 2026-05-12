@@ -1,0 +1,20 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a12_void_contract"
+display_name = "Void Contract"
+description = "+50% boss damage and +30% sever chance, but basement escape is disabled."
+flavor_text = "Пустота берёт. Пустота даёт. Но выхода нет."
+rarity = 3
+stat_mods = {
+"boss_damage_mult": 0.50,
+"sever_chance_mult": 0.30,
+"basement_escape": 0.0
+}
+trigger = "passive"
+trade_off_text = "Basement escape is completely disabled."
+unlock_condition = "reach floor 9"
+visual_id = "void_contract_abyss_scroll"

@@ -262,7 +262,40 @@ func activate_trap(trap_type: String) -> void:
 		"crusher":
 			_spawn_hazard_at_player(50.0, 0.8, Color.DIM_GRAY, 50.0, 1.0)
 		"lockdown":
-			print("[Accountant] LOCKDOWN activated — doors sealed for 4s")
+			_activate_lockdown()
+
+
+func _activate_lockdown() -> void:
+	var room: RoomInstance = null
+	var node := get_parent()
+	while node != null:
+		if node is RoomInstance and node.is_active:
+			room = node
+			break
+		node = node.get_parent()
+	if room == null:
+		room = get_tree().get_first_node_in_group("active_room")
+	if room == null:
+		return
+	for door in room.doors:
+		if door is Area2D:
+			door.set_meta("lockdown_sealed", true)
+			door.monitoring = false
+			for child in door.get_children():
+				if child is ColorRect:
+					child.color = Color(0.5, 0.1, 0.1, 0.9)
+	AudioManager.SFXPlayer.play_sfx_2d("door_close", global_position, 200.0)
+	get_tree().create_timer(4.0).timeout.connect(func() -> void:
+		if not is_instance_valid(room):
+			return
+		for door in room.doors:
+			if door is Area2D and door.get_meta("lockdown_sealed", false):
+				door.set_meta("lockdown_sealed", false)
+				door.monitoring = true
+				for child in door.get_children():
+					if child is ColorRect:
+						child.color = Color(0.8, 0.6, 0.2, 0.6)
+	)
 
 
 func _activate_all_traps() -> void:
@@ -398,15 +431,27 @@ func _on_gold_bar_hit(body: Node2D, proj: Area2D) -> void:
 func _summon_drones() -> void:
 	var count := 1 if _phase < 2 else 2
 	if _summon_scene == null:
-		print("[Accountant] Summon %d Vault Drones (scene not loaded)" % count)
 		return
+
+	# Find active room for tracking spawned enemies
+	var room: RoomInstance = null
+	var node := get_parent()
+	while node != null:
+		if node is RoomInstance and node.is_active:
+			room = node
+			break
+		node = node.get_parent()
 
 	for i in range(count):
 		var offset := Vector2(randf_range(-80, 80), randf_range(-80, 80))
 		var drone := _summon_scene.instantiate() as CharacterBody2D
 		if drone != null:
 			drone.global_position = global_position + offset
-			get_tree().current_scene.add_child(drone)
+			if room != null:
+				room.add_child(drone)
+				room.active_enemies.append(drone)
+			else:
+				get_tree().current_scene.add_child(drone)
 
 
 # ---------------------------------------------------------------------------

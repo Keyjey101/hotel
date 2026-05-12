@@ -17,12 +17,14 @@ func _ready() -> void:
 	print("\n========== HOTEL TEST RUNNER ==========\n")
 
 	_register_suites()
-	_run_all()
+	await _run_all()
 	_print_summary()
 
 	# Exit with code
 	if _failed > 0:
-		get_tree().quit(1 if _failed > 0 else 0)
+		get_tree().quit(1)
+	else:
+		get_tree().quit(0)
 
 
 func _register_suites() -> void:
@@ -53,10 +55,23 @@ func _register_suites() -> void:
 		preload("res://scripts/tests/test_audio_manager.gd").new(),
 		# M8.2: SFX Integration
 		preload("res://scripts/tests/test_sfx_integration.gd").new(),
-		# M8.3: Stubs Completion
-		preload("res://scripts/tests/test_stubs_completion.gd").new(),
 		# M8.4: Balance Audit
 		preload("res://scripts/tests/test_balance_audit.gd").new(),
+		# Behavioral replacements (M8.1/M8.2/M8.3/M8.4)
+		preload("res://scripts/tests/test_enemy_stats_behavioral.gd").new(),
+		preload("res://scripts/tests/test_m81_behavioral.gd").new(),
+		preload("res://scripts/tests/test_sfx_behavioral.gd").new(),
+		# Boot smoke test
+		preload("res://scripts/tests/test_boot_smoke.gd").new(),
+		# Artifact + Upgrade registry
+		preload("res://scripts/tests/test_artifact_registry.gd").new(),
+		# Behavioral upgrades
+		preload("res://scripts/tests/test_second_wind.gd").new(),
+		preload("res://scripts/tests/test_bloodlust.gd").new(),
+		# Full run dry test
+		preload("res://scripts/tests/test_full_run_dry.gd").new(),
+		# Signature mechanics (F1-F12)
+		preload("res://scripts/tests/test_signature_mechanics.gd").new(),
 	]
 
 
@@ -88,9 +103,11 @@ func _run_all() -> void:
 			var error_msg := ""
 
 			# Run test
-			var result := _safe_call(suite, method.name)
-			if result != OK:
+			var result = _safe_call(suite, method.name)
+			if result is int and result != OK:
 				error_msg = "Script error during execution"
+			elif result is Variant:
+				await result.completed
 
 			var elapsed := (Time.get_ticks_usec() - start_time) / 1000.0
 
@@ -112,11 +129,10 @@ func _run_all() -> void:
 		print("")
 
 
-func _safe_call(instance: Object, method: String) -> int:
+func _safe_call(instance: Object, method: String) -> Variant:
 	if not instance.has_method(method):
 		return ERR_UNAVAILABLE
-	instance.call(method)
-	return OK
+	return instance.call(method)
 
 
 var _current_failure: String = ""
@@ -134,8 +150,35 @@ func report_failure(message: String) -> void:
 
 
 func _print_summary() -> void:
+	# Count behavioral vs smoke suites
+	var behavioral_suites := [
+		"test_run_state", "test_seed_manager", "test_damage_zone",
+		"test_enemy_health", "test_regen_system", "test_weapon_data",
+		"test_combat_flow", "test_royal_guard", "test_champion",
+		"test_consort", "test_floor08", "test_demon", "test_sister",
+		"test_satan", "test_floor09", "test_endings", "test_object_pool",
+		"test_screen_effects", "test_audio_manager", "test_balance_audit",
+		"test_enemy_stats_behavioral", "test_m81_behavioral",
+		"test_sfx_behavioral", "test_m81_integration", "test_sfx_integration",
+	]
+	var smoke_suites := ["test_boot_smoke", "test_artifact_registry", "test_second_wind", "test_bloodlust"]
+	var run_suites := ["test_full_run_dry"]
+
+	var n_behavioral := 0
+	var n_smoke := 0
+	var n_run := 0
+	for suite in _suites:
+		var name: String = suite.get_script().resource_path.get_file().replace(".gd", "")
+		if name in behavioral_suites:
+			n_behavioral += 1
+		elif name in smoke_suites:
+			n_smoke += 1
+		elif name in run_suites:
+			n_run += 1
+
 	print("========== RESULTS ==========")
 	print("Total: %d | Passed: %d | Failed: %d" % [_total_tests, _passed, _failed])
+	print("Behavioral suites: %d | Smoke suites: %d | Run-through suites: %d" % [n_behavioral, n_smoke, n_run])
 
 	if not _errors.is_empty():
 		print("\n── FAILURES ──")

@@ -1,0 +1,20 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a1_demon_eye"
+display_name = "Demon Eye"
+description = "+30% ranged damage and +50% enemy detection range, but -20% melee damage and reduced peripheral vision."
+flavor_text = "Видишь дальше. Но близкое расплывается."
+rarity = 1
+stat_mods = {
+"ranged_damage_mult": 0.30,
+"detection_range_mult": 0.50,
+"melee_damage_mult": -0.20
+}
+trigger = "passive"
+trade_off_text = "Screen edge vignette reduces peripheral vision by ~20%."
+unlock_condition = ""
+visual_id = "demon_eye_red_glow"

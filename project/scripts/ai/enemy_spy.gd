@@ -62,6 +62,17 @@ func _go_visible() -> void:
 	sprite.modulate.a = 1.0
 
 
+func _decloak() -> void:
+	# Become fully visible, enable collision, play alert sound
+	sprite.modulate.a = 1.0
+	_revealed = true
+	_reveal_timer = _reveal_duration
+	# Re-enable hurtbox collision so player can hit us
+	if hurtbox_manager:
+		hurtbox_manager.process_mode = Node.PROCESS_MODE_INHERIT
+	AudioManager.SFXPlayer.play_sfx("enemy_alert")
+
+
 # ---------------------------------------------------------------------------
 # State overrides
 # ---------------------------------------------------------------------------
@@ -72,8 +83,8 @@ func _enter_state(state_name: String) -> void:
 		if not _revealed:
 			_go_invisible()
 	elif state_name == "engage":
-		# Will handle decloak in _state_engage
-		pass
+		# Decloak immediately when entering engage
+		_decloak()
 
 
 func _state_patrol(_delta: float) -> void:

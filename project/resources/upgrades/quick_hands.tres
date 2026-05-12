@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s7_quick_hands"
+display_name = "Quick Hands"
+description = "+20% Pickup Speed"
+stat_key = "pickup_speed"
+delta = 0.20
+type = "additive_percent"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 5
+spawn_floors = "1-9"
+visual_id = "quick_hands_yellow_glove"
+behavioral_id = ""

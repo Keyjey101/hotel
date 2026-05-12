@@ -22,6 +22,8 @@ var _hurt_timer: float = 0.0
 var _is_dead: bool = false
 var _invulnerable: bool = false
 var _invul_timer: float = 0.0
+var _camera: Camera2D = null
+var _pause_menu_instance: Node = null
 
 
 func _ready() -> void:
@@ -29,6 +31,14 @@ func _ready() -> void:
 	if GameManager.run_state:
 		_current_speed = GameManager.run_state.player_speed
 	_connect_signals()
+	# Find camera in "camera" group for follow
+	var cameras := get_tree().get_nodes_in_group("camera")
+	for cam in cameras:
+		if cam is Camera2D:
+			_camera = cam
+			break
+	# Connect bloodlust tracking
+	EventBus.enemy_disabled.connect(_on_enemy_killed_bloodlust)
 
 
 func _connect_signals() -> void:
@@ -75,6 +85,26 @@ func _physics_process(delta: float) -> void:
 	# Update visual facing
 	_update_sprite_facing()
 
+	# Camera follow
+	if _camera and is_instance_valid(_camera):
+		_camera.global_position = global_position
+
+	# Pause input
+	if Input.is_action_just_pressed("ui_pause"):
+		if GameManager.current_state == GameManager.GameState.PLAYING:
+			GameManager.pause_game()
+			_show_pause_menu()
+
+	# S9 Second Wind: passive regen when HP < 30%
+	_check_second_wind_regen(delta)
+
+	# S11 Bloodlust: decay timer
+	if GameManager.run_state:
+		if GameManager.run_state.bloodlust_timer > 0.0:
+			GameManager.run_state.bloodlust_timer -= delta
+			if GameManager.run_state.bloodlust_timer <= 0.0:
+				GameManager.run_state.bloodlust_stacks = 0
+
 
 func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback_force: float = 0.0) -> void:
 	if _invulnerable or _is_dead:
@@ -83,7 +113,9 @@ func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback
 	if GameManager.run_state:
 		# Apply damage reduction from upgrades
 		var reduction: float = float(GameManager.run_state.stat_upgrades.get("damage_reduction", 0.0))
-		amount *= (1.0 - reduction)
+		# Apply damage_taken_mult from artifacts (e.g. Crown of Thorns)
+		var taken_mult: float = 1.0 + float(GameManager.run_state.stat_upgrades.get("damage_taken_mult", 0.0))
+		amount *= (1.0 - reduction) * taken_mult
 		GameManager.run_state.player_hp -= amount
 	else:
 		amount = 0.0
@@ -118,6 +150,9 @@ func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback
 	# Check death
 	if GameManager.run_state and GameManager.run_state.player_hp <= 0.0:
 		GameManager.run_state.player_hp = 0.0
+		# S9 Second Wind: prevent first death, heal to 30%
+		if _try_second_wind():
+			return
 		_die()
 
 
@@ -145,6 +180,96 @@ func get_max_hp() -> float:
 		return GameManager.run_state.player_max_hp
 	return 100.0
 
+
+func apply_slow(mult: float, duration: float) -> void:
+	_current_speed = base_speed * mult
+	get_tree().create_timer(duration).timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			_current_speed = base_speed
+	)
+
+
+# ---------------------------------------------------------------------------
+# S9 Second Wind — prevent first death, heal to 30%
+# ---------------------------------------------------------------------------
+
+func _try_second_wind() -> bool:
+	if GameManager.run_state == null:
+		return false
+	if GameManager.run_state.second_wind_used:
+		return false
+	var stacks := GameManager.run_state.get_stack_count("s9_second_wind")
+	if stacks == 0:
+		return false
+	# Check if disabled by Pact of Flesh
+	if GameManager.run_state.has_artifact("a8_pact_of_flesh"):
+		return false
+
+	GameManager.run_state.second_wind_used = true
+	# Heal to 30% of max HP
+	var heal_amount := GameManager.run_state.player_max_hp * 0.30
+	GameManager.run_state.player_hp = heal_amount
+	# 2 seconds invulnerability
+	_invulnerable = true
+	_invul_timer = 2.0
+	# Visual feedback
+	ScreenEffects.flash(Color(0.8, 0.9, 1.0), 0.1, 0.5)
+	print("[Player] Second Wind activated! Healed to %.0f HP" % heal_amount)
+	return true
+
+
+func _check_second_wind_regen(delta: float) -> void:
+	if GameManager.run_state == null:
+		return
+	var stacks := GameManager.run_state.get_stack_count("s9_second_wind")
+	if stacks == 0:
+		return
+	# Check if disabled by Pact of Flesh
+	if GameManager.run_state.has_artifact("a8_pact_of_flesh"):
+		return
+	var threshold := GameManager.run_state.player_max_hp * 0.30
+	if GameManager.run_state.player_hp < threshold and GameManager.run_state.player_hp > 0.0:
+		var heal_rate := 1.0 * stacks
+		GameManager.run_state.player_hp = minf(
+			GameManager.run_state.player_hp + heal_rate * delta,
+			threshold  # Capped at 30%
+		)
+
+
+# ---------------------------------------------------------------------------
+# S11 Bloodlust — +damage buff on kill, stacking, decaying
+# ---------------------------------------------------------------------------
+
+func _on_enemy_killed_bloodlust(_enemy: CharacterBody2D) -> void:
+	if GameManager.run_state == null:
+		return
+	var stacks := GameManager.run_state.get_stack_count("s11_bloodlust")
+	if stacks == 0:
+		return
+	GameManager.run_state.bloodlust_stacks = stacks
+	GameManager.run_state.bloodlust_timer = 3.0
+
+
+func get_bloodlust_damage_mult() -> float:
+	if GameManager.run_state == null:
+		return 1.0
+	if GameManager.run_state.bloodlust_timer <= 0.0:
+		return 1.0
+	var effective_stacks := mini(GameManager.run_state.bloodlust_stacks, 3)
+	if effective_stacks <= 0:
+		return 1.0
+	var bonus := 0.0
+	for i in range(effective_stacks):
+		if i < 2:
+			bonus += 0.10
+		else:
+			bonus += 0.05  # 50% of 0.10
+	return 1.0 + bonus
+
+
+# ---------------------------------------------------------------------------
+# Attack / Combat
+# ---------------------------------------------------------------------------
 
 func _attack() -> void:
 	var weapon: WeaponData = weapon_manager.get_active_weapon()
@@ -185,7 +310,7 @@ func _try_pickup() -> void:
 func _die() -> void:
 	_is_dead = true
 	velocity = Vector2.ZERO
-	AudioManager.SFXPlayer.play_sfx("player_death", 5.0)
+	AudioManager.SFXPlayer.play_sfx("playerDeath", 5.0)
 	# Trigger capture sequence after brief delay
 	get_tree().create_timer(0.5).timeout.connect(func():
 		GameManager.handle_player_death()
@@ -227,3 +352,11 @@ func _on_hurtbox_hit(hit_area: Area2D) -> void:
 func _on_weapon_changed(slot: int, _weapon: Resource) -> void:
 	# Visual update for weapon slots
 	pass
+
+
+func _show_pause_menu() -> void:
+	if _pause_menu_instance != null and is_instance_valid(_pause_menu_instance):
+		return
+	var pause_scene := preload("res://scenes/ui/pause_menu.tscn")
+	_pause_menu_instance = pause_scene.instantiate()
+	get_tree().current_scene.add_child(_pause_menu_instance)

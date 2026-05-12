@@ -1,0 +1,19 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a7_ring_of_wrath"
+display_name = "Ring of Wrath"
+description = "+60% damage to full-HP enemies, but -40% damage to already damaged enemies."
+flavor_text = "Гнев слеп ко слабым. Он жаждет целых."
+rarity = 2
+stat_mods = {
+"full_hp_enemy_damage_mult": 0.60,
+"damaged_enemy_damage_mult": -0.40
+}
+trigger = "on_hit_dealt"
+trade_off_text = "40% less damage to enemies that are already wounded."
+unlock_condition = ""
+visual_id = "ring_of_wrath_crimson_band"

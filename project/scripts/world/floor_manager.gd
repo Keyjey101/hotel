@@ -57,6 +57,40 @@ const ENEMY_SCENES: Dictionary = {
 func _ready() -> void:
 	EventBus.room_cleared.connect(_on_event_bus_room_cleared)
 
+	# Auto-load floor if GameManager has a run active
+	if GameManager.seed_manager and GameManager.current_state == GameManager.GameState.PLAYING:
+		load_floor(floor_number, GameManager.seed_manager)
+
+	# Spawn player at PlayerSpawn marker
+	var spawn_node := get_node_or_null("PlayerSpawn")
+	if spawn_node != null:
+		spawn_player(spawn_node.global_position)
+
+	# Register camera in group for follow system
+	var cam := get_node_or_null("Camera")
+	if cam:
+		cam.add_to_group("camera")
+
+	# Show tutorial on first run, Floor 1
+	if floor_number == 1:
+		var settings := SaveManager.get_settings()
+		if not settings.get("tutorial_shown", false):
+			_show_tutorial()
+
+
+func spawn_player(spawn_pos: Vector2) -> void:
+	# Don't spawn if player already exists (e.g. scene reload)
+	if get_tree().get_first_node_in_group("player") != null:
+		return
+
+	var player_scene := preload("res://scenes/player/player.tscn")
+	var player := player_scene.instantiate()
+	player.add_to_group("player")
+	player.global_position = spawn_pos
+	# Add as child of Floor root, not inside Rooms
+	add_child(player)
+	print("[FloorManager] Player spawned at %s" % spawn_pos)
+
 
 func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 	floor_number = floor_num
@@ -425,3 +459,9 @@ func _check_clear_progress(rid: String) -> void:
 		EventBus.mini_boss_defeated.emit(floor_number)
 		EventBus.floor_completed.emit(floor_number)
 		print("[FloorManager] Floor %d complete!" % floor_number)
+
+
+func _show_tutorial() -> void:
+	var tutorial_scene := preload("res://scenes/ui/tutorial_overlay.tscn")
+	var tutorial := tutorial_scene.instantiate()
+	add_child(tutorial)

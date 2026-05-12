@@ -201,6 +201,37 @@ static func _spawn_key(room: RoomInstance, pos: Vector2) -> void:
 	room.add_child(pickup)
 
 
+## Spawn an artifact pickup in a room using the ArtifactRegistry.
+static func spawn_artifact_pickup(room: RoomInstance, rarity_weights: Dictionary = {}) -> void:
+	if ArtifactRegistry == null:
+		return
+	var pos := Vector2(room.room_bounds.size.x * 0.5, room.room_bounds.size.y * 0.5)
+	if room.loot_zones.size() > 0:
+		pos = room.loot_zones[0].position
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(room.room_id) + 777
+	var weights := rarity_weights if not rarity_weights.is_empty() else {1: 0.3, 2: 0.5, 3: 0.2}
+	var art: CultArtifact = ArtifactRegistry.get_random_artifact(weights, rng)
+	if art == null:
+		return
+	var pickup := _create_pickup_node({"type": "cult_artifact", "id": art.id}, pos)
+	room.add_child(pickup)
+
+
+## Spawn a specific stat upgrade pickup in a room.
+static func spawn_upgrade_pickup(room: RoomInstance, upgrade_id: String) -> void:
+	if UpgradeRegistry == null:
+		return
+	var upg: StatUpgrade = UpgradeRegistry.get_upgrade(upgrade_id)
+	if upg == null:
+		return
+	var pos := Vector2(room.room_bounds.size.x * 0.5, room.room_bounds.size.y * 0.5)
+	if room.loot_zones.size() > 0:
+		pos = room.loot_zones[0].position
+	var pickup := _create_pickup_node({"type": "stat_upgrade", "id": upgrade_id}, pos)
+	room.add_child(pickup)
+
+
 ## Boss room: 1 cult artifact.
 static func _spawn_boss_loot(room: RoomInstance, floor_number: int, seed_mgr: SeedManager) -> void:
 	var pos := Vector2(room.room_bounds.size.x * 0.5, room.room_bounds.size.y * 0.5)

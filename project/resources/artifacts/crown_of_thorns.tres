@@ -1,0 +1,21 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/cult_artifact.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "a11_crown_of_thorns"
+display_name = "Crown of Thorns"
+description = "+1 weapon slot and +15% attack speed, but +30% damage taken and blood pools deal 3 damage."
+flavor_text = "Корона тяжела. Шипы — тяжелее."
+rarity = 3
+stat_mods = {
+"max_weapon_slots": 1,
+"attack_speed_mult": 0.15,
+"damage_taken_mult": 0.30,
+"blood_pool_dmg": 3.0
+}
+trigger = "passive"
+trade_off_text = "Take 30% more damage; blood pools deal 3 damage on contact."
+unlock_condition = "clear basement under 30 seconds"
+visual_id = "crown_of_thorns_thorned_halo"

@@ -18,7 +18,7 @@
 | M5: Vertical Slice | Floor 1 polished, all systems integrated | ✅ Завершён |
 | M6: Content (Floor 2-3) | Floor 2 (Lust) + Floor 3 (Gluttony) enemies + bosses | ✅ Завершён |
 | M7: Full Game (Floor 4-9) | All 9 floors, 18 enemy types, 10 bosses, endings | ✅ Завершён |
-| M8: Polish | Audio, SFX, VFX, balance, final verification | 🔄 В процессе (M8.4 — финальный аудит) |
+| M8: Polish | Audio, SFX, VFX, balance, final verification | 🔄 В процессе (test refactoring — string-find → behavioral) |
 
 ---
 
@@ -105,9 +105,9 @@
 │   ├── improvised_wire.tres                # ✅ Garrote + tangle
 │   └── improvised_cult_relic.tres           # ✅ Single-use nuke
 │
-├── scripts/tests/ (22 suites, ~566 tests)
+├── scripts/tests/ (27 suites)
 │   ├── test_runner.gd                      # ✅ Lightweight test framework
-│   ├── test_base.gd                        # ✅ Assertion library
+│   ├── test_base.gd                        # ✅ Assertion library + autoqfree + async helpers
 │   ├── test_run_state.gd                   # ✅ Run state + upgrades
 │   ├── test_seed_manager.gd                # ✅ Deterministic RNG
 │   ├── test_damage_zone.gd                 # ✅ Zone system
@@ -126,11 +126,15 @@
 │   ├── test_endings.gd                     # ✅ 4 endings
 │   ├── test_object_pool.gd                 # ✅ VFX pooling
 │   ├── test_screen_effects.gd              # ✅ Screen effects
-│   ├── test_m81_integration.gd             # ✅ M8.1 integration
+│   ├── test_m81_integration.gd             # 🔄 поведение не верифицировано (string-find удалены)
+│   ├── test_m81_behavioral.gd              # ✅ Behavioral replacement for M8.1
 │   ├── test_audio_manager.gd               # ✅ Audio system
-│   ├── test_sfx_integration.gd             # ✅ SFX hooks
-│   ├── test_stubs_completion.gd            # ✅ Stub verification
-│   └── test_balance_audit.gd               # ✅ M8.4: Balance code vs docs audit
+│   ├── test_sfx_integration.gd             # ✅ SFX hooks (behavioral only)
+│   ├── test_sfx_behavioral.gd              # ✅ Behavioral SFX verification
+│   ├── test_balance_audit.gd               # ✅ M8.4: Weapon data + loot weights
+│   ├── test_enemy_stats_behavioral.gd      # ✅ Enemy stat verification via scene instances
+│   ├── test_boot_smoke.gd                  # 🔄 поведение не верифицировано (needs scene tree)
+│   └── test_full_run_dry.gd                # 🔄 поведение не верифицировано (needs full game loop)
 │
 └── scenes/
     ├── core/game.tscn                      # ✅ Main game scene
@@ -152,7 +156,7 @@
 | Collision layers | 8: player_hurt/hit, enemy_hurt/hit, weapon, projectile, env, throwable |
 | Autoloads | GameManager, EventBus, SaveManager, AudioManager, GoreSystem, ScreenEffects |
 | Ввод | WASD + mouse (attack=ЛКМ, throw=ПКМ, interact=E, switch=Q) |
-| Тестирование | Собственный lightweight фреймворк, 22 suites, ~566 тестов |
+| Тестирование | Собственный lightweight фреймворк, 27 suites, 0 string-find тестов |
 
 ---
 
@@ -194,4 +198,4 @@ cd /home/kj/hotel/project
 godot --headless --scene scenes/test/test_runner.tscn
 ```
 
-Критерий: exit code 0. Все 566 тестов pass.
+Критерий: exit code 0. Все тесты behavioral (0 string-find).

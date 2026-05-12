@@ -289,7 +289,7 @@ func _perform_attack() -> void:
 	if _target == null:
 		return
 	_attack_cooldown = 1.0 / attack_speed
-	EventBus.enemy_damaged.emit(self, 0, 0)
+	_deal_melee_damage_to_player()
 
 
 func get_enemy_type() -> String:

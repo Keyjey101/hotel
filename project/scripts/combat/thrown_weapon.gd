@@ -116,6 +116,7 @@ func _on_body_entered(body: Node2D) -> void:
 		# Shatter for bottle
 		if _weapon.throw_effect == "shatter" or _weapon.name == "Bottle":
 			AudioManager.SFXPlayer.play_sfx("weapon_shatter")
+			_create_shatter_zone()
 			_return_to_pool()
 			return
 
@@ -153,6 +154,7 @@ func _apply_throw_effect(target: Node2D) -> void:
 			linear_velocity = linear_velocity.rotated(randf_range(-0.5, 0.5)) * 0.6
 		"shatter":
 			AudioManager.SFXPlayer.play_sfx("weapon_shatter")
+			_create_shatter_zone()
 			_return_to_pool()
 		"discharge":
 			if randf() < _weapon.throw_effect_chance:

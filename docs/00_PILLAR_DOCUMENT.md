@@ -94,7 +94,7 @@ RUN START (Floor 1)
 | Player Character | Жертва, спасающая сестру, мачете + обрез | Emotional anchor + visual contrast |
 | Combat Pacing | Гибрид: tight rooms + corridor chase | Natural tension arc |
 | Immortal Enemies | Real-time регенерация в бою | Core uniqueness |
-| Damage Model | 5 зон: голова, 2 руки, 2 ноги (торс = HP) | Granular but manageable |
+| Damage Model | 6 зон: голова, 2 руки, 2 ноги, торс | Granular but manageable |
 | Mutilation Impact | Снижение threat + покупка времени | Tactical, не spatial |
 | Weapons | 15 типов, все throwable, разные эффекты | Weapon economy как skill |
 | Failure State | Capture -> basement escape -> lose run | Thematic + mechanical |
@@ -140,13 +140,13 @@ RUN START (Floor 1)
 | Element | Count |
 |---------|-------|
 | Floors | 9 (handcrafted) |
-| Rooms per floor | 10-15 |
-| Total rooms | ~100-135 |
-| Enemy types | 15-20 |
+| Rooms per floor | 8-11 |
+| Total rooms | 88 |
+| Enemy types | 21 |
 | Weapon types | 15 |
-| Mini-bosses | 9 (mix: enhanced + unique) |
-| Upgrades (stats) | ~8-10 |
-| Cult artifacts | ~10-12 |
+| Mini-bosses | 10 (Sister + Satan = 2 on Floor 9) |
+| Upgrades (stats) | 11 (S1–S11) |
+| Cult artifacts | 12 (A1–A12) |
 | Basement layout | 1 (shared) |
 
 ---

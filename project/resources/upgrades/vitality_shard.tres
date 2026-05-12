@@ -1,0 +1,18 @@
+[gd_resource load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/stat_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "s1_vitality_shard"
+display_name = "Vitality Shard"
+description = "+25 Max HP"
+stat_key = "max_hp"
+delta = 25.0
+type = "additive"
+max_stacks = 3
+diminishing_3rd = 0.5
+spawn_weight = 8
+spawn_floors = "1-9"
+visual_id = "vitality_shard_red_crystal"
+behavioral_id = ""

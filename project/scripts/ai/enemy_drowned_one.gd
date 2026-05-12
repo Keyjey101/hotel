@@ -255,4 +255,4 @@ func _perform_attack() -> void:
 		_perform_grapple()
 	else:
 		# Weak land melee
-		EventBus.enemy_damaged.emit(self, 0, 0)  # placeholder attack event
+		_deal_melee_damage_to_player()
