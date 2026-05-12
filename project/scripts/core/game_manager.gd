@@ -102,6 +102,9 @@ func transition_to_floor(floor_number: int) -> void:
 	floor_exited.emit(current_floor)
 	current_floor = floor_number
 	run_state.current_floor = floor_number
+	# Reset bloodlust timer between floors (doesn't carry over)
+	run_state.bloodlust_timer = 0.0
+	run_state.bloodlust_stacks = 0
 	floor_entered.emit(floor_number)
 
 	# Check unlock conditions for reaching this floor
@@ -160,7 +163,7 @@ func handle_basement_failure() -> void:
 
 func handle_floor_completed(floor_num: int) -> void:
 	if floor_num >= 9:
-		handle_victory()
+		handle_final_boss_defeated()
 		return
 	# Transition to next floor
 	transition_to_floor(floor_num + 1)
@@ -188,8 +191,13 @@ func handle_victory() -> void:
 	_commit_run_end(ending_id)
 	SaveManager.update_records(current_floor, run_state.get_run_time())
 	SaveManager.delete_run()
-	get_tree().change_scene_to_file("res://scenes/ui/demo_complete.tscn")
-	print("[GameManager] Victory!")
+	# Load ending scene or fallback to demo_complete
+	var scene_path := "res://scenes/endings/ending_%s.tscn" % ending_id
+	if ResourceLoader.exists(scene_path):
+		get_tree().change_scene_to_file(scene_path)
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/demo_complete.tscn")
+	print("[GameManager] Victory! Ending: %s" % ending_id)
 
 
 func trigger_ending(ending_id: String) -> void:
@@ -223,6 +231,8 @@ func handle_final_boss_defeated() -> void:
 
 func restart_run() -> void:
 	# Clear run state (pending unlocks are DISCARDED — no free unlocks)
+	# Ensure game is unpaused before returning to title
+	get_tree().paused = false
 	current_state = GameState.MENU
 	current_floor = 1
 	run_state = null

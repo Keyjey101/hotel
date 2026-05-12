@@ -605,34 +605,12 @@ func _show_final_offer() -> void:
 	_show_dialogue_text("Join the board. End this.", 3.0)
 	await get_tree().create_timer(3.0).timeout
 
-	# Show choice
-	var label1 := Label.new()
-	label1.text = "[1] ACCEPT — Join the board"
-	label1.position = Vector2(80, 140)
-	label1.add_theme_font_size_override("font_size", 8)
-	label1.add_theme_color_override("font_color", Color(0.9, 0.8, 0.3))
-	label1.z_index = 100
-	get_tree().current_scene.add_child(label1)
-
-	var label2 := Label.new()
-	label2.text = "[2] REJECT — Continue the fight"
-	label2.position = Vector2(80, 160)
-	label2.add_theme_font_size_override("font_size", 8)
-	label2.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
-	label2.z_index = 100
-	get_tree().current_scene.add_child(label2)
-
 	# Show dialog choice UI and await signal
 	var dialog_scene := preload("res://scenes/ui/dialog_choice.tscn")
 	var dialog := dialog_scene.instantiate()
 	dialog.setup("Join the board. End this.", "[1] ACCEPT", "[2] REJECT", "accept", "reject")
 	dialog.z_index = 100
 	get_tree().current_scene.add_child(dialog)
-
-	if is_instance_valid(label1):
-		label1.queue_free()
-	if is_instance_valid(label2):
-		label2.queue_free()
 
 	var choice := await EventBus.dialog_choice_made
 	match choice:

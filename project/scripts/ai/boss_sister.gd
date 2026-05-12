@@ -520,8 +520,10 @@ func _trigger_ending(ending_id: String) -> void:
 	if ending_id in ["c", "d"]:
 		GameManager.trigger_ending(ending_id)
 	else:
-		# A/B proceed to Satan fight
-		GameManager.handle_floor_completed(9)
+		# A/B proceed to Satan fight — don't call handle_floor_completed
+		# as that skips straight to victory. FloorManager will unlock Satan's room
+		# via the mini_boss_defeated signal emitted above.
+		print("[BossSister] Ending %s — proceeding to Satan fight" % ending_id)
 
 
 # ---------------------------------------------------------------------------

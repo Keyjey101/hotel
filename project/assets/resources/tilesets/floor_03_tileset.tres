@@ -1,0 +1,84 @@
+[gd_resource type="TileSet" format=3]
+
+[resource]
+tile_size = Vector2i(32, 32)
+rendering_uv_flip_texture = false
+physics_layer_0/collision_layer = 128
+terrain_set_0/mode = 0
+terrain_set_0/terrain_0/name = "wall"
+terrain_set_0/terrain_0/color = Color(0.5, 0.5, 0.5, 1)
+terrain_set_0/terrain_1/name = "floor"
+terrain_set_0/terrain_1/color = Color(0.3, 0.6, 0.3, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_floor.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_wall.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_2"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_corner_ne.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_corner_nw.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_4"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_corner_se.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_5"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_corner_sw.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_6"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_door_closed_h.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_door_closed_v.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_8"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_door_open_h.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_9"]
+texture = ExtResource("res://assets/sprites/tiles/floor_03/tile_door_open_v.png")
+texture_region_size = Vector2i(32, 32)
+0:0/0 = 0
+
+sources/0 = SubResource("TileSetAtlasSource_0")
+sources/1 = SubResource("TileSetAtlasSource_1")
+sources/2 = SubResource("TileSetAtlasSource_2")
+sources/3 = SubResource("TileSetAtlasSource_3")
+sources/4 = SubResource("TileSetAtlasSource_4")
+sources/5 = SubResource("TileSetAtlasSource_5")
+sources/6 = SubResource("TileSetAtlasSource_6")
+sources/7 = SubResource("TileSetAtlasSource_7")
+sources/8 = SubResource("TileSetAtlasSource_8")
+sources/9 = SubResource("TileSetAtlasSource_9")

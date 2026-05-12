@@ -7,6 +7,10 @@ extends Control
 @onready var _option2: Button = %Option2Button
 
 
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+
+
 func setup(text: String, option1_text: String, option2_text: String, choice1: String, choice2: String) -> void:
 	_label.text = text
 	_option1.text = option1_text

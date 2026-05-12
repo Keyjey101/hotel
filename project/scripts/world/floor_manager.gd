@@ -61,15 +61,17 @@ func _ready() -> void:
 	if GameManager.seed_manager and GameManager.current_state == GameManager.GameState.PLAYING:
 		load_floor(floor_number, GameManager.seed_manager)
 
+	# Register camera BEFORE spawning player (player._ready looks for camera group)
+	var cam := get_node_or_null("Camera")
+	if cam:
+		cam.add_to_group("camera")
+		if cam is Camera2D:
+			cam.make_current()
+
 	# Spawn player at PlayerSpawn marker
 	var spawn_node := get_node_or_null("PlayerSpawn")
 	if spawn_node != null:
 		spawn_player(spawn_node.global_position)
-
-	# Register camera in group for follow system
-	var cam := get_node_or_null("Camera")
-	if cam:
-		cam.add_to_group("camera")
 
 	# Show tutorial on first run, Floor 1
 	if floor_number == 1:
@@ -440,7 +442,7 @@ func _check_clear_progress(rid: String) -> void:
 	# Check if all non-boss rooms are cleared → unlock boss
 	var all_cleared := true
 	for rid_check in rooms:
-		if rid_check == "boss":
+		if rid_check.begins_with("boss"):
 			continue
 		var r: RoomInstance = rooms[rid_check]
 		if not r.is_cleared:
@@ -450,12 +452,22 @@ func _check_clear_progress(rid: String) -> void:
 	if all_cleared and not _boss_unlocked:
 		_boss_unlocked = true
 		AudioManager.SFXPlayer.play_sfx("boss_unlock")
+		# Unlock first boss room (boss or boss1)
 		if rooms.has("boss"):
 			rooms["boss"].process_mode = Node.PROCESS_MODE_INHERIT
-			print("[FloorManager] Boss room unlocked!")
+		elif rooms.has("boss1"):
+			rooms["boss1"].process_mode = Node.PROCESS_MODE_INHERIT
+		print("[FloorManager] Boss room unlocked!")
 
-	# Boss room cleared → floor complete
-	if rid == "boss":
+	# Floor 9: boss1 (Sister) cleared → unlock boss2 (Satan), not floor complete yet
+	if rid == "boss1" and rooms.has("boss2"):
+		EventBus.mini_boss_defeated.emit(floor_number)
+		rooms["boss2"].process_mode = Node.PROCESS_MODE_INHERIT
+		print("[FloorManager] Sister defeated. Satan's Sanctum unlocked!")
+		return
+
+	# Final boss room cleared → floor complete
+	if rid == "boss" or (rid == "boss2"):
 		EventBus.mini_boss_defeated.emit(floor_number)
 		EventBus.floor_completed.emit(floor_number)
 		print("[FloorManager] Floor %d complete!" % floor_number)
