@@ -9,7 +9,6 @@ extends "res://scripts/ai/base_enemy.gd"
 var _phase: int = 1
 var _phase_hp_thresholds: Array[float] = [1.0, 0.0, 0.0]  # Set in _ready
 var _max_phase_hp: float = 400.0
-var _total_hp_lost: float = 0.0
 
 # Phase HP pools (simplified: single HP bar, phase transitions at thresholds)
 var _phase_1_hp: float = 400.0
@@ -43,6 +42,8 @@ var _collapse_radius: float = 200.0
 
 # ── Final offer ──
 var _final_offer_shown: bool = false
+var _offer_state: String = ""
+var _offer_timer: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _final_choice_made: bool = false
 var _dialogue_label: Label = null
@@ -161,6 +162,10 @@ func _physics_process(delta: float) -> void:
 	# Phase-specific behaviors
 	_process_phase_behaviors(delta)
 
+	# Process offer state machine
+	if _offer_state != "":
+		_process_offer_state(delta)
+
 	# Normal state processing
 	_process_state(delta)
 	_process_regen(delta)
@@ -176,12 +181,12 @@ func _physics_process(delta: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _update_phase() -> void:
-	var total := _phase_1_hp + _phase_2_hp + _phase_3_hp
-	var lost_pct := _total_hp_lost / total
+	var current_hp := limb_health[DamageZone.Zone.TORSO]
+	var hp_pct := current_hp / _max_phase_hp
 	var new_phase: int
-	if lost_pct < 0.34:
+	if hp_pct > 0.66:
 		new_phase = 1
-	elif lost_pct < 0.67:
+	elif hp_pct > 0.33:
 		new_phase = 2
 	else:
 		new_phase = 3
@@ -599,25 +604,9 @@ func _move_projectile(bolt: Area2D) -> void:
 func _show_final_offer() -> void:
 	_final_offer_shown = true
 	velocity = Vector2.ZERO
-
+	_offer_state = "showing_text"
+	_offer_timer = 3.0
 	_show_dialogue_text("Join the board. End this.", 3.0)
-	await get_tree().create_timer(3.0).timeout
-
-	# Show dialog choice UI and await signal
-	var dialog_scene := preload("res://scenes/ui/dialog_choice.tscn")
-	var dialog := dialog_scene.instantiate()
-	dialog.setup("Join the board. End this.", "[1] ACCEPT", "[2] REJECT", "accept", "reject")
-	dialog.z_index = 100
-	get_tree().current_scene.add_child(dialog)
-
-	var choice := await EventBus.dialog_choice_made
-	if is_instance_valid(dialog):
-		dialog.queue_free()
-	match choice:
-		"accept":
-			_on_accept_deal()
-		"reject":
-			_on_reject_deal()
 
 
 func _on_accept_deal() -> void:
@@ -628,6 +617,34 @@ func _on_accept_deal() -> void:
 func _on_reject_deal() -> void:
 	# Continue fighting
 	_show_dialogue_text("Disappointing.", 1.0)
+
+
+func _process_offer_state(delta: float) -> void:
+	match _offer_state:
+		"showing_text":
+			_offer_timer -= delta
+			if _offer_timer <= 0.0:
+				_offer_state = "showing_dialog"
+				var dialog_scene := preload("res://scenes/ui/dialog_choice.tscn")
+				var dialog := dialog_scene.instantiate()
+				dialog.setup("Join the board. End this.", "[1] ACCEPT", "[2] REJECT", "accept", "reject")
+				dialog.z_index = 100
+				get_tree().current_scene.add_child(dialog)
+				if not EventBus.dialog_choice_made.is_connected(_on_dialog_choice):
+					EventBus.dialog_choice_made.connect(_on_dialog_choice)
+		"showing_dialog":
+			pass  # Waiting for signal
+
+
+func _on_dialog_choice(choice: String) -> void:
+	if EventBus.dialog_choice_made.is_connected(_on_dialog_choice):
+		EventBus.dialog_choice_made.disconnect(_on_dialog_choice)
+	_offer_state = ""
+	match choice:
+		"accept":
+			_on_accept_deal()
+		"reject":
+			_on_reject_deal()
 
 
 # ---------------------------------------------------------------------------
@@ -751,11 +768,12 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 
 	# Drop stolen weapon on hit
 	if _stolen_weapon != null and randf() < 0.5:
-		if _stolen_weapon is Resource:
-			EventBus.weapon_dropped.emit(_stolen_weapon)
-		_stolen_weapon = null
+		# Check if damage likely from player (has knockback)
+		if knockback_force > 0.0:
+			if _stolen_weapon is Resource:
+				EventBus.weapon_dropped.emit(_stolen_weapon)
+			_stolen_weapon = null
 
-	_total_hp_lost += damage
 	super.receive_damage(damage, zone, sever, knockback_force, knockback_dir)
 
 

@@ -42,4 +42,4 @@ func show_toast(message: String) -> void:
 	tween.tween_property(panel, "modulate:a", 1.0, 0.3)
 	tween.tween_interval(TOAST_DURATION)
 	tween.tween_property(panel, "modulate:a", 0.0, 0.5)
-	tween.tween_callback(queue_free)
+	tween.tween_callback(panel.queue_free)

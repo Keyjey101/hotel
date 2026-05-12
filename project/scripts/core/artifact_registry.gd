@@ -24,7 +24,7 @@ func _load_artifacts_from_dir(dir_path: String) -> void:
 		if file_name.ends_with(".tres"):
 			var full_path := dir_path + file_name
 			var res := load(full_path)
-			if res and res is Resource:
+			if res and res is CultArtifact:
 				_artifacts[res.id] = res
 				_all_artifacts.append(res)
 		file_name = dir.get_next()
@@ -61,8 +61,8 @@ func get_random_artifact(rarity_weights: Dictionary, rng: RandomNumberGenerator)
 		if _all_artifacts.is_empty():
 			return null
 		if unlocked_ids.size() < 3:
-			# Use full pool as fallback
-			candidates = _all_artifacts.duplicate()
+			# Use only unlocked artifacts as fallback
+			candidates = _all_artifacts.filter(func(art): return unlocked_ids.has(art.id))
 			weights.clear()
 			for art in candidates:
 				var rarity: int = art.rarity

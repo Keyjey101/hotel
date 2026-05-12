@@ -79,7 +79,6 @@ func _state_chase(delta: float) -> void:
 
 	# Direct movement, no navigation noise
 	velocity = direction * move_speed
-	move_and_slide()
 
 
 func _state_engage(delta: float) -> void:

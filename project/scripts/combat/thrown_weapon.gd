@@ -10,6 +10,7 @@ var _damage_mult: float = 1.0
 var _has_hit: bool = false
 var _despawn_time: float = 10.0
 var _throw_origin: Vector2 = Vector2.ZERO
+var _return_timer: SceneTreeTimer = null
 
 
 func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0) -> void:
@@ -78,13 +79,18 @@ func _on_body_entered(body: Node2D) -> void:
 
 		# Apply throw effect
 		_apply_throw_effect(body)
+		if not visible:
+			return
 
 		# Stop or slow down
 		linear_velocity *= 0.2
 		angular_velocity *= 0.3
 
 		# Despawn after hit
-		get_tree().create_timer(3.0).timeout.connect(_return_to_pool)
+		if _return_timer and is_instance_valid(_return_timer):
+			_return_timer.timeout.disconnect(_return_to_pool)
+		_return_timer = get_tree().create_timer(3.0)
+		_return_timer.timeout.connect(_return_to_pool)
 
 	elif body is StaticBody2D or body is TileMapLayer:
 		# Hit environment
@@ -103,13 +109,16 @@ func _on_body_entered(body: Node2D) -> void:
 			_has_hit = false  # Can hit again
 
 		# Shatter for bottle
-		if _weapon.throw_effect == "shatter" or _weapon.name == "Bottle":
+		if _weapon.throw_effect == "shatter" or _weapon.weapon_id == "bottle":
 			AudioManager.SFXPlayer.play_sfx("weapon_shatter")
 			_create_shatter_zone()
 			_return_to_pool()
 			return
 
-		get_tree().create_timer(5.0).timeout.connect(_return_to_pool)
+		if _return_timer and is_instance_valid(_return_timer):
+			_return_timer.timeout.disconnect(_return_to_pool)
+		_return_timer = get_tree().create_timer(5.0)
+		_return_timer.timeout.connect(_return_to_pool)
 
 
 
@@ -203,8 +212,13 @@ func _apply_pin(target: Node2D) -> void:
 		position = offset
 		set_physics_process(false)
 		freeze = true
+		# Return to pool if target is freed while weapon is pinned
+		target.tree_exiting.connect(_return_to_pool)
 		# Fall off after 3 seconds
-		get_tree().create_timer(3.0).timeout.connect(_return_to_pool)
+		if _return_timer and is_instance_valid(_return_timer):
+			_return_timer.timeout.disconnect(_return_to_pool)
+		_return_timer = get_tree().create_timer(3.0)
+		_return_timer.timeout.connect(_return_to_pool)
 	else:
 		# Pin to wall/static — just stick
 		linear_velocity = Vector2.ZERO
@@ -220,6 +234,8 @@ func _apply_embed(target: Node2D) -> void:
 		position = offset
 		set_physics_process(false)
 		freeze = true
+		# Return to pool if target is freed while weapon is embedded
+		target.tree_exiting.connect(_return_to_pool)
 		# Apply 40% slow (0.6x speed) for 7 seconds
 		if "move_speed" in target:
 			if not target.has_meta("_original_speed"):
@@ -254,12 +270,14 @@ func _apply_demoralize() -> void:
 		var dist := global_position.distance_to(enemy.global_position)
 		if dist <= radius:
 			if "aggression" in enemy:
-				enemy.aggression = maxf(0.0, enemy.aggression - 3.0)
+				var delta_agro := mini(3.0, enemy.aggression)
+				enemy.aggression = maxf(0.0, enemy.aggression - delta_agro)
 				# Restore after 5 seconds
 				var enemy_ref := enemy
+				var captured_delta := delta_agro
 				get_tree().create_timer(5.0).timeout.connect(func():
 					if is_instance_valid(enemy_ref) and "aggression" in enemy_ref:
-						enemy_ref.aggression += 3.0
+						enemy_ref.aggression += captured_delta
 				)
 	# Visual: expanding red ring
 	var ring := ColorRect.new()
@@ -292,9 +310,12 @@ func _apply_tangle(target: Node2D) -> void:
 			)
 	# Visual: wire line from throw origin to target (fades)
 	var wire := ColorRect.new()
-	wire.size = Vector2(global_position.distance_to(_throw_origin), 2)
+	var wire_direction := _throw_origin.direction_to(global_position)
+	var wire_length := global_position.distance_to(_throw_origin)
+	wire.size = Vector2(wire_length, 2)
 	wire.color = Color(0.5, 0.5, 0.5)  # #808080
 	wire.global_position = _throw_origin
+	wire.rotation = wire_direction.angle()
 	wire.z_index = 5
 	get_tree().current_scene.add_child(wire)
 	var tween := wire.create_tween()
@@ -364,7 +385,7 @@ func _apply_reality_tear() -> void:
 	tween.set_parallel(false)
 	tween.tween_callback(circle.queue_free)
 	# Single use: destroy relic
-	queue_free()
+	_return_to_pool()
 
 
 func _discharge() -> void:
@@ -389,7 +410,17 @@ func _discharge() -> void:
 		proj.setup(fake_weapon, dir, _damage_mult, false)
 		proj.global_position = global_position
 		get_tree().current_scene.add_child(proj)
+		# NOTE: These projectiles bypass the object pool (uses direct instantiate).
+		# They auto-free via SceneTreeTimer or projectile lifetime. Ensure cleanup
+		# via queue_free() fallback if no parent pool claims them.
+		var _fw_ref := fake_weapon  # capture for lambda validity check
 		proj.hit.connect(func(target: Node2D, zone: int):
+			if not is_instance_valid(self):
+				return
+			if not is_instance_valid(target):
+				return
+			if not is_instance_valid(_fw_ref):
+				return
 			if target.has_method("receive_damage"):
-				target.receive_damage(fake_weapon.damage * _damage_mult, zone, false, 10.0, dir)
+				target.receive_damage(_fw_ref.damage * _damage_mult, zone, false, 10.0, dir)
 		)

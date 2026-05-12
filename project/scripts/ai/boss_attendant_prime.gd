@@ -27,6 +27,7 @@ var _sedative_touch_timer: float = 0.0
 var _grab_cooldown: float = 10.0
 var _is_grabbing: bool = false
 var _grab_timer: float = 0.0
+var _is_blasting: bool = false
 
 # Mutilation
 var _arms_lost: int = 0
@@ -124,6 +125,8 @@ func _on_phase_changed() -> void:
 
 
 func _process_fog_healing(delta: float) -> void:
+	if _disabled:
+		return
 	if is_in_fog and limb_health[DamageZone.Zone.TORSO] < _max_torso_hp:
 		limb_health[DamageZone.Zone.TORSO] = minf(
 			limb_health[DamageZone.Zone.TORSO] + fog_heal_rate * delta,
@@ -259,11 +262,15 @@ func _perform_sedative_touch() -> void:
 # ---------------------------------------------------------------------------
 
 func _perform_steam_blast() -> void:
+	if _is_blasting:
+		return
 	if _target == null or not is_instance_valid(_target):
 		return
 	var dist := global_position.distance_to(_target.global_position)
 	if dist > 200.0:
 		return
+
+	_is_blasting = true
 
 	# Telegraph: brief fog ripple visual
 	var telegraph := ColorRect.new()
@@ -278,6 +285,7 @@ func _perform_steam_blast() -> void:
 		telegraph.queue_free()
 
 	if not is_instance_valid(self):
+		_is_blasting = false
 		return
 
 	# AoE damage + stun
@@ -295,6 +303,7 @@ func _perform_steam_blast() -> void:
 	zone.zone_radius = 60.0
 	zone.global_position = global_position
 	get_tree().current_scene.add_child(zone)
+	_is_blasting = false
 
 
 # ---------------------------------------------------------------------------
@@ -421,3 +430,20 @@ func _on_limb_lost(zone: int) -> void:
 		# Slower but still moves in fog
 		if not is_in_fog:
 			move_speed = _initial_move_speed * 0.5
+
+
+# ---------------------------------------------------------------------------
+# Death override — clean up toxic fog hazard zones
+# ---------------------------------------------------------------------------
+
+func _disable_enemy() -> void:
+	# Clean up all fog patches and their toxic hazard children
+	for patch in fog_patches:
+		if is_instance_valid(patch):
+			patch.queue_free()
+	fog_patches.clear()
+	for valve in steam_valves:
+		if is_instance_valid(valve):
+			valve.queue_free()
+	steam_valves.clear()
+	super._disable_enemy()

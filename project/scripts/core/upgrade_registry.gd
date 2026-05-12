@@ -24,7 +24,7 @@ func _load_upgrades_from_dir(dir_path: String) -> void:
 		if file_name.ends_with(".tres"):
 			var full_path := dir_path + file_name
 			var res := load(full_path)
-			if res and res is Resource:
+			if res and res is StatUpgrade:
 				_upgrades[res.id] = res
 				_all_upgrades.append(res)
 		file_name = dir.get_next()
@@ -70,7 +70,7 @@ func get_random_upgrade_for_floor(floor_number: int, rng: RandomNumberGenerator)
 	return candidates[-1]
 
 
-func _is_available_on_floor(upg: Resource, floor_number: int) -> bool:
+func _is_available_on_floor(upg: StatUpgrade, floor_number: int) -> bool:
 	var floors_str: String = upg.spawn_floors
 	if floors_str == "1-9":
 		return true

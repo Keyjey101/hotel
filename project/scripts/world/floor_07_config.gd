@@ -20,7 +20,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "Telescope Gallery",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(10, 6),
-		"size_px": Vector2i(10 * TILE, 6 * TILE),
+		"size_px": Vector2(10 * TILE, 6 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [{"type": "spy", "count": 1}],
@@ -39,7 +39,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "Star Map Corridor",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(12, 4),
-		"size_px": Vector2i(12 * TILE, 4 * TILE),
+		"size_px": Vector2(12 * TILE, 4 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [{"type": "shadow_stalker", "count": 1}],
@@ -58,7 +58,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "The Library",
 		"room_type": "hub",
 		"size_tiles": Vector2i(14, 12),
-		"size_px": Vector2i(14 * TILE, 12 * TILE),
+		"size_px": Vector2(14 * TILE, 12 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [
@@ -70,7 +70,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(14 * TILE, 12 * TILE), 12),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(14 * TILE, 12 * TILE), 2),
 		"door_positions": RoomConfig._gen_doors(
-			Vector2i(14 * TILE, 12 * TILE),
+			Vector2(14 * TILE, 12 * TILE),
 			["a2", "b1", "c1", "d1"],
 			["top", "left", "right", "bottom"]
 		),
@@ -84,7 +84,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "Restricted Archives",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE, 8 * TILE),
+		"size_px": Vector2(10 * TILE, 8 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [
@@ -106,7 +106,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "The Cipher Room",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(8, 8),
-		"size_px": Vector2i(8 * TILE, 8 * TILE),
+		"size_px": Vector2(8 * TILE, 8 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [{"type": "cultist", "count": 1}],
@@ -125,7 +125,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "Observatory Dome",
 		"room_type": "gallery",
 		"size_tiles": Vector2i(12, 10),
-		"size_px": Vector2i(12 * TILE, 10 * TILE),
+		"size_px": Vector2(12 * TILE, 10 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [
@@ -148,7 +148,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "Star Chamber",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(8, 8),
-		"size_px": Vector2i(8 * TILE, 8 * TILE),
+		"size_px": Vector2(8 * TILE, 8 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [
@@ -170,7 +170,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "Shadow Gallery",
 		"room_type": "gallery",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE, 8 * TILE),
+		"size_px": Vector2(10 * TILE, 8 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [
@@ -192,7 +192,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "The Void Room",
 		"room_type": "trap",
 		"size_tiles": Vector2i(10, 10),
-		"size_px": Vector2i(10 * TILE, 10 * TILE),
+		"size_px": Vector2(10 * TILE, 10 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [
@@ -214,7 +214,7 @@ static func get_floor_07_rooms() -> Dictionary:
 		"room_name": "The Curator's Study",
 		"room_type": "boss",
 		"size_tiles": Vector2i(16, 14),
-		"size_px": Vector2i(16 * TILE, 14 * TILE),
+		"size_px": Vector2(16 * TILE, 14 * TILE),
 		"floor_color": F7_FLOOR,
 		"wall_color": F7_WALL,
 		"enemies": [{"type": "curator", "count": 1}],
@@ -391,8 +391,12 @@ static func _on_camera_hit(area: Area2D, cam: Area2D, room: RoomInstance) -> voi
 ## Light source body entered -> reveal invisible enemies
 static func _on_light_body_entered(body: Node2D) -> void:
 	if body.is_in_group("spies") or body.is_in_group("shadow_stalkers"):
-		if "sprite" in body and body.sprite:
-			body.sprite.modulate.a = 1.0
-			if body.get("_revealed") != null:
-				body._revealed = true
-				body._reveal_timer = 3.0
+		var sprite_node = body.get("sprite") if body else null
+		if sprite_node and is_instance_valid(sprite_node):
+			sprite_node.modulate.a = 1.0
+		if body.has_method("reveal"):
+			body.reveal()
+	if body and body.has_meta("_reveal_timer"):
+		body.set_meta("_reveal_timer", 3.0)
+	elif body and "_reveal_timer" in body:
+		body.set("_reveal_timer", 3.0)

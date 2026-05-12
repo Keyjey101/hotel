@@ -50,7 +50,7 @@ func start_arena() -> void:
 
 
 func is_arena_active() -> bool:
-	return current_wave >= 0 and not doors_locked
+	return current_wave >= 0 and doors_locked
 
 
 func get_current_wave() -> int:
@@ -94,15 +94,20 @@ func _spawn_wave(index: int) -> void:
 			var enemy := _room_instance.add_enemy(scene, pos)
 			if enemy != null:
 				active_enemies.append(enemy)
-
+				var _enemy_id := enemy.get_instance_id()
 				# Connect tree_exited as fallback for enemy removal
 				if enemy.has_signal("tree_exited"):
-					enemy.tree_exited.connect(_on_enemy_tree_exited.bind(enemy))
+					enemy.tree_exited.connect(_on_enemy_tree_exited.bind(_enemy_id))
 
 	print("[ArenaRoom] Wave %d spawned (%d enemies)" % [index, active_enemies.size()])
 
 
+# Enemy scene cache to avoid repeated load() calls
+var _enemy_scene_cache: Dictionary = {}
+
 func _load_enemy_scene(type: String) -> PackedScene:
+	if _enemy_scene_cache.has(type):
+		return _enemy_scene_cache[type]
 	var paths: Dictionary = {
 		"gladiator": "res://scenes/enemies/gladiator.tscn",
 		"berserker": "res://scenes/enemies/berserker.tscn",
@@ -111,8 +116,11 @@ func _load_enemy_scene(type: String) -> PackedScene:
 	}
 	var path: String = paths.get(type, "")
 	if path.is_empty() or not ResourceLoader.exists(path):
+		_enemy_scene_cache[type] = null
 		return null
-	return load(path)
+	var scene: PackedScene = load(path)
+	_enemy_scene_cache[type] = scene
+	return scene
 
 
 func _get_spawn_position(spawn_points: Array[Marker2D], indices: Array, spawn_idx: int) -> Vector2:
@@ -138,9 +146,15 @@ func _on_enemy_disabled(enemy: CharacterBody2D) -> void:
 		_check_wave_cleared()
 
 
-func _on_enemy_tree_exited(enemy: CharacterBody2D) -> void:
-	if enemy in active_enemies:
+func _on_enemy_tree_exited(enemy_id: int) -> void:
+	# Use instance ID to match since the enemy node is already freed
+	var to_remove: Array[CharacterBody2D] = []
+	for enemy in active_enemies:
+		if not is_instance_valid(enemy) or enemy.get_instance_id() == enemy_id:
+			to_remove.append(enemy)
+	for enemy in to_remove:
 		active_enemies.erase(enemy)
+	if not to_remove.is_empty():
 		_check_wave_cleared()
 
 
@@ -150,6 +164,7 @@ func _check_wave_cleared() -> void:
 	for enemy in active_enemies:
 		if is_instance_valid(enemy) and enemy.get("_disabled") != true:
 			alive.append(enemy)
+	active_enemies = alive
 
 	if alive.is_empty():
 		print("[ArenaRoom] Wave %d cleared!" % current_wave)

@@ -22,7 +22,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"room_name": "White Corridor",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(8, 4),
-		"size_px": Vector2i(8 * TILE, 4 * TILE),
+		"size_px": Vector2(8 * TILE, 4 * TILE),
 		"floor_color": F9_FLOOR_P1,
 		"wall_color": F9_WALL,
 		"enemies": [{"type": "demon", "count": 2}],
@@ -41,7 +41,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"room_name": "The Memory Hall",
 		"room_type": "service",
 		"size_tiles": Vector2i(14, 4),
-		"size_px": Vector2i(14 * TILE, 4 * TILE),
+		"size_px": Vector2(14 * TILE, 4 * TILE),
 		"floor_color": F9_FLOOR_P1,
 		"wall_color": F9_WALL,
 		"enemies": [],
@@ -60,7 +60,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"room_name": "The Waiting Room",
 		"room_type": "hub",
 		"size_tiles": Vector2i(14, 12),
-		"size_px": Vector2i(14 * TILE, 12 * TILE),
+		"size_px": Vector2(14 * TILE, 12 * TILE),
 		"floor_color": Color(0.941, 0.878, 0.878, 1.0),  # #F0E0E0 warm flesh
 		"wall_color": F9_WALL,
 		"enemies": [],
@@ -69,7 +69,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"spawn_point_positions": [],
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(14 * TILE, 12 * TILE), 1),
 		"door_positions": RoomConfig._gen_doors(
-			Vector2i(14 * TILE, 12 * TILE),
+			Vector2(14 * TILE, 12 * TILE),
 			["a2", "b1", "c1", "boss1"],
 			["top", "left", "right", "bottom"]
 		),
@@ -83,7 +83,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"room_name": "The Mirror Room",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE, 8 * TILE),
+		"size_px": Vector2(10 * TILE, 8 * TILE),
 		"floor_color": Color(0.941, 0.878, 0.878, 1.0),
 		"wall_color": F9_WALL,
 		"enemies": [],
@@ -102,7 +102,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"room_name": "The Throne Approach",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE, 8 * TILE),
+		"size_px": Vector2(10 * TILE, 8 * TILE),
 		"floor_color": F9_FLOOR_P3,
 		"wall_color": F9_WALL,
 		"enemies": [{"type": "demon", "count": 2}],
@@ -122,7 +122,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"room_name": "The Sister's Chamber",
 		"room_type": "boss",
 		"size_tiles": Vector2i(14, 12),
-		"size_px": Vector2i(14 * TILE, 12 * TILE),
+		"size_px": Vector2(14 * TILE, 12 * TILE),
 		"floor_color": Color(0.941, 0.878, 0.878, 1.0),
 		"wall_color": F9_WALL,
 		"enemies": [{"type": "sister", "count": 1}],
@@ -131,7 +131,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(14 * TILE, 12 * TILE), 8),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(14 * TILE, 12 * TILE), 1),
 		"door_positions": RoomConfig._gen_doors(
-			Vector2i(14 * TILE, 12 * TILE),
+			Vector2(14 * TILE, 12 * TILE),
 			["hub", "boss2"],
 			["top", "bottom"]
 		),
@@ -145,7 +145,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"room_name": "Satan's Sanctum",
 		"room_type": "boss",
 		"size_tiles": Vector2i(18, 14),
-		"size_px": Vector2i(18 * TILE, 14 * TILE),
+		"size_px": Vector2(18 * TILE, 14 * TILE),
 		"floor_color": Color(0.04, 0.04, 0.04, 1.0),  # #0A0A0A near void
 		"wall_color": Color(0.02, 0.02, 0.02, 1.0),
 		"enemies": [{"type": "satan", "count": 1}],
@@ -154,7 +154,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(18 * TILE, 14 * TILE), 10),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(18 * TILE, 14 * TILE), 1),
 		"door_positions": RoomConfig._gen_doors(
-			Vector2i(18 * TILE, 14 * TILE),
+			Vector2(18 * TILE, 14 * TILE),
 			["boss1"],
 			["top"]
 		),

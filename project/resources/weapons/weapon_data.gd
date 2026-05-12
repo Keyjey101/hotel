@@ -7,6 +7,7 @@ enum WeaponType { MELEE, RANGED, IMPROVISED }
 enum ThrowArc { STRAIGHT, ARC, SPIN, TUMBLE, FLOAT }
 
 @export var name: String = "Weapon"
+@export var weapon_id: String = ""
 @export var weapon_type: WeaponType = WeaponType.MELEE
 
 # Melee / base stats

@@ -38,6 +38,7 @@ var current_state: GameState = GameState.MENU
 var current_floor: int = 1
 var run_state: RunState
 var seed_manager: SeedManager
+var _handling_death: bool = false
 
 # Pending unlocks — only committed to meta on run end (victory/failure)
 var _pending_artifact_unlocks: Array[String] = []
@@ -73,7 +74,8 @@ func start_new_run() -> void:
 	current_state = GameState.PLAYING
 
 	# Give starting loadout: Machete (slot 1) + Sawed-off (slot 2)
-	_loot_spawner_script.give_starting_loadout(run_state)
+	if _loot_spawner_script:
+		_loot_spawner_script.give_starting_loadout(run_state)
 
 	# Apply chosen starting stat upgrade
 	if selected_starting_upgrade != "" and UpgradeRegistry:
@@ -105,7 +107,7 @@ func transition_to_floor(floor_number: int) -> void:
 	# Reset bloodlust timer between floors (doesn't carry over)
 	run_state.bloodlust_timer = 0.0
 	run_state.bloodlust_stacks = 0
-	floor_entered.emit.call_deferred(floor_number)
+	floor_entered.emit(floor_number)
 
 	# Check unlock conditions for reaching this floor
 	_check_floor_unlocks(floor_number)
@@ -125,9 +127,11 @@ func transition_to_floor(floor_number: int) -> void:
 
 
 func handle_player_death() -> void:
-	if current_state != GameState.PLAYING:
+	if run_state == null:
 		return
-	current_state = GameState.BASEMENT  # Prevent re-entry
+	if current_state != GameState.PLAYING or _handling_death:
+		return
+	_handling_death = true
 	player_died.emit()
 	player_captured.emit()
 	transition_to_basement()
@@ -140,6 +144,7 @@ func transition_to_basement() -> void:
 
 
 func handle_basement_success() -> void:
+	_handling_death = false
 	current_state = GameState.PLAYING
 	_basement_escaped_this_run = true
 	basement_escaped.emit()
@@ -150,6 +155,9 @@ func handle_basement_success() -> void:
 
 
 func handle_basement_failure() -> void:
+	_handling_death = false
+	if run_state == null:
+		return
 	current_state = GameState.GAME_OVER
 	basement_failed.emit()
 	run_ended.emit(false)
@@ -225,6 +233,7 @@ func _determine_ending_id() -> String:
 func restart_run() -> void:
 	# Clear run state (pending unlocks are DISCARDED — no free unlocks)
 	# Ensure game is unpaused before returning to title
+	_handling_death = false
 	get_tree().paused = false
 	current_state = GameState.MENU
 	current_floor = 1
@@ -243,6 +252,7 @@ func restart_run() -> void:
 
 func go_to_title() -> void:
 	# Return to title without starting a new run
+	_handling_death = false
 	if run_state and run_state.has_method("cleanup"):
 		run_state.cleanup()
 	get_tree().paused = false
@@ -373,13 +383,18 @@ func _pending_unlock_stat(id: String, display_name: String) -> void:
 func _show_unlock_toast(message: String) -> void:
 	# Instance toast overlay if in a valid scene
 	var tree := get_tree()
-	if tree and tree.current_scene:
+	if tree == null or tree.current_scene == null:
+		return
+	var toast
+	if ResourceLoader.exists("res://scenes/ui/unlock_toast.tscn"):
+		toast = load("res://scenes/ui/unlock_toast.tscn").instantiate()
+	else:
 		var toast_script := load("res://scripts/ui/unlock_toast.gd")
 		if toast_script == null:
 			return
-		var toast = toast_script.new()
-		tree.current_scene.add_child(toast)
-		toast.show_toast(message)
+		toast = toast_script.new()
+	tree.current_scene.add_child(toast)
+	toast.show_toast(message)
 
 
 func _is_unlocked(unlocked_list: Array, id: String) -> bool:

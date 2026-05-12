@@ -74,6 +74,8 @@ func play_sfx(name: String, volume_db: float = 0.0) -> void:
 	var player := _get_available_global()
 	if player == null:
 		return
+	player.pitch_scale = 1.0
+	player.stop()
 	player.volume_db = volume_db
 	player.stream = _silence_stream
 	player.play()
@@ -86,6 +88,8 @@ func play_sfx_2d(name: String, position: Vector2, volume_db: float = 0.0) -> voi
 	var player := _get_available_positional()
 	if player == null:
 		return
+	player.pitch_scale = 1.0
+	player.stop()
 	player.position = position
 	player.volume_db = volume_db
 	player.stream = _silence_stream
@@ -109,6 +113,7 @@ func _get_available_global() -> AudioStreamPlayer:
 		if not player.playing:
 			return player
 	# All busy — steal the first one
+	_global_pool[0].stop()
 	return _global_pool[0]
 
 
@@ -116,6 +121,7 @@ func _get_available_positional() -> AudioStreamPlayer2D:
 	for player in _positional_pool:
 		if not player.playing:
 			return player
+	_positional_pool[0].stop()
 	return _positional_pool[0]
 
 

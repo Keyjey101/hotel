@@ -9,6 +9,7 @@ var _flash_tween: Tween
 var _zoom_tween: Tween
 var _vignette_tween: Tween
 var _hit_stop_count: int = 0
+var _hit_stop_timer: SceneTreeTimer = null
 
 var _flash_overlay: ColorRect
 var _vignette_overlay: ColorRect
@@ -78,9 +79,10 @@ func shake(amplitude: float = 4.0, duration: float = 0.15, _decay: float = 0.9) 
 
 	if _shake_tween and _shake_tween.is_valid():
 		_shake_tween.kill()
+			if _camera:
+				_camera.offset = Vector2.ZERO
 
 	_shake_tween = create_tween()
-	_shake_tween.set_speed_scale(Engine.time_scale)
 	var steps := 4
 	var step_time := duration / float(steps)
 	for i in range(steps):
@@ -111,15 +113,21 @@ func flash(color: Color = Color.WHITE, duration: float = 0.05, max_alpha: float 
 # ============================================================
 
 func hit_stop(duration: float = 0.05) -> void:
-	if Engine.time_scale < 1.0:
-		return  # Already in slow-mo, don't stack
 	_hit_stop_count += 1
 	Engine.time_scale = 0.01
-	# Use a scene tree timer that respects time scale so it fires correctly
-	await get_tree().create_timer(duration, true, false, true).timeout
+	_hit_stop_timer = get_tree().create_timer(duration, true, false, true)
+	_hit_stop_timer.timeout.connect(_on_hit_stop_timeout)
+
+
+func _on_hit_stop_timeout() -> void:
 	_hit_stop_count -= 1
 	if _hit_stop_count <= 0:
 		_hit_stop_count = 0
+		Engine.time_scale = 1.0
+
+
+func _exit_tree() -> void:
+	if Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
 
 

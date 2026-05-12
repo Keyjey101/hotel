@@ -23,6 +23,9 @@ func _ready() -> void:
 
 func _on_room_entered(_floor_number: int, _room_name: String) -> void:
 	# Reset blood pools for new room
+	for pool in _active_pools:
+		if is_instance_valid(pool):
+			pool.queue_free()
 	_active_pools.clear()
 
 
@@ -117,7 +120,7 @@ func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: Charact
 	limb.angular_velocity = randf_range(-5.0, 5.0)
 
 	# Freeze after 1s (lands on ground)
-	var freeze_timer := get_tree().create_timer(1.0)
+	var freeze_timer := get_tree().create_timer(1.0, true, false, true)
 	limb.set_meta("_freeze_timer", freeze_timer)
 	freeze_timer.timeout.connect(func():
 		if is_instance_valid(limb):
@@ -126,7 +129,7 @@ func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: Charact
 
 	# Lifetime: 30s, then fadeout 1s
 	limb.set_meta("despawn_time", 30.0)
-	get_tree().create_timer(30.0).timeout.connect(func():
+	get_tree().create_timer(30.0, true, false, true).timeout.connect(func():
 		if not is_instance_valid(limb):
 			return
 		var tween := limb.create_tween()
@@ -150,6 +153,11 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 		var r_variation := randf_range(0.6, 1.0)
 		vis.color = Color(r_variation, 0.0, 0.0)
 		drop.add_child(vis)
+		var drop_col := CollisionShape2D.new()
+		var drop_shape := CircleShape2D.new()
+		drop_shape.radius = 1.0
+		drop_col.shape = drop_shape
+		drop.add_child(drop_col)
 		drop.global_position = position
 		# Random velocity in a cone ±30° around direction
 		var angle_offset := randf_range(-0.524, 0.524)  # ~±30°
@@ -157,6 +165,7 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 		drop.linear_velocity = drop_dir * randf_range(50, 150)
 		get_tree().current_scene.add_child(drop)
 		# Freeze on contact with StaticBody2D, lifetime 5s
+		drop.contact_monitor = true
 		drop.body_entered.connect(func(body):
 			if body is StaticBody2D or body is TileMapLayer:
 				drop.freeze = true
@@ -172,6 +181,8 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 
 func _spawn_placeholder_pool(position: Vector2) -> void:
 	var pool := StaticBody2D.new()
+	pool.collision_layer = 0
+	pool.collision_mask = 0
 	var vis := ColorRect.new()
 	var size := randf_range(6, 16)
 	vis.size = Vector2(size, size)
@@ -196,6 +207,7 @@ func _cleanup_pools() -> void:
 		var oldest: Node2D = _active_pools.pop_front()
 		if is_instance_valid(oldest):
 			oldest.queue_free()
+	_active_pools = _active_pools.filter(func(p): return is_instance_valid(p))
 
 
 func _cleanup_limbs() -> void:
@@ -203,6 +215,7 @@ func _cleanup_limbs() -> void:
 		var oldest: RigidBody2D = _active_limbs.pop_front()
 		if is_instance_valid(oldest):
 			oldest.queue_free()
+	_active_limbs = _active_limbs.filter(func(l): return is_instance_valid(l))
 
 
 func clear_room_effects() -> void:

@@ -216,7 +216,7 @@ func _on_arena_room_entered(room: RoomInstance, arena: Node2D) -> void:
 			if configs is Array:
 				arena.wave_configs.clear()
 				for cfg in configs:
-					arena.wave_configs.append(cfg)
+					arena.wave_configs.append(Dictionary(cfg))
 		if arena.has_meta("door_node_paths"):
 			var paths = arena.get_meta("door_node_paths")
 			if paths is Array:

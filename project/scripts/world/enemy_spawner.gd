@@ -37,6 +37,16 @@ const ENEMY_SCENES: Dictionary = {
 	"champion": "res://scenes/enemies/champion.tscn",
 	# Floor 9+
 	"demon": "res://scenes/enemies/demon.tscn",
+	# Boss entries (used by FloorManager and boss spawn systems)
+	"madame": "res://scenes/bosses/boss_madame.tscn",
+	"gourmand": "res://scenes/bosses/boss_gourmand.tscn",
+	"accountant": "res://scenes/bosses/boss_accountant.tscn",
+	"attendant_prime": "res://scenes/bosses/boss_attendant_prime.tscn",
+	"boss_champion": "res://scenes/bosses/boss_champion.tscn",
+	"curator": "res://scenes/bosses/boss_curator.tscn",
+	"consort": "res://scenes/bosses/boss_consort.tscn",
+	"sister": "res://scenes/bosses/boss_sister.tscn",
+	"satan": "res://scenes/bosses/boss_satan.tscn",
 }
 
 # Per-floor enemy pools (11_ENEMY_DESIGN.md section 4.3)
@@ -84,7 +94,8 @@ static func spawn_enemies(room: RoomInstance, floor_number: int, room_index: int
 
 	# Create seeded RNG for type selection
 	var rng := seed_mgr.get_room_rng(floor_number, room_index)
-	rng.seed += 42  # Offset to avoid correlating with spawn point selection
+	var local_rng := RandomNumberGenerator.new()
+	local_rng.seed = rng.seed + 42
 
 	# Get scaling for this floor
 	var scaling: Array = FLOOR_SCALING.get(floor_number, FLOOR_SCALING[1])
@@ -98,7 +109,7 @@ static func spawn_enemies(room: RoomInstance, floor_number: int, room_index: int
 			continue
 
 		# Pick enemy type from floor pool (seeded random)
-		var type_idx := rng.randi_range(0, pool.size() - 1)
+		var type_idx := local_rng.randi_range(0, pool.size() - 1)
 		var enemy_type: String = pool[type_idx]
 
 		# Load enemy scene

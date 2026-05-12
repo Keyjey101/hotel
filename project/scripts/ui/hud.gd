@@ -33,6 +33,7 @@ var floor_names := {
 
 var _low_hp_tween: Tween = null
 var _floor_tween: Tween = null
+var _slot_style: StyleBoxFlat = null
 var _conn_damaged: Callable
 var _conn_healed: Callable
 var _conn_weapon_changed: Callable
@@ -49,6 +50,8 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if get_tree().paused:
+		return
 	if GameManager.run_state:
 		var run_time := GameManager.run_state.get_run_time()
 		var minutes := int(run_time) / 60
@@ -245,18 +248,19 @@ func _update_weapon_slots() -> void:
 
 		# Ammo display for ranged weapons
 		if weapon.weapon_type == WeaponData.WeaponType.RANGED and weapon.ammo > 0:
-			ammo_displays[i].text = "ammo"
+			ammo_displays[i].text = str(weapon.ammo)
 		else:
 			ammo_displays[i].text = ""
 
 
 func _apply_slot_border(panel: Panel, active: bool) -> void:
-	var style := StyleBoxFlat.new()
-	style.border_color = Color(0.855, 0.647, 0.125) if active else Color(0.29, 0.29, 0.29)
-	style.set_border_width_all(2)
-	style.bg_color = Color(0.1, 0.1, 0.1, 0.8) if active else Color(0.1, 0.1, 0.1, 0.5)
-	style.set_corner_radius_all(0)
-	panel.add_theme_stylebox_override("panel", style)
+	if _slot_style == null:
+		_slot_style = StyleBoxFlat.new()
+		_slot_style.set_border_width_all(2)
+		_slot_style.set_corner_radius_all(0)
+	_slot_style.border_color = Color(0.855, 0.647, 0.125) if active else Color(0.29, 0.29, 0.29)
+	_slot_style.bg_color = Color(0.1, 0.1, 0.1, 0.8) if active else Color(0.1, 0.1, 0.1, 0.5)
+	panel.add_theme_stylebox_override("panel", _slot_style)
 
 
 # ============================================================

@@ -20,6 +20,7 @@ const DEFAULT_UNLOCKED_STAT_UPGRADES: Array[String] = [
 ]
 
 var _current_settings: Dictionary = {}
+var _settings_loaded: bool = false
 var _meta_cache: Dictionary = {}  # in-memory cache, loaded once
 
 
@@ -44,7 +45,9 @@ func load_run() -> Dictionary:
 
 func delete_run() -> void:
 	if FileAccess.file_exists(RUN_SAVE_PATH):
-		DirAccess.remove_absolute(RUN_SAVE_PATH)
+		var dir := DirAccess.open("user://")
+		if dir:
+			dir.remove("hotel_run.json")
 
 
 func save_settings(settings: Dictionary) -> void:
@@ -110,19 +113,22 @@ func get_total_runs() -> int:
 
 
 func get_settings() -> Dictionary:
-	if _current_settings.is_empty():
+	if not _settings_loaded:
 		_current_settings = load_settings()
+		_settings_loaded = true
 	return _current_settings
 
 
 func save_and_apply(settings: Dictionary) -> void:
 	_current_settings = settings
+	_settings_loaded = true
 	save_settings(settings)
 	_apply_settings(settings)
 
 
 func load_and_apply_settings() -> void:
 	_current_settings = load_settings()
+	_settings_loaded = true
 	_apply_settings(_current_settings)
 
 
@@ -165,7 +171,7 @@ func _apply_settings(s: Dictionary) -> void:
 
 func load_meta() -> Dictionary:
 	if not _meta_cache.is_empty():
-		return _meta_cache
+		return _meta_cache.duplicate(true)
 	if FileAccess.file_exists(META_PATH):
 		var file := FileAccess.open(META_PATH, FileAccess.READ)
 		if file == null:
@@ -175,9 +181,9 @@ func load_meta() -> Dictionary:
 			if parsed is Dictionary:
 				_meta_cache = parsed
 				_ensure_meta_defaults(_meta_cache)
-				return _meta_cache
+				return _meta_cache.duplicate(true)
 	_meta_cache = _default_meta()
-	return _meta_cache
+	return _meta_cache.duplicate(true)
 
 
 func save_meta(meta: Dictionary) -> void:
@@ -213,10 +219,10 @@ func commit_pending_unlocks(pending_artifacts: Array, pending_stats: Array, run_
 	# Deepest floor ever
 	if floor_reached > int(meta.get("deepest_floor_ever", 0)):
 		meta["deepest_floor_ever"] = floor_reached
-	# Bosses defeated
+	# Bosses defeated (use set to prevent double-counting)
 	var bosses: Dictionary = meta.get("bosses_defeated", {})
 	for boss_id in run_counters.get("bosses_defeated", {}):
-		bosses[boss_id] = int(bosses.get(boss_id, 0)) + int(run_counters["bosses_defeated"][boss_id])
+		bosses[boss_id] = true
 	meta["bosses_defeated"] = bosses
 	# Endings seen
 	if ending_id != "":

@@ -89,7 +89,6 @@ func _state_chase(delta: float) -> void:
 			navigation.target_position = nearest_ally.global_position
 			var direction := navigation.get_next_path_position() - global_position
 			velocity = direction.normalized() * move_speed
-			move_and_slide()
 			return
 	super._state_chase(delta)
 

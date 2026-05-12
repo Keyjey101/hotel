@@ -91,6 +91,9 @@ func _create_spark_rect() -> void:
 # ---------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
+	if _disabled:
+		return
+
 	_process_overcharge(delta)
 	_process_spark(delta)
 
@@ -144,6 +147,8 @@ func receive_damage(damage: float, _zone: int, sever: bool, knockback_force: flo
 
 	# Visual: spark flash on hit
 	_trigger_spark()
+	_flash_hurt()
+	AudioManager.SFXPlayer.play_sfx_with_pitch("enemy_hurt", randf_range(0.8, 1.2))
 
 	# Knockback
 	if knockback_force > 0.0:
@@ -170,6 +175,7 @@ func receive_damage(damage: float, _zone: int, sever: bool, knockback_force: flo
 # ---------------------------------------------------------------------------
 
 func _death_explode() -> void:
+	_disabled = true
 	# AoE 15 damage to nearby bodies in radius 40px
 	var explosion_radius: float = 40.0
 	var bodies := get_tree().get_nodes_in_group("player")

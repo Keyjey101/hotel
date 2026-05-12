@@ -55,7 +55,6 @@ var _drop_weapon_on_hit_chance: float = 0.5
 
 func _ready() -> void:
 	if is_clone:
-		super._ready()
 		return
 
 	enemy_name = "The Curator"
@@ -160,6 +159,10 @@ func _physics_process(delta: float) -> void:
 	velocity += _knockback_vel
 
 	move_and_slide()
+
+	# Keep shadow realm overlay centered on boss
+	if _shadow_realm_overlay and is_instance_valid(_shadow_realm_overlay):
+		_shadow_realm_overlay.global_position = global_position - Vector2(100, 100)
 
 
 # ---------------------------------------------------------------------------
@@ -314,12 +317,19 @@ func _steal_single(wm, equipped, slot: int) -> void:
 
 func _steal_both(wm, equipped) -> void:
 	# Try to steal BOTH weapons
+	var first_weapon = null
+	var second_weapon = null
 	for i in range(equipped.size()):
 		if equipped[i] != null:
-			if _stolen_weapon == null:
-				_stolen_weapon = equipped[i]
+			if first_weapon == null:
+				first_weapon = equipped[i]
+			else:
+				second_weapon = equipped[i]
 			equipped[i] = null
+	_stolen_weapon = first_weapon
 	EventBus.weapon_dropped.emit(_stolen_weapon)
+	if second_weapon != null:
+		EventBus.weapon_dropped.emit(second_weapon)
 	_steal_cooldown = _steal_cooldown_max
 
 
@@ -396,6 +406,10 @@ func _move_projectile(bolt: Area2D) -> void:
 	while is_instance_valid(bolt) and is_instance_valid(self) and elapsed < lifetime:
 		await get_tree().process_frame
 		if not is_instance_valid(self): return
+		if not is_instance_valid(source):
+			if is_instance_valid(bolt):
+				bolt.queue_free()
+			return
 		elapsed += get_process_delta_time()
 		bolt.global_position += dir * speed * get_process_delta_time()
 
@@ -473,10 +487,10 @@ func _create_shadow_realm() -> void:
 	_shadow_realm_overlay.name = "ShadowRealm"
 	_shadow_realm_overlay.color = Color(0, 0, 0, 0.7)
 	_shadow_realm_overlay.size = Vector2(200, 200)
-	_shadow_realm_overlay.position = Vector2(-100, -100)
 	_shadow_realm_overlay.z_index = 10
 	_shadow_realm_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_shadow_realm_overlay)
+	get_tree().current_scene.add_child(_shadow_realm_overlay)
+	_shadow_realm_overlay.global_position = global_position - Vector2(100, 100)
 
 
 func _create_shadow_clone() -> void:
@@ -500,7 +514,12 @@ func _create_shadow_clone() -> void:
 	_shadow_clone.set("move_speed", 100.0)
 	_shadow_clone.modulate.a = 0.5
 	_shadow_clone.global_position = global_position + Vector2(60, 0)
+	# Set clone to chase state with player target
+	var players := get_tree().get_nodes_in_group("player")
+	if players.size() > 0:
+		_shadow_clone.set("_target", players[0])
 	get_tree().current_scene.add_child(_shadow_clone)
+	_shadow_clone.call("_enter_state", "chase")
 
 
 # ---------------------------------------------------------------------------

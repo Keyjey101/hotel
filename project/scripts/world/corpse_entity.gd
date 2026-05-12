@@ -51,9 +51,13 @@ func _destroy_corpse() -> void:
 	if is_consumed:
 		return
 	is_consumed = true
+	corpse_consumed.emit(self)
+	# Kill any existing tween before creating new one
+	if _fade_tween and _fade_tween.is_valid():
+		_fade_tween.kill()
 	# Quick destroy animation
-	var tween := create_tween()
-	tween.tween_property(self, "scale", Vector2(1.2, 1.2), 0.1)
-	tween.tween_property(self, "scale", Vector2.ZERO, 0.2)
-	tween.parallel().tween_property(_visual, "color:a", 0.0, 0.2)
-	tween.tween_callback(queue_free)
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(self, "scale", Vector2(1.2, 1.2), 0.1)
+	_fade_tween.tween_property(self, "scale", Vector2.ZERO, 0.2)
+	_fade_tween.parallel().tween_property(_visual, "color:a", 0.0, 0.2)
+	_fade_tween.tween_callback(queue_free)

@@ -161,6 +161,12 @@ func _execute_cleaver_hit() -> void:
 	area.global_position = global_position + _direction * attack_range * 0.5
 	get_tree().current_scene.add_child(area)
 
+	# Check bodies already overlapping (missed by body_entered signal)
+	for body in area.get_overlapping_bodies():
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+			body.receive_damage(attack_damage, DamageZone.Zone.TORSO, false, 25.0, _direction)
+			break
+
 	area.body_entered.connect(func(body: Node2D) -> void:
 		if body.is_in_group("player") and body.has_method("receive_damage"):
 			body.receive_damage(attack_damage, DamageZone.Zone.TORSO, false, 25.0, _direction)

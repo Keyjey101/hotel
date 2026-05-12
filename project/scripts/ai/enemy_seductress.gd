@@ -68,7 +68,8 @@ func _spawn_decoys() -> void:
 		decoy.color = Color(1.0, 0.412, 0.706, 0.8)
 		decoy.position = -decoy.size / 2.0
 		decoy.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(decoy)
+		get_tree().current_scene.add_child(decoy)
+		decoy.global_position = global_position
 		decoys.append(decoy)
 
 

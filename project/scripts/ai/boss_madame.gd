@@ -58,6 +58,9 @@ var _shard_timers: Array = []
 var _shard_count: int = 0
 const MAX_SHARD_COUNT: int = 20
 
+# ── Double arm-loss guard (H16 fix) ──────────────────────────
+var _clones_reduced_for_arms: bool = false
+
 
 # ═══════════════════════════════════════════════════════════════
 # INIT
@@ -450,7 +453,7 @@ func _shatter_clone(clone: Node2D) -> void:
 
 
 func _clear_all_clones() -> void:
-	for clone in clones:
+	for clone in clones.duplicate():
 		if is_instance_valid(clone):
 			_shatter_clone(clone)
 	clones.clear()
@@ -474,8 +477,8 @@ func _create_arena_mirrors() -> void:
 	for offset in large_offsets:
 		var mirror := _create_mirror_object(false)
 		mirror.global_position = _arena_center + offset
-		get_parent().add_child(mirror)
 		mirror.mirror_broken.connect(_on_mirror_broken)
+		get_parent().add_child(mirror)
 		_mirrors.append(mirror)
 
 	# 4 small vanity mirrors (scattered, don't affect clone count)
@@ -675,6 +678,11 @@ func _continue_shard(node: CharacterBody2D, dir: Vector2, speed: float,
 		return
 	var t := get_tree().create_timer(delta)
 	_shard_timers.append(t)
+	# Clean up timer reference after it fires to prevent unbounded growth
+	var timer_ref := t
+	t.timeout.connect(func() -> void:
+		_shard_timers.erase(timer_ref)
+	)
 	t.timeout.connect(
 		_continue_shard.bind(node, dir, speed, damage, elapsed, max_time)
 	)
@@ -703,7 +711,11 @@ func _create_shard_hazard(pos: Vector2) -> void:
 		if body.is_in_group("player") and body.has_method("take_damage"):
 			body.take_damage(5.0)
 	)
-	get_tree().create_timer(5.0).timeout.connect(zone.queue_free)
+	get_tree().create_timer(5.0).timeout.connect(func() -> void:
+		_shard_count = maxi(0, _shard_count - 1)
+		if is_instance_valid(zone):
+			zone.queue_free()
+	)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -813,9 +825,10 @@ func _on_limb_lost(zone: int) -> void:
 
 
 func _apply_mutilation_effects() -> void:
-	# Arm lost → fewer clones
-	if severed_limbs[DamageZone.Zone.LEFT_ARM] or severed_limbs[DamageZone.Zone.RIGHT_ARM]:
+	# Arm lost → fewer clones (guard against double-fire for both arms)
+	if (severed_limbs[DamageZone.Zone.LEFT_ARM] or severed_limbs[DamageZone.Zone.RIGHT_ARM]) and not _clones_reduced_for_arms:
 		max_clones = maxi(0, max_clones - 1)
+		_clones_reduced_for_arms = true
 		while clones.size() > max_clones:
 			var clone = clones.pop_back()
 			if is_instance_valid(clone):

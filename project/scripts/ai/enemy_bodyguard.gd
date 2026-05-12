@@ -36,6 +36,8 @@ func _ready() -> void:
 
 	super._ready()
 
+	add_to_group("bodyguards")
+
 	# Create shield visual (after super so sprite exists)
 	_create_shield_visual()
 
@@ -44,7 +46,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	if EventBus.enemy_damaged.is_connected(_on_any_enemy_damaged):
+	if EventBus and EventBus.enemy_damaged.is_connected(_on_any_enemy_damaged):
 		EventBus.enemy_damaged.disconnect(_on_any_enemy_damaged)
 
 

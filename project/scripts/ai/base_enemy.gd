@@ -53,6 +53,8 @@ var _knockback_vel: Vector2 = Vector2.ZERO
 var _initial_move_speed: float = 0.0
 var _alert_sfx_played: bool = false
 var _regen_sfx_played: bool = false
+var _detection_lost_timer: SceneTreeTimer = null
+var _hurt_tween: Tween = null
 
 
 func _ready() -> void:
@@ -151,7 +153,9 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	if _disabled:
 		return
 
-	# Apply damage to zone
+	# Apply damage to zone (fallback to TORSO for unknown zones)
+	if not limb_health.has(zone):
+		zone = DamageZone.Zone.TORSO
 	limb_health[zone] -= damage
 
 	# Pause regen on this zone
@@ -224,6 +228,8 @@ func _sever_limb(zone: int) -> void:
 			break
 
 	if all_severed and limb_health[DamageZone.Zone.TORSO] <= torso_hp * 0.3:
+		if _disabled:
+			return
 		_disable_enemy()
 
 
@@ -246,6 +252,10 @@ func _on_limb_lost(zone: int) -> void:
 		"engage", "chase":
 			_evaluate_mutilated_behavior()
 
+
+func _on_limb_recovered(zone: int) -> void:
+	# Virtual: subclasses override to restore visual and stat effects
+	pass
 
 func _evaluate_mutilated_behavior() -> void:
 	var arms_lost := int(severed_limbs[DamageZone.Zone.LEFT_ARM]) + int(severed_limbs[DamageZone.Zone.RIGHT_ARM])
@@ -324,6 +334,9 @@ func _regenerate_limb(zone: int) -> void:
 		2: move_speed = _get_base_speed() * 0.15
 
 	EventBus.enemy_fully_regenerated.emit(self)
+
+	# Virtual: subclasses can override to restore visuals and stats
+	_on_limb_recovered(zone)
 
 
 func _pause_regen(zone: int, duration: float) -> void:
@@ -553,9 +566,13 @@ func on_nearby_alert(_source_pos: Vector2) -> void:
 # ============================================================
 
 func _on_detection_entered(body: Node2D) -> void:
-	if body.is_in_group("player") and not _alerted:
-		_target = body
-		_enter_state("alert")
+	if body.is_in_group("player"):
+		if _detection_lost_timer != null:
+			_detection_lost_timer.timeout.disconnect_all()
+			_detection_lost_timer = null
+		if not _alerted:
+			_target = body
+			_enter_state("alert")
 
 
 func _on_detection_exited(body: Node2D) -> void:
@@ -563,8 +580,13 @@ func _on_detection_exited(body: Node2D) -> void:
 		# Don't immediately forget — keep target for a grace period
 		# Target will be cleared only if truly lost (e.g. far away or scene change)
 		if _current_state in ["chase", "engage"]:
+			# Cancel previous timer if exists
+			if _detection_lost_timer != null:
+				_detection_lost_timer.timeout.disconnect_all()
 			# Schedule target loss after a short delay
-			get_tree().create_timer(1.5).timeout.connect(func():
+			_detection_lost_timer = get_tree().create_timer(1.5)
+			_detection_lost_timer.timeout.connect(func():
+				_detection_lost_timer = null
 				if _target == null or not is_instance_valid(_target) or global_position.distance_to(_target.global_position) > detection_range * 1.5:
 					_target = null
 					if _current_state in ["chase", "engage"]:
@@ -578,8 +600,10 @@ func _on_detection_exited(body: Node2D) -> void:
 
 func _flash_hurt() -> void:
 	sprite.modulate = Color(2.0, 0.5, 0.5, 1.0)
-	var tween := create_tween()
-	tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
+	if _hurt_tween and _hurt_tween.is_valid():
+		_hurt_tween.kill()
+	_hurt_tween = create_tween()
+	_hurt_tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
 
 
 func set_patrol_points(points: Array[Vector2]) -> void:

@@ -26,6 +26,8 @@ var _invul_timer: float = 0.0
 var _camera: Camera2D = null
 var _pause_menu_instance: Node = null
 var _knockback_velocity: Vector2 = Vector2.ZERO
+var _flash_tween: Tween = null
+var _slow_count: int = 0
 
 
 func _ready() -> void:
@@ -124,7 +126,7 @@ func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback
 		var reduction: float = float(GameManager.run_state.stat_upgrades.get("damage_reduction", 0.0))
 		# Apply damage_taken_mult from artifacts (e.g. Crown of Thorns)
 		var taken_mult: float = 1.0 + float(GameManager.run_state.stat_upgrades.get("damage_taken_mult", 0.0))
-		amount *= (1.0 - reduction) * taken_mult
+		amount *= maxf(1.0 - reduction, 0.0) * maxf(taken_mult, 0.0)
 		GameManager.run_state.player_hp = maxf(GameManager.run_state.player_hp - amount, 0.0)
 	else:
 		amount = 0.0
@@ -191,10 +193,14 @@ func get_max_hp() -> float:
 
 
 func apply_slow(mult: float, duration: float) -> void:
+	_slow_count += 1
 	_current_speed = base_speed * mult
 	get_tree().create_timer(duration).timeout.connect(func() -> void:
 		if is_instance_valid(self):
-			_current_speed = GameManager.run_state.player_speed if GameManager.run_state else base_speed
+			_slow_count -= 1
+			if _slow_count <= 0:
+				_slow_count = 0
+				_current_speed = GameManager.run_state.player_speed if GameManager.run_state else base_speed
 	)
 
 
@@ -255,7 +261,7 @@ func _on_enemy_killed_bloodlust(_enemy: CharacterBody2D) -> void:
 	var stacks := GameManager.run_state.get_stack_count("s11_bloodlust")
 	if stacks == 0:
 		return
-	GameManager.run_state.bloodlust_stacks = mini(stacks, 3)
+	GameManager.run_state.bloodlust_stacks = mini(GameManager.run_state.bloodlust_stacks + 1, 3)
 	GameManager.run_state.bloodlust_timer = 3.0
 
 
@@ -335,9 +341,11 @@ func _die() -> void:
 
 func _flash_white() -> void:
 	sprite.modulate = Color.WHITE
-	var tween := create_tween()
-	tween.tween_property(sprite, "modulate", Color(2.0, 2.0, 2.0, 1.0), 0.05)
-	tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
+	if _flash_tween:
+		_flash_tween.kill()
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(sprite, "modulate", Color(2.0, 2.0, 2.0, 1.0), 0.05)
+	_flash_tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
 
 
 enum AnimRow { IDLE = 0, WALK = 1, ATTACK = 2, THROW = 3, HURT = 4 }
@@ -355,7 +363,7 @@ func _update_sprite_facing() -> void:
 		col = 2 if _aim_direction.y >= 0 else 3  # down, up
 	# Update animation row based on state
 	if _is_attacking:
-		_current_anim = AnimRow.THROW
+		_current_anim = AnimRow.ATTACK
 	elif _is_hurt:
 		_current_anim = AnimRow.HURT
 	elif velocity.length_squared() > 100.0:

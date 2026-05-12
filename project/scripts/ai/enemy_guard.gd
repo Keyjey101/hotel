@@ -98,7 +98,6 @@ func _state_chase(delta: float) -> void:
 		return
 
 	velocity = direction.normalized() * move_speed
-	move_and_slide()
 
 
 # ---------------------------------------------------------------------------

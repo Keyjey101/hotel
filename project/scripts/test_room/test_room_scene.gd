@@ -49,8 +49,8 @@ func _spawn_enemy(pos: Vector2) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_pause"):
-		# T = spawn enemy (reuse pause key for debug)
+	if event is InputEventKey and event.keycode == KEY_T and event.pressed:
+		# T = spawn enemy (debug)
 		_spawn_enemy(player.global_position + Vector2(randf_range(-100, 100), randf_range(-100, 100)))
 	elif event is InputEventKey:
 		if event.keycode == KEY_R and event.pressed:

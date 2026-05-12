@@ -38,7 +38,7 @@ const ENEMY_SCENES: Dictionary = {
 	# Floor 6 — Arena (M7.2)
 	"gladiator": "res://scenes/enemies/gladiator.tscn",
 	"berserker": "res://scenes/enemies/berserker.tscn",
-	"champion": "res://scenes/bosses/boss_champion.tscn",
+	"boss_champion": "res://scenes/bosses/boss_champion.tscn",
 	# Floor 7 — Observatory (M7.4)
 	"spy": "res://scenes/enemies/spy.tscn",
 	"shadow_stalker": "res://scenes/enemies/shadow_stalker.tscn",
@@ -56,6 +56,7 @@ const ENEMY_SCENES: Dictionary = {
 
 
 func _ready() -> void:
+	add_to_group("floor_manager")
 	EventBus.room_cleared.connect(_on_event_bus_room_cleared)
 
 	# Auto-load floor if GameManager has a run active
@@ -102,6 +103,11 @@ func spawn_player(spawn_pos: Vector2) -> void:
 
 func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 	floor_number = floor_num
+	for r in rooms.values():
+		if is_instance_valid(r):
+			if r.room_cleared.is_connected(_on_room_instance_cleared):
+				r.room_cleared.disconnect(_on_room_instance_cleared)
+			r.queue_free()
 	rooms.clear()
 	room_configs.clear()
 	active_room_id = ""
@@ -166,9 +172,6 @@ func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 			load("res://scripts/world/floor_09_config.gd").apply_floor_09_extras(room_instance)
 		rooms[room_id] = room_instance
 		room_instance.deactivate()
-
-		# Connect room_cleared signal (emits RoomInstance)
-		room_instance.room_cleared.connect(_on_room_instance_cleared)
 
 	# 5. Deactivate boss room initially (unlock after all rooms cleared)
 	if rooms.has("boss"):
@@ -258,7 +261,8 @@ func transition_to_room(target_room_id: String) -> void:
 	var current_config: RoomConfig = room_configs.get(active_room_id)
 	if current_config != null and config != null:
 		if current_config.branch != config.branch:
-			AudioManager.SFXPlayer.play_sfx("floor_transition")
+			if AudioManager.SFXPlayer:
+				AudioManager.SFXPlayer.play_sfx("floor_transition")
 
 	# Deactivate current room
 	if not active_room_id.is_empty() and rooms.has(active_room_id):
@@ -414,6 +418,9 @@ func _create_pickup(loot_item: Dictionary, pos: Vector2) -> Area2D:
 func _on_pickup_collected(body: Node2D, pickup: Area2D) -> void:
 	if not body.is_in_group("player"):
 		return
+	if pickup.get_meta("collected", false):
+		return
+	pickup.set_meta("collected", true)
 
 	AudioManager.SFXPlayer.play_sfx_2d("item_pickup", pickup.global_position)
 
@@ -429,9 +436,26 @@ func _on_pickup_collected(body: Node2D, pickup: Area2D) -> void:
 
 	match loot_type:
 		"weapon":
-			print("[FloorManager] Weapon picked up: %s" % loot_id)
+			var weapon_id := loot_id
+			if weapon_id == "random":
+				var weapon_dir := DirAccess.open("res://resources/weapons/")
+				if weapon_dir:
+					var available: Array[String] = []
+					weapon_dir.list_dir_begin()
+					var fn := weapon_dir.get_next()
+					while fn != "":
+						if fn.ends_with(".tres"):
+							available.append(fn.replace(".tres", ""))
+						fn = weapon_dir.get_next()
+					weapon_dir.list_dir_end()
+					if available.is_empty():
+						push_warning("[FloorManager] No weapons found for random pickup")
+						pickup.queue_free()
+						return
+					weapon_id = available[randi() % available.size()]
+			print("[FloorManager] Weapon picked up: %s" % weapon_id)
 			if player and player.has_node("WeaponManager"):
-				var path := "res://resources/weapons/%s.tres" % loot_id
+				var path := "res://resources/weapons/%s.tres" % weapon_id
 				if ResourceLoader.exists(path):
 					var weapon: WeaponData = load(path)
 					player.get_node("WeaponManager").equip_weapon(weapon)

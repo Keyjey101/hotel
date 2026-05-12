@@ -12,6 +12,9 @@ func _ready() -> void:
 
 
 func setup(text: String, option1_text: String, option2_text: String, choice1: String, choice2: String) -> void:
+	if _label == null or _option1 == null or _option2 == null:
+		push_warning("DialogChoice: setup called but UI nodes are null")
+		return
 	# Disconnect previous connections to prevent signal stacking
 	for conn in _option1.pressed.get_connections():
 		_option1.pressed.disconnect(conn.callable)

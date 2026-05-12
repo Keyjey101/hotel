@@ -41,7 +41,7 @@ func _ready() -> void:
 				_ammo[i] = ceili(equipped[i].ammo * ammo_bonus)
 			else:
 				_ammo[i] = -1
-		active_slot = GameManager.run_state.active_slot
+		active_slot = mini(GameManager.run_state.active_slot, max_slots - 1)
 
 
 func get_active_weapon() -> WeaponData:
@@ -103,7 +103,7 @@ func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
 	if hit.get_parent() != get_tree().current_scene:
 		hit.get_parent().remove_child(hit)
 		if is_instance_valid(get_tree().current_scene):
-			get_tree().current_scene.call_deferred("add_child", hit)
+			get_tree().current_scene.add_child(hit)
 		else:
 			call_deferred("add_child", hit)
 
@@ -146,6 +146,12 @@ func ranged_attack(weapon: WeaponData, direction: Vector2) -> void:
 		proj.global_position = get_parent().global_position
 		if proj.get_parent() != get_tree().current_scene:
 			proj.get_parent().remove_child(proj)
+			if not is_instance_valid(get_tree().current_scene):
+				# Projectile was removed from pool parent but scene is invalid.
+				# Re-add to pool to avoid orphaning the projectile.
+				add_child(proj)
+				_projectile_pool.return_instance(proj)
+				return
 			get_tree().current_scene.add_child(proj)
 
 		for conn in proj.hit.get_connections():
@@ -212,7 +218,7 @@ func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weap
 	if DamageZone.is_limb(zone) and randf() < weapon.sever_chance:
 		sever = true
 
-	target.receive_damage(final_damage, zone, sever, weapon.knockback, global_position.direction_to(target.global_position))
+	target.receive_damage(final_damage, zone, sever, weapon.knockback, get_parent().global_position.direction_to(target.global_position))
 	EventBus.weapon_hit_target.emit(weapon, target, final_damage)
 
 	# Hunger Blade: 15% lifesteal on melee hits only

@@ -206,6 +206,8 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 # ---------------------------------------------------------------------------
 
 func _try_smoke_bomb() -> void:
+	if _stunned or _disabled:
+		return
 	if not _can_smoke or _smoke_cooldown > 0.0:
 		return
 	if _arms_lost >= 2:
@@ -292,6 +294,7 @@ func _physics_process(delta: float) -> void:
 		_stun_timer -= delta
 		if _stun_timer <= 0.0:
 			_stunned = false
+		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 		velocity = _knockback_vel * 0.9
 		_knockback_vel *= 0.9
 		move_and_slide()

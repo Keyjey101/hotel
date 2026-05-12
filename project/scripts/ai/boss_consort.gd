@@ -251,7 +251,7 @@ func _cleanup_guards() -> void:
 	var i := _guards.size() - 1
 	while i >= 0:
 		var g := _guards[i]
-		if not is_instance_valid(g) or g._disabled:
+		if not is_instance_valid(g) or g.get("_disabled") == true:
 			_guards.remove_at(i)
 		i -= 1
 
@@ -491,7 +491,7 @@ func _complete_summon() -> void:
 	_is_summoning = false
 	sprite.modulate = Color(1.5, 1.2, 1.2, 1.0)
 
-	if _guards.size() >= 1:
+	if not _guards.is_empty():
 		return  # Only summon if all guards are dead
 
 	_spawn_guard_at_offset(0)

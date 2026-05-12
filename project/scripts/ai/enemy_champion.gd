@@ -10,6 +10,7 @@ var _combo_damage: Array[float] = [15.0, 20.0, 25.0, 35.0]
 var _combo_windup: Array[float] = [0.1, 0.2, 0.3, 0.5]
 var _combo_cooldown: float = 0.0
 var _combo_active: bool = false
+var _combo_generation: int = 0
 
 # Charge system
 var _is_charging: bool = false
@@ -300,6 +301,7 @@ func _state_engage(delta: float) -> void:
 		if dist > attack_range * 1.5:
 			_combo_count = 0
 			_combo_active = false
+			_combo_generation += 1
 			_enter_state("chase")
 
 
@@ -312,6 +314,7 @@ func _start_charge() -> void:
 	_charge_timer = _charge_duration
 	_combo_count = 0
 	_combo_active = false
+	_combo_generation += 1
 
 	# Visual feedback: flash
 	sprite.modulate = Color(1.5, 0.8, 0.8, 1.0)
@@ -331,6 +334,7 @@ func _perform_attack() -> void:
 	if dist > attack_range * 1.5:
 		_combo_count = 0
 		_combo_active = false
+		_combo_generation += 1
 		return
 
 	# Current combo step
@@ -351,7 +355,8 @@ func _perform_attack() -> void:
 
 	# Schedule the actual hit after windup
 	var timer := get_tree().create_timer(windup)
-	timer.timeout.connect(func() -> void: _deliver_combo_hit(step, damage))
+	var gen := _combo_generation
+		timer.timeout.connect(func() -> void: _deliver_combo_hit(step, damage, gen))
 
 	_combo_count += 1
 	_combo_active = true
@@ -360,14 +365,18 @@ func _perform_attack() -> void:
 	if _combo_count >= _combo_max:
 		_combo_count = 0
 		_combo_active = false
+		_combo_generation += 1
 
 
-func _deliver_combo_hit(step: int, damage: float) -> void:
+func _deliver_combo_hit(step: int, damage: float, generation: int = -1) -> void:
 	if _disabled or not is_instance_valid(self):
+		return
+	if generation >= 0 and generation != _combo_generation:
 		return
 	if _target == null or not is_instance_valid(_target):
 		_combo_count = 0
 		_combo_active = false
+		_combo_generation += 1
 		return
 
 	var dist := global_position.distance_to(_target.global_position)
@@ -375,6 +384,7 @@ func _deliver_combo_hit(step: int, damage: float) -> void:
 		# Combo interrupted — reset
 		_combo_count = 0
 		_combo_active = false
+		_combo_generation += 1
 		return
 
 	var dir_to_target := global_position.direction_to(_target.global_position)

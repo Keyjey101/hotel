@@ -24,6 +24,7 @@ var _phase_collision_mask: int = 0
 var _arms_lost: int = 0
 var _legs_lost: int = 0
 var _dissolving: bool = false
+var _dissolve_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -188,6 +189,7 @@ func _on_limb_lost(zone: int) -> void:
 	# Full mutilate: dissolve — fade and slow regen
 	if _arms_lost >= 2 and _legs_lost >= 2:
 		_dissolving = true
+		_dissolve_timer = 2.0
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +246,10 @@ func _physics_process(delta: float) -> void:
 	# Dissolve effect when fully mutilated
 	if _dissolving:
 		sprite.modulate.a = move_toward(sprite.modulate.a, 0.3, 0.2 * delta)
+		_dissolve_timer -= delta
+		if _dissolve_timer <= 0.0:
+			_disable_enemy()
+			return
 
 	_process_state(delta)
 	_process_regen(delta)

@@ -78,11 +78,16 @@ func _process(delta: float) -> void:
 	# Audio cue placeholder: warn at 30s and 10s remaining
 	if timer > 0.0:
 		if timer <= 10.0:
-			print("[BasementManager] WARNING: %.0f seconds remaining!" % timer)
+			var _warned_second: int = int(ceil(timer))
+			if not has_meta("_last_warned_sec") or get_meta("_last_warned_sec") != _warned_second:
+				set_meta("_last_warned_sec", _warned_second)
+				print("[BasementManager] WARNING: %.0f seconds remaining!" % timer)
 
 
 ## Player reached exit stairs.
 func _on_exit_reached(_body: Node2D) -> void:
+	if _body == null:
+		return
 	if not _body.is_in_group("player"):
 		return
 
@@ -109,7 +114,7 @@ func _on_exit_reached(_body: Node2D) -> void:
 ## Player died in basement — run over.
 func _on_player_died() -> void:
 	GameManager.handle_basement_failure()
-	get_tree().change_scene_to_file("res://scenes/ui/game_over.tscn")
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/game_over.tscn")
 
 
 ## Strip all weapons except 1 random melee. If no melee, give Knife.

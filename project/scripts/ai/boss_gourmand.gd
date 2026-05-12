@@ -59,6 +59,9 @@ const MAX_SUMMONS: int = 6
 # ── Arena center ──────────────────────────────────────────────
 var _arena_center: Vector2 = Vector2.ZERO
 
+# ── Original collision mask ────────────────────────────────────
+var _original_collision_mask: int = 0
+
 
 # ═══════════════════════════════════════════════════════════════
 # INIT
@@ -85,6 +88,7 @@ func _ready() -> void:
 	base_damage = attack_damage
 
 	super._ready()
+	_original_collision_mask = collision_mask
 
 	_rng = _get_boss_rng()
 	add_to_group("boss")
@@ -122,8 +126,6 @@ func _physics_process(delta: float) -> void:
 	if _disabled:
 		super._physics_process(delta)
 		return
-	# Always tick regen
-	_process_regen(delta)
 	# Handle rolling charge movement
 	if _is_charging:
 		_process_charge(delta)
@@ -170,8 +172,6 @@ func _state_chase(delta: float) -> void:
 	var dir := (next_pos - global_position).normalized()
 	velocity = dir * move_speed
 	_direction = dir
-	move_and_slide()
-
 	if global_position.distance_to(_target.global_position) <= attack_range * 1.2:
 		_enter_state("engage")
 
@@ -281,11 +281,13 @@ func _find_nearest_corpse(range_px: float) -> StaticBody2D:
 func _eat_corpse(corpse: StaticBody2D) -> void:
 	if corpse.is_consumed:
 		return
-	corpse.consume()
+	if corpse.has_method("consume"):
+		corpse.consume()
 	corpses_eaten += 1
 	_heal_from_eating(30.0)
 	_apply_growth()
 	check_phase_transition()
+
 
 
 func _heal_from_eating(amount: float) -> void:
@@ -505,8 +507,8 @@ func vomit_spray() -> void:
 	get_tree().current_scene.add_child(cone_area)
 
 	cone_area.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			body.take_damage(15.0, _direction, 20.0)
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+			body.receive_damage(15.0, DamageZone.Zone.TORSO, false, 20.0, _direction)
 	)
 	get_tree().create_timer(0.3).timeout.connect(cone_area.queue_free)
 
@@ -538,7 +540,7 @@ func _process_flop(delta: float) -> void:
 		# Land
 		global_position = _flop_target_pos
 		_is_flopping = false
-		collision_mask = 7  # Restore default
+		collision_mask = _original_collision_mask  # Restore default
 		_flop_height = 0.0
 
 		# AoE shockwave: 30 dmg + knockdown
@@ -554,8 +556,8 @@ func _process_flop(delta: float) -> void:
 		get_tree().current_scene.add_child(impact_area)
 
 		impact_area.body_entered.connect(func(body: Node2D) -> void:
-			if body.is_in_group("player") and body.has_method("take_damage"):
-				body.take_damage(30.0, (body.global_position - global_position).normalized(), 50.0)
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+				body.receive_damage(30.0, DamageZone.Zone.TORSO, false, 50.0, (body.global_position - global_position).normalized())
 				if body.has_method("apply_stun"):
 					body.apply_stun(0.8)
 		)
@@ -613,8 +615,8 @@ func _process_grab(delta: float) -> void:
 		return
 
 	# Deal DPS to player
-	if _target.has_method("take_damage"):
-		_target.take_damage(GRAB_DPS * delta)
+	if _target.has_method("receive_damage"):
+		_target.receive_damage(GRAB_DPS * delta, DamageZone.Zone.TORSO, false)
 
 	# Stay close
 	if _target:
@@ -668,8 +670,8 @@ func _process_charge(delta: float) -> void:
 	if collision:
 		var collider := collision.get_collider()
 		if collider:
-			if collider.is_in_group("player") and collider.has_method("take_damage"):
-				collider.take_damage(50.0, _charge_dir, 40.0)
+		if collider.is_in_group("player") and collider.has_method("receive_damage"):
+				collider.receive_damage(50.0, DamageZone.Zone.TORSO, false, 40.0, _charge_dir)
 			# Hit wall or obstacle → stop
 			if collider is StaticBody2D:
 				_end_charge()
@@ -690,8 +692,8 @@ func _hit_entities_in_path() -> void:
 	var results := space.intersect_point(params)
 	for result in results:
 		var body: Node2D = result["collider"]
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			body.take_damage(50.0, _charge_dir, 40.0)
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+			body.receive_damage(50.0, DamageZone.Zone.TORSO, false, 40.0, _charge_dir)
 
 
 func _end_charge() -> void:
@@ -809,8 +811,8 @@ func _create_melee_hitbox(range_px: float, damage: float, knockback: float, life
 	get_tree().current_scene.add_child(area)
 
 	area.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			body.take_damage(damage, _direction, knockback)
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+			body.receive_damage(damage, DamageZone.Zone.TORSO, false, knockback, _direction)
 	)
 
 	get_tree().create_timer(lifespan).timeout.connect(area.queue_free)

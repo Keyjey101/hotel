@@ -26,6 +26,7 @@ var _combat: AudioStreamPlayer
 var _boss: AudioStreamPlayer
 var _silence_stream: AudioStream
 var _active_player: AudioStreamPlayer
+var _crossfade_tween: Tween = null
 
 
 func _ready() -> void:
@@ -79,6 +80,8 @@ func play_boss() -> void:
 
 
 func stop_all(fade_time: float) -> void:
+	if _crossfade_tween and _crossfade_tween.is_valid():
+		_crossfade_tween.kill()
 	var players := [_exploration, _combat, _boss]
 	for player in players:
 		if player and player.playing:
@@ -122,13 +125,15 @@ func _crossfade(from: AudioStreamPlayer, to: AudioStreamPlayer, duration: float)
 	to.volume_db = -80.0
 	to.play()
 
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(from, "volume_db", -80.0, duration)
-	tween.tween_property(to, "volume_db", 0.0, duration)
-	tween.set_parallel(false)
-	tween.tween_callback(from.stop)
-	tween.tween_callback(func(): from.volume_db = 0.0)
+	if _crossfade_tween and _crossfade_tween.is_valid():
+		_crossfade_tween.kill()
+	_crossfade_tween = create_tween()
+	_crossfade_tween.set_parallel(true)
+	_crossfade_tween.tween_property(from, "volume_db", -80.0, duration)
+	_crossfade_tween.tween_property(to, "volume_db", 0.0, duration)
+	_crossfade_tween.set_parallel(false)
+	_crossfade_tween.tween_callback(from.stop)
+	_crossfade_tween.tween_callback(func(): from.volume_db = 0.0)
 
 
 func _generate_silence() -> AudioStream:

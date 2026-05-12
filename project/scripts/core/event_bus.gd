@@ -38,6 +38,10 @@ signal artifact_collected(artifact_data: Resource)
 
 
 var _bridges_connected: bool = false
+## IMPORTANT: EventBus is a singleton Autoload. Do NOT re-instantiate or reload it.
+## The _bridges_connected flag prevents bridge reconnection, which means hot-reload
+## will NOT reconnect lambda signal bridges. This is by design — keep EventBus as
+## a persistent autoload node throughout the entire application lifecycle.
 
 
 func _ready() -> void:

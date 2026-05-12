@@ -116,13 +116,21 @@ func _on_enemy_damaged(_enemy: CharacterBody2D, _zone: int, _damage: float) -> v
 			pass
 
 
+var _music_transition_timer: SceneTreeTimer = null
+
+
 func _on_room_cleared(_floor_number: int, _room_name: String) -> void:
 	_enemy_damage_count = 0
 	_engaged_enemies = 0
-	get_tree().create_timer(2.0).timeout.connect(func():
-		_transition_to(MusicState.EXPLORATION)
-		_music_player.play_exploration(current_floor)
-	)
+	if _music_transition_timer != null and is_instance_valid(_music_transition_timer):
+		_music_transition_timer.timeout.disconnect(_on_music_transition_timeout)
+	_music_transition_timer = get_tree().create_timer(2.0)
+	_music_transition_timer.timeout.connect(_on_music_transition_timeout)
+
+
+func _on_music_transition_timeout() -> void:
+	_transition_to(MusicState.EXPLORATION)
+	_music_player.play_exploration(current_floor)
 
 
 func _on_player_damaged(_amount: float) -> void:
@@ -171,6 +179,8 @@ func enter_boss_mode() -> void:
 # === Process for tension timer ===
 
 func _process(delta: float) -> void:
+	if get_tree().paused:
+		return
 	if _tension_timer > 0.0:
 		_tension_timer -= delta
 		if _tension_timer <= 0.0 and current_music_state == MusicState.TENSION:

@@ -11,6 +11,7 @@ var _damage_mult: float = 1.0
 var _piercing: bool = false
 var _targets_hit: Array[Node2D] = []
 var _lifetime: float = 3.0
+var _returned_to_pool: bool = false
 
 
 func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0, piercing: bool = false) -> void:
@@ -21,6 +22,7 @@ func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0, pie
 	_piercing = piercing
 	_targets_hit.clear()
 	_lifetime = 3.0
+	_returned_to_pool = false
 	# Re-activate for pool reuse
 	velocity = _direction * _speed
 	rotation = _direction.angle()
@@ -63,14 +65,13 @@ func _physics_process(delta: float) -> void:
 			_return_to_pool()
 			return
 
-	_lifetime -= delta
-	if _lifetime <= 0.0:
-		_return_to_pool()
-
 
 
 
 func _return_to_pool() -> void:
+	if _returned_to_pool:
+		return
+	_returned_to_pool = true
 	velocity = Vector2.ZERO
 	_targets_hit.clear()
 	_lifetime = 3.0
@@ -83,10 +84,12 @@ func _return_to_pool() -> void:
 		queue_free()
 
 
+var _limb_rng := RandomNumberGenerator.new()
+
+
 func _pick_random_limb() -> int:
 	var zones := [DamageZone.Zone.TORSO, DamageZone.Zone.HEAD,
 		DamageZone.Zone.LEFT_ARM, DamageZone.Zone.RIGHT_ARM,
 		DamageZone.Zone.LEFT_LEG, DamageZone.Zone.RIGHT_LEG]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(global_position) + hash(_weapon.resource_name if _weapon else "")
-	return zones[rng.randi() % zones.size()]
+	_limb_rng.seed = hash(global_position) + hash(_weapon.resource_name if _weapon else "")
+	return zones[_limb_rng.randi() % zones.size()]

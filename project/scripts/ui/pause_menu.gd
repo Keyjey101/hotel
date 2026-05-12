@@ -57,6 +57,7 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_pause"):
+		get_viewport().set_input_as_handled()
 		_on_resume()
 
 
@@ -87,4 +88,4 @@ func _on_settings_closed() -> void:
 
 func _on_quit() -> void:
 	GameManager.unpause_game()
-	GameManager.restart_run()
+	GameManager.go_to_title()

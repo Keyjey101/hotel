@@ -24,7 +24,7 @@ func get_floor_rng(floor_number: int) -> RandomNumberGenerator:
 	if _floor_rng_cache.has(floor_number):
 		return _floor_rng_cache[floor_number]
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(_seed + floor_number * 65536)
+	rng.seed = hash(str(_seed) + "_" + str(floor_number))
 	_floor_rng_cache[floor_number] = rng
 	return rng
 
@@ -34,7 +34,7 @@ func get_room_rng(floor_number: int, room_index: int) -> RandomNumberGenerator:
 	if _room_rng_cache.has(key):
 		return _room_rng_cache[key]
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(_seed + floor_number * 65536 + room_index * 256)
+	rng.seed = hash(str(_seed) + "_" + str(floor_number) + "_" + str(room_index))
 	_room_rng_cache[key] = rng
 	return rng
 
@@ -61,6 +61,8 @@ func get_room_loot_config(floor_number: int, room_index: int, loot_zones: int) -
 
 
 func get_gate_config(floor_number: int, total_branches: int) -> Dictionary:
+	if total_branches <= 1:
+		return {"open": range(total_branches), "closed": -1}
 	var rng := get_floor_rng(floor_number)
 	var gate_rng := RandomNumberGenerator.new()
 	gate_rng.seed = rng.seed + 777  # Offset without mutating original

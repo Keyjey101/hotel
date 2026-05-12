@@ -325,6 +325,13 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	_sister_damage_dealt += damage
 	_player_attack_pause_timer = 0.0  # Reset — player IS attacking
 
+	# Cap damage so killing blow doesn't bypass spare mechanic
+	if zone == DamageZone.Zone.TORSO:
+		var hp_threshold := _max_torso_hp * 0.1
+		var torso_hp := limb_health[DamageZone.Zone.TORSO]
+		if torso_hp - damage <= 0.0 and torso_hp >= hp_threshold:
+			damage = torso_hp - hp_threshold  # Cap at 10%
+
 	# Check if killed
 	if zone == DamageZone.Zone.TORSO:
 		var hp_after := limb_health[DamageZone.Zone.TORSO] - damage
@@ -371,8 +378,11 @@ func _start_listen_path() -> void:
 	_dialogue_queue = truth_dialogue
 	_process_dialogue_queue()
 
-	# Wait for dialogue to finish, then trigger Ending C
-	await get_tree().create_timer(13.0).timeout
+	# Calculate total dialogue time dynamically instead of hardcoding
+	var total_dialogue_time := 0.0
+	for entry in truth_dialogue:
+		total_dialogue_time += entry.get("duration", 2.0) + 0.6
+	await get_tree().create_timer(total_dialogue_time).timeout
 	_trigger_ending("c")
 
 
@@ -389,13 +399,14 @@ func _start_embrace_path() -> void:
 
 	var player := get_tree().get_first_node_in_group("player")
 	if player and player.has_method("receive_damage"):
-		var hp := GameManager.run_state.player_hp if GameManager.run_state else 100.0
+		var hp := player.get_hp() if player.has_method("get_hp") else (GameManager.run_state.player_hp if GameManager.run_state else 100.0)
 		var stab_damage := hp * 0.5
 		player.receive_damage(stab_damage, DamageZone.Zone.TORSO, false)
 
 	# Check if player survives
 	await get_tree().create_timer(0.5).timeout
-	var current_hp := GameManager.run_state.player_hp if GameManager.run_state else 0.0
+	var player_node := get_tree().get_first_node_in_group("player")
+	var current_hp := player_node.get_hp() if player_node and player_node.has_method("get_hp") else (GameManager.run_state.player_hp if GameManager.run_state else 0.0)
 	if current_hp > 0.0:
 		_player_embraced = true
 		# Hidden path opens → Ending D
@@ -494,7 +505,7 @@ func _disable_enemy() -> void:
 		if _sister_damage_dealt <= 0.0 and GameManager.run_state:
 			GameManager.run_state.run_meta["sister_never_attacked"] = true
 
-	EventBus.enemy_disabled.emit(self)
+	super._disable_enemy()
 
 
 # ---------------------------------------------------------------------------

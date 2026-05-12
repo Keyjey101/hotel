@@ -19,6 +19,7 @@ var enemies_mutilated: int = 0
 var limbs_severed: int = 0
 var run_start_time: float = 0.0
 var run_meta: Dictionary = {}  # arbitrary key-value flags for ending logic
+var _paused_duration: float = 0.0
 
 # Behavioral state
 var second_wind_used: bool = false
@@ -120,6 +121,8 @@ func apply_upgrade(upg: Resource) -> void:
 	collected_upgrade_ids.append(upg.id)
 	_upgrade_stack_counts[upg.id] = _upgrade_stack_counts.get(upg.id, 0) + 1
 	if upg.stat_key != "" and upg.behavioral_id == "":
+		var stat_stack_key := upg.stat_key
+		_upgrade_stack_counts[stat_stack_key] = _upgrade_stack_counts.get(stat_stack_key, 0) + 1
 		apply_stat_upgrade(upg.stat_key, upg.delta)
 
 
@@ -133,15 +136,7 @@ func get_artifact_stat(key: String, default: float = 0.0) -> float:
 
 func has_artifact(artifact_id: String) -> bool:
 	for a in cult_artifacts:
-		if a is Resource and a.resource_name == artifact_id:
-			return true
 		if a != null and a.get("id") != null and str(a.get("id")) == artifact_id:
-			return true
-		var a_name: String = a.resource_name if a is Resource else ""
-		if a_name == artifact_id:
-			return true
-		# Also check display_name property
-		if a != null and a.get("display_name") != null and str(a.get("display_name")) == artifact_id:
 			return true
 	return false
 
@@ -151,7 +146,11 @@ func heal(amount: float) -> void:
 
 
 func get_run_time() -> float:
-	return Time.get_ticks_msec() / 1000.0 - run_start_time
+	return Time.get_ticks_msec() / 1000.0 - run_start_time - _paused_duration
+
+
+func track_pause(delta: float) -> void:
+	_paused_duration += delta
 
 
 func to_dict() -> Dictionary:
@@ -163,6 +162,7 @@ func to_dict() -> Dictionary:
 		"active_slot": active_slot,
 		"stat_upgrades": stat_upgrades,
 		"collected_upgrade_ids": collected_upgrade_ids,
+		"_upgrade_stack_counts": _upgrade_stack_counts,
 		"enemies_mutilated": enemies_mutilated,
 		"limbs_severed": limbs_severed,
 		"run_start_time": run_start_time,
@@ -172,7 +172,8 @@ func to_dict() -> Dictionary:
 		"weapon_slots": [],
 		"cult_artifacts": [],
 		"run_meta": {},
-		"counters": counters.duplicate(),
+		"counters": counters.duplicate(true),
+		"_paused_duration": _paused_duration,
 	}
 	for key in rooms_cleared:
 		d["rooms_cleared"][key] = rooms_cleared[key]
@@ -194,11 +195,9 @@ func to_dict() -> Dictionary:
 
 
 static func from_dict(d: Dictionary) -> RunState:
-	# Clean up existing RunState if any
-	if GameManager and GameManager.run_state and GameManager.run_state.has_method("cleanup"):
+	if GameManager.run_state != null and GameManager.run_state is RunState:
 		GameManager.run_state.cleanup()
-	var script := load("res://scripts/core/run_state.gd")
-	var rs = script.new()
+	var rs := RunState.new()
 	rs.current_floor = d.get("current_floor", 1)
 	rs.player_hp = d.get("player_hp", 100.0)
 	rs.player_max_hp = d.get("player_max_hp", 100.0)
@@ -242,6 +241,8 @@ static func from_dict(d: Dictionary) -> RunState:
 	var cnt: Dictionary = d.get("counters", {})
 	for key in cnt:
 		rs.counters[key] = cnt[key]
+	rs._upgrade_stack_counts = d.get("_upgrade_stack_counts", {})
+	rs._paused_duration = d.get("_paused_duration", 0.0)
 	rs._recalculate_stats()
 	return rs
 
@@ -271,6 +272,7 @@ func _recalculate_stats() -> void:
 
 	# Clamp
 	player_max_hp = maxf(player_max_hp, 1.0)
+	player_hp = minf(player_hp, player_max_hp)
 	player_speed = maxf(player_speed, 50.0)
 
 

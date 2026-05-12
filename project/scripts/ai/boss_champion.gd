@@ -5,6 +5,8 @@ extends "res://scripts/ai/base_enemy.gd"
 ## Phases: Honour (100-50%), Glory (50-25%), Infamy (25-0%).
 ## Design doc: 14_BOSS_DESIGN.md section 7.
 
+signal enemy_died(enemy)
+
 enum BossState { WATCHING, WAVE, DESCENDING, FIGHTING }
 
 var current_boss_state: BossState = BossState.WATCHING
@@ -46,6 +48,7 @@ var _cape_visual: ColorRect = null
 
 # Wave damage buff
 var _wave_damage_buff: float = 0.0
+var _immune: bool = false
 
 
 func _ready() -> void:
@@ -80,9 +83,10 @@ func _ready() -> void:
 
 	# Start in watching state — immune until waves cleared
 	_disabled = true
-	_disabled_timer = 999999.0
+	_immune = true
 	current_boss_state = BossState.WATCHING
 	wave_number = 0
+	enemy_died.connect(_on_wave_enemy_died)
 	_setup_pattern_variation()
 	_start_next_wave()
 
@@ -213,8 +217,10 @@ func _spawn_wave_enemies(wave: int) -> void:
 					if "attack_damage" in enemy:
 						enemy.attack_damage *= (1.0 + _wave_damage_buff)
 					# Connect death signal to track wave progress
-					if enemy.has_signal("tree_exited"):
-						enemy.tree_exited.connect(_on_wave_enemy_died.bind(enemy))
+					if enemy.has_signal("enemy_disabled"):
+						enemy.enemy_disabled.connect(func() -> void: emit_signal("enemy_died", enemy))
+					elif enemy.has_signal("tree_exited"):
+						enemy.tree_exited.connect(func() -> void: emit_signal("enemy_died", enemy))
 					get_tree().current_scene.add_child(enemy)
 			else:
 				print("[Champion] Wave enemy scene not found: %s" % group["type"])
@@ -256,7 +262,7 @@ func _process_descending(delta: float) -> void:
 		velocity = Vector2.ZERO
 		current_boss_state = BossState.FIGHTING
 		_disabled = false
-		_disabled_timer = 0.0
+		_immune = false
 		_enter_state("chase")
 		print("[Champion] Boss fight begins!")
 
@@ -530,7 +536,7 @@ func _perform_grab_throw() -> void:
 # ---------------------------------------------------------------------------
 
 func receive_damage(damage: float, zone: int, sever: bool, knockback_force: float = 0.0, knockback_dir: Vector2 = Vector2.ZERO) -> void:
-	if current_boss_state != BossState.FIGHTING:
+	if current_boss_state != BossState.FIGHTING or _immune:
 		return
 
 	# Shield block
@@ -538,7 +544,7 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 		var facing_dir := _direction.normalized()
 		var incoming_dir := knockback_dir.normalized() if knockback_dir != Vector2.ZERO else -facing_dir
 		var dot := facing_dir.dot(incoming_dir)
-		if dot > 0.0:
+		if dot < 0.0:
 			# Frontal hit — shield absorbs
 			shield_hp -= damage
 			print("[Champion] Shield absorbs %.0f damage (HP: %.0f)" % [damage, shield_hp])

@@ -96,6 +96,8 @@ func _physics_process(delta: float) -> void:
 	_tick_pistol_timer(delta)
 	_update_strafe(delta)
 	_update_phase()
+	if _phase >= 3:
+		_process_phase3_trap_decay()
 	super._physics_process(delta)
 
 
@@ -202,16 +204,14 @@ func _state_engage(_delta: float) -> void:
 		_summon_drones()
 		_summon_timer = 20.0 if _phase < 3 else 12.0
 
-	# Phase 2+: Gold bar throw
-	if _phase >= 2 and _gold_throw_timer <= 0.0:
+	# Phase 3: Gold bar barrage (takes priority over regular throw)
+	if _phase >= 3 and _gold_throw_timer <= 0.0:
+		_gold_bar_barrage()
+		_gold_throw_timer = 8.0
+	# Phase 2: Gold bar throw
+	elif _phase >= 2 and _gold_throw_timer <= 0.0:
 		_throw_gold_bar()
 		_gold_throw_timer = 6.0 if _phase == 2 else 3.0
-
-	# Phase 3: Gold bar barrage
-	if _phase >= 3:
-		if _gold_throw_timer <= 0.0:
-			_gold_bar_barrage()
-			_gold_throw_timer = 8.0
 
 	# Retreat if too close
 	var dist := global_position.distance_to(_target.global_position)
@@ -325,7 +325,7 @@ func _spawn_hazard_at_player(dps: float, dur: float, col: Color, radius: float, 
 	if not is_instance_valid(self) or _disabled:
 		return
 
-	var zone = load("res://scripts/combat/hazard_zone.gd").new()
+	var zone := HazardZone.new()
 	zone.damage_per_second = dps
 	zone.slow_factor = 1.0
 	zone.duration = dur
@@ -407,10 +407,16 @@ func _move_projectile(proj: Area2D) -> void:
 	var elapsed := 0.0
 
 	while is_instance_valid(proj) and elapsed < lifetime:
-		proj.position += dir * speed * get_process_delta_time()
-		elapsed += get_process_delta_time()
 		await get_tree().process_frame
-		if not is_instance_valid(self): return
+		if not is_instance_valid(proj):
+			return
+		if not is_instance_valid(self):
+			if is_instance_valid(proj):
+				proj.queue_free()
+			return
+		var frame_delta := get_process_delta_time()
+		elapsed += frame_delta
+		proj.position += dir * speed * frame_delta
 
 	if is_instance_valid(proj):
 		proj.queue_free()

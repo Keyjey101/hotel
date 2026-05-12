@@ -152,8 +152,6 @@ func _state_chase(delta: float) -> void:
 	var dir := (next_pos - global_position).normalized()
 	velocity = dir * move_speed
 	_direction = dir
-	move_and_slide()
-
 	if global_position.distance_to(_target.global_position) <= attack_range * 1.2:
 		_enter_state("engage")
 
@@ -554,6 +552,8 @@ func _apply_dot_to_player(player: Node, dmg: float, dur: float) -> void:
 	var ticks := int(dur)
 	for i in range(ticks):
 		get_tree().create_timer(float(i + 1)).timeout.connect(func() -> void:
+			if not is_instance_valid(self):
+				return
 			if is_instance_valid(player) and player.has_method("take_damage"):
 				player.take_damage(dmg)
 		)
@@ -635,9 +635,8 @@ func _process_grab(delta: float) -> void:
 
 	_grab_elapsed += delta
 
-	if int(_grab_elapsed) > int(_grab_elapsed - delta):
-		if _target and is_instance_valid(_target) and _target.has_method("take_damage"):
-			_target.take_damage(_grab_dot_damage)
+	if _target and is_instance_valid(_target) and _target.has_method("take_damage"):
+		_target.take_damage(_grab_dot_damage * delta)
 
 	if _target and is_instance_valid(_target):
 		var pull_dir := (global_position - _target.global_position).normalized()

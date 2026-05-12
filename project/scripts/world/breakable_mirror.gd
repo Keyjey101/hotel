@@ -15,7 +15,7 @@ func take_damage(amount: float) -> void:
 	hp -= amount
 	# Visual crack: darken overlay proportional to damage
 	var crack_node := get_node_or_null("CrackOverlay")
-	if crack_node:
+	if crack_node and crack_node is ColorRect:
 		var hp_pct := hp / 30.0
 		crack_node.color.a = 1.0 - hp_pct
 	if hp <= 0.0:

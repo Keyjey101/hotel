@@ -239,6 +239,12 @@ func _on_limb_lost(zone: int) -> void:
 
 func _recalc_move_speed() -> void:
 	move_speed = _initial_move_speed * _water_mult
+	# Account for limb loss
+	var legs_lost := int(severed_limbs.get(DamageZone.Zone.LEFT_LEG, false)) + int(severed_limbs.get(DamageZone.Zone.RIGHT_LEG, false))
+	if not is_in_water:
+		match legs_lost:
+			1: move_speed = _move_speed_land * 0.3
+			2: move_speed = _move_speed_land * 0.1
 
 func get_enemy_type() -> String:
 	return enemy_type

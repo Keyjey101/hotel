@@ -33,6 +33,7 @@ func get_instance() -> Node:
 			# Force return oldest active
 			var oldest: Node = _active.pop_front()
 			if is_instance_valid(oldest):
+				oldest.set_meta("_pool_reclaimed", true)
 				_return(oldest)
 	if _pool.is_empty():
 		return null
@@ -59,6 +60,11 @@ func return_instance(instance: Node) -> void:
 
 
 func _return(instance: Node) -> void:
+	if instance.get_meta("_pool_reclaimed", false):
+		instance.set_meta("_pool_reclaimed", false)
+		if _pool.has(instance):
+			_active.erase(instance)
+			return
 	instance.set_process(false)
 	instance.set_physics_process(false)
 	if instance is CanvasItem:
@@ -69,6 +75,8 @@ func _return(instance: Node) -> void:
 
 
 func _expand() -> void:
+	if not is_inside_tree():
+		return
 	var instance: Node = _scene.instantiate()
 	instance.set_process(false)
 	instance.set_physics_process(false)

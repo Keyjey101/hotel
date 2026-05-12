@@ -20,7 +20,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "Grand Staircase",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(10, 6),
-		"size_px": Vector2i(10 * TILE, 6 * TILE),
+		"size_px": Vector2(10 * TILE, 6 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [{"type": "royal_guard", "count": 1}],
@@ -39,7 +39,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "Portrait Gallery",
 		"room_type": "gallery",
 		"size_tiles": Vector2i(12, 8),
-		"size_px": Vector2i(12 * TILE, 8 * TILE),
+		"size_px": Vector2(12 * TILE, 8 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [{"type": "royal_guard", "count": 2}],
@@ -58,7 +58,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "The Ballroom",
 		"room_type": "hub",
 		"size_tiles": Vector2i(20, 16),
-		"size_px": Vector2i(20 * TILE, 16 * TILE),
+		"size_px": Vector2(20 * TILE, 16 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [
@@ -70,7 +70,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(20 * TILE, 16 * TILE), 14),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(20 * TILE, 16 * TILE), 2),
 		"door_positions": RoomConfig._gen_doors(
-			Vector2i(20 * TILE, 16 * TILE),
+			Vector2(20 * TILE, 16 * TILE),
 			["a2", "b1", "c1", "d1"],
 			["top", "left", "right", "bottom"]
 		),
@@ -84,7 +84,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "Champagne Hall",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE, 8 * TILE),
+		"size_px": Vector2(10 * TILE, 8 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [
@@ -106,7 +106,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "Trophy Room",
 		"room_type": "storage",
 		"size_tiles": Vector2i(8, 8),
-		"size_px": Vector2i(8 * TILE, 8 * TILE),
+		"size_px": Vector2(8 * TILE, 8 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [{"type": "champion_enemy", "count": 1}],
@@ -125,7 +125,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "Throne Antechamber",
 		"room_type": "gallery",
 		"size_tiles": Vector2i(12, 10),
-		"size_px": Vector2i(12 * TILE, 10 * TILE),
+		"size_px": Vector2(12 * TILE, 10 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [
@@ -148,7 +148,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "The Golden Chamber",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(8, 8),
-		"size_px": Vector2i(8 * TILE, 8 * TILE),
+		"size_px": Vector2(8 * TILE, 8 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [
@@ -170,7 +170,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "Crystal Gallery",
 		"room_type": "gallery",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE, 8 * TILE),
+		"size_px": Vector2(10 * TILE, 8 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [
@@ -192,7 +192,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "The Vault of Faces",
 		"room_type": "trap",
 		"size_tiles": Vector2i(10, 10),
-		"size_px": Vector2i(10 * TILE, 10 * TILE),
+		"size_px": Vector2(10 * TILE, 10 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [
@@ -214,7 +214,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"room_name": "The Consort's Ballroom",
 		"room_type": "boss",
 		"size_tiles": Vector2i(18, 14),
-		"size_px": Vector2i(18 * TILE, 14 * TILE),
+		"size_px": Vector2(18 * TILE, 14 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [{"type": "consort", "count": 1}],
@@ -362,7 +362,7 @@ static func _destroy_chandelier(chandelier: Area2D, room: RoomInstance) -> void:
 		)
 
 	# Remove hazard after 0.5s
-	var tree := room.get_tree()
+	tree = room.get_tree()
 	if tree:
 		var timer := tree.create_timer(0.5)
 		timer.timeout.connect(func() -> void:
@@ -374,14 +374,20 @@ static func _destroy_chandelier(chandelier: Area2D, room: RoomInstance) -> void:
 ## Red carpet: decorative ColorRect strip down center
 static func _add_red_carpet(room: RoomInstance) -> void:
 	var size := room.room_bounds.size
+	var carpet_container := Control.new()
+	carpet_container.name = "RedCarpetContainer"
+	carpet_container.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	carpet_container.position = Vector2(size.x * 0.35, 0.0)
+	carpet_container.size = Vector2(size.x * 0.3, size.y)
+	carpet_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	room.add_child(carpet_container)
 	var carpet := ColorRect.new()
 	carpet.name = "RedCarpet"
 	carpet.color = Color(0.545, 0.0, 0.0, 0.4)  # #8B0000 with alpha
-	carpet.size = Vector2(size.x * 0.3, size.y)
-	carpet.position = Vector2(size.x * 0.35, 0.0)
-	carpet.z_index = -1
+	carpet.set_anchors_preset(Control.PRESET_FULL_RECT)
 	carpet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	room.add_child(carpet)
+	carpet.z_index = -1
+	carpet_container.add_child(carpet)
 
 
 ## Gold fixtures: destructible StaticBody2D with HP=20

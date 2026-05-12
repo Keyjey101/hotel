@@ -296,11 +296,20 @@ func _update_bolts(delta: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _disable_enemy() -> void:
+	# Free all active dark bolts
+	for bolt in _dark_bolts:
+		if is_instance_valid(bolt):
+			bolt.queue_free()
+	_dark_bolts.clear()
+
 	_disabled = true
 	_disabled_timer = 45.0
 	velocity = Vector2.ZERO
 
-	# Dissolve animation: sprite modulate → transparent over 1.0s
+	# Call super first (sets modulate to Color.WHITE), then apply dissolve
+	super._disable_enemy()
+
+	# Dissolve animation: sprite modulate → transparent over 1.0s (after super resets modulate)
 	var tween := create_tween()
 	tween.tween_property(sprite, "modulate:a", 0.0, 1.0)
 
@@ -313,8 +322,6 @@ func _disable_enemy() -> void:
 	hz.zone_radius = 30.0
 	hz.global_position = global_position
 	get_tree().current_scene.add_child(hz)
-
-	EventBus.enemy_disabled.emit(self)
 
 
 # ---------------------------------------------------------------------------
@@ -337,6 +344,7 @@ func _physics_process(delta: float) -> void:
 		velocity = _knockback_vel * 0.9
 		_knockback_vel *= 0.9
 		move_and_slide()
+		_process_regen(delta)
 		return
 
 	# Phase handling
@@ -356,6 +364,8 @@ func _physics_process(delta: float) -> void:
 	_update_bolts(delta)
 
 	_knockback_vel = _knockback_vel.move_toward(Vector2.ZERO, 500.0 * delta)
+	_process_regen(delta)
+
 	velocity += _knockback_vel
 
 	move_and_slide()

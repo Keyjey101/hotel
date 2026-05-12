@@ -60,6 +60,8 @@ func _on_area_entered(area: Area2D) -> void:
 			enemy = node as Node2D
 			break
 		node = node.get_parent()
+	if enemy == null:
+		return
 	if enemy in _targets_hit:
 		return
 

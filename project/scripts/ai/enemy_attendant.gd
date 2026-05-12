@@ -44,6 +44,12 @@ func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	_fog_cooldown = maxf(0.0, _fog_cooldown - delta)
 	_heal_cooldown = maxf(0.0, _heal_cooldown - delta)
+	# Tick heal channel timer here so it progresses in ALL states (chase/engage/etc.)
+	if _is_channeling_heal:
+		_healing_channel_timer -= delta
+		if _healing_channel_timer <= 0.0:
+			_complete_heal()
+			_is_channeling_heal = false
 
 
 # ---------------------------------------------------------------------------
@@ -98,10 +104,6 @@ func _state_engage(delta: float) -> void:
 	# Channeling heal takes priority
 	if _is_channeling_heal:
 		velocity = Vector2.ZERO
-		_healing_channel_timer -= delta
-		if _healing_channel_timer <= 0.0:
-			_complete_heal()
-			_is_channeling_heal = false
 		return
 
 	# Periodically check for heal opportunity

@@ -146,7 +146,6 @@ func _state_engage(delta: float) -> void:
 	if dist > attack_range:
 		# Close the gap
 		velocity = _direction * move_speed
-		move_and_slide()
 	else:
 		# In range — attempt grab
 		velocity = Vector2.ZERO

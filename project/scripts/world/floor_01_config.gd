@@ -8,7 +8,7 @@ var room_id: String
 var room_name: String
 var room_type: String           # corridor/chamber/storage/hub/boss
 var size_tiles: Vector2i
-var size_px: Vector2i
+var size_px: Vector2
 var floor_color: Color
 var wall_color: Color
 var enemies: Array[Dictionary]  # [{"type": "staff", "count": 2}]
@@ -133,7 +133,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Entry Shaft",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(8, 6),
-		"size_px": Vector2i(8 * TILE_SIZE, 6 * TILE_SIZE),
+		"size_px": Vector2(8 * TILE_SIZE, 6 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [],
@@ -152,7 +152,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Service Corridor",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(12, 4),
-		"size_px": Vector2i(12 * TILE_SIZE, 4 * TILE_SIZE),
+		"size_px": Vector2(12 * TILE_SIZE, 4 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "staff", "count": 2}],
@@ -171,7 +171,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Boiler Room",
 		"room_type": "hub",
 		"size_tiles": Vector2i(14, 12),
-		"size_px": Vector2i(14 * TILE_SIZE, 12 * TILE_SIZE),
+		"size_px": Vector2(14 * TILE_SIZE, 12 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "staff", "count": 2}, {"type": "guard", "count": 1}],
@@ -180,7 +180,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"spawn_point_positions": _gen_spawn_points(Vector2(14 * TILE_SIZE, 12 * TILE_SIZE), 12),
 		"loot_zone_positions": _gen_loot_zones(Vector2(14 * TILE_SIZE, 12 * TILE_SIZE), 2),
 		"door_positions": _gen_doors(
-			Vector2i(14 * TILE_SIZE, 12 * TILE_SIZE),
+			Vector2(14 * TILE_SIZE, 12 * TILE_SIZE),
 			["a2", "b1", "c1", "d1"],
 			["top", "left", "right", "bottom"]
 		),
@@ -194,7 +194,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Laundry Room",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE_SIZE, 8 * TILE_SIZE),
+		"size_px": Vector2(10 * TILE_SIZE, 8 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "staff", "count": 3}],
@@ -213,7 +213,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Linen Storage",
 		"room_type": "storage",
 		"size_tiles": Vector2i(6, 6),
-		"size_px": Vector2i(6 * TILE_SIZE, 6 * TILE_SIZE),
+		"size_px": Vector2(6 * TILE_SIZE, 6 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "staff", "count": 1}],
@@ -232,7 +232,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Meat Processing",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(12, 10),
-		"size_px": Vector2i(12 * TILE_SIZE, 10 * TILE_SIZE),
+		"size_px": Vector2(12 * TILE_SIZE, 10 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "handler", "count": 1}, {"type": "staff", "count": 2}],
@@ -252,7 +252,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Freezer Room",
 		"room_type": "chamber",
 		"size_tiles": Vector2i(8, 8),
-		"size_px": Vector2i(8 * TILE_SIZE, 8 * TILE_SIZE),
+		"size_px": Vector2(8 * TILE_SIZE, 8 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "guard", "count": 1}],
@@ -271,7 +271,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Maintenance Tunnels",
 		"room_type": "corridor",
 		"size_tiles": Vector2i(16, 4),
-		"size_px": Vector2i(16 * TILE_SIZE, 4 * TILE_SIZE),
+		"size_px": Vector2(16 * TILE_SIZE, 4 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "staff", "count": 2}, {"type": "guard", "count": 1}],
@@ -290,7 +290,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Generator Room",
 		"room_type": "storage",
 		"size_tiles": Vector2i(10, 8),
-		"size_px": Vector2i(10 * TILE_SIZE, 8 * TILE_SIZE),
+		"size_px": Vector2(10 * TILE_SIZE, 8 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "guard", "count": 1}, {"type": "staff", "count": 1}],
@@ -309,7 +309,7 @@ static func get_floor_01_rooms() -> Dictionary:
 		"room_name": "Head Chef's Kitchen",
 		"room_type": "boss",
 		"size_tiles": Vector2i(16, 14),
-		"size_px": Vector2i(16 * TILE_SIZE, 14 * TILE_SIZE),
+		"size_px": Vector2(16 * TILE_SIZE, 14 * TILE_SIZE),
 		"floor_color": FLOOR_COLOR,
 		"wall_color": WALL_COLOR,
 		"enemies": [{"type": "head_chef", "count": 1}],

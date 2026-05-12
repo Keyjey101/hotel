@@ -296,14 +296,11 @@ static func _create_pickup_node(loot_item: Dictionary, pos: Vector2) -> Area2D:
 
 	return pickup
 
-## Find FloorManager by walking the scene tree
+## Find FloorManager using group lookup
 static func _find_floor_manager(node: Node) -> Node:
 	if node == null:
 		return null
-	if node.has_method("_on_pickup_collected") and node.is_class("Node"):
-		return node
-	for child in node.get_children():
-		var result := _find_floor_manager(child)
-		if result != null:
-			return result
+	var tree := node.get_tree()
+	if tree:
+		return tree.get_first_node_in_group("floor_manager")
 	return null

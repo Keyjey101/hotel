@@ -205,7 +205,7 @@ func _on_back_pressed() -> void:
 	if AudioManager:
 		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	GameManager.current_state = GameManager.GameState.MENU
-	get_tree().change_scene_to_file("res://scenes/ui/title_screen.tscn")
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/title_screen.tscn")
 
 
 func _get_upgrade_display_name(id: String) -> String:

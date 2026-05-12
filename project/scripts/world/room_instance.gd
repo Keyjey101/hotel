@@ -42,6 +42,11 @@ func _ready() -> void:
 	EventBus.enemy_disabled.connect(_on_enemy_disabled)
 
 
+func _exit_tree() -> void:
+	if EventBus.enemy_disabled.is_connected(_on_enemy_disabled):
+		EventBus.enemy_disabled.disconnect(_on_enemy_disabled)
+
+
 func _collect_from_container(container_name: String, arr: Array, group_name: String) -> void:
 	var container := find_child(container_name, true, false)
 	if container == null:
@@ -58,6 +63,8 @@ func _collect_from_container(container_name: String, arr: Array, group_name: Str
 # Activation / Deactivation
 # ---------------------------------------------------------------------------
 
+var _activate_retries: int = 0
+
 func activate() -> void:
 	is_active = true
 	set_process(true)
@@ -65,7 +72,9 @@ func activate() -> void:
 	# Update camera bounds
 	var cameras := get_tree().get_nodes_in_group("camera")
 	if cameras.is_empty():
-		call_deferred("activate")
+		_activate_retries += 1
+		if _activate_retries < 10:
+			call_deferred("activate")
 		return
 	for cam in cameras:
 		if cam.has_method("set_limits"):

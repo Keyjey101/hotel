@@ -45,14 +45,20 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	if _elapsed >= duration:
 		# Remove slow from all affected bodies before freeing
-		for body in _affected_bodies:
+		var bodies := _affected_bodies.keys()
+		for body in bodies:
 			if is_instance_valid(body) and body.has_method("remove_hazard_slow"):
 				body.remove_hazard_slow(slow_factor)
+		if body_entered.is_connected(_on_body_entered):
+			body_entered.disconnect(_on_body_entered)
+		if body_exited.is_connected(_on_body_exited):
+			body_exited.disconnect(_on_body_exited)
 		queue_free()
 		return
 
 	# Apply DOT to all bodies inside
-	for body in _affected_bodies:
+	var dot_bodies := _affected_bodies.keys()
+	for body in dot_bodies:
 		if not is_instance_valid(body):
 			continue
 		if damage_per_second > 0.0:
@@ -60,10 +66,14 @@ func _process(delta: float) -> void:
 
 
 func _on_body_entered(body: Node2D) -> void:
+	if _affected_bodies.has(body):
+		return
 	_affected_bodies[body] = {"timer": 0.0}
 	# Apply slow
 	if slow_factor < 1.0 and body.has_method("apply_hazard_slow"):
 		body.apply_hazard_slow(slow_factor)
+	# Track tree_exiting so slow is removed if body is freed inside the zone
+	body.tree_exiting.connect(_on_body_tree_exiting.bind(body))
 
 
 func _on_body_exited(body: Node2D) -> void:
@@ -71,6 +81,13 @@ func _on_body_exited(body: Node2D) -> void:
 	# Remove slow
 	if slow_factor < 1.0 and body.has_method("remove_hazard_slow"):
 		body.remove_hazard_slow(slow_factor)
+
+
+func _on_body_tree_exiting(body: Node2D) -> void:
+	if _affected_bodies.has(body):
+		_affected_bodies.erase(body)
+		if slow_factor < 1.0 and is_instance_valid(body) and body.has_method("remove_hazard_slow"):
+			body.remove_hazard_slow(slow_factor)
 
 
 func _apply_dot(body: Node2D, damage: float) -> void:

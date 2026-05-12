@@ -147,10 +147,24 @@ func _on_setting_changed(key: String, value: Variant) -> void:
 
 
 func _on_reset_defaults() -> void:
-	SaveManager.save_and_apply(SaveManager._default_settings())
+	var default_settings := {
+		"master_volume": 1.0,
+		"music_volume": 0.8,
+		"sfx_volume": 1.0,
+		"screen_shake": true,
+		"screen_flash": true,
+		"blood_intensity": 1.0,
+		"fullscreen": false,
+		"tutorial_shown": false,
+	}
+	SaveManager.save_and_apply(default_settings)
 	# Rebuild UI with defaults — free all children first to prevent duplicate Background nodes
 	for child in get_children():
 		child.queue_free()
+	call_deferred("_rebuild_ui_deferred")
+
+
+func _rebuild_ui_deferred() -> void:
 	_build_ui()
 
 
