@@ -243,14 +243,8 @@ func _spawn_guard_at_offset(index: int) -> void:
 
 	_guards.append(guard)
 
-	# Subscribe to guard death
-	if not guard.is_connected("tree_exited", _on_guard_tree_exited.bind(guard)):
-		guard.tree_exited.connect(_on_guard_tree_exited.bind(guard))
-
-	# Also track via EventBus
-	if guard.has_signal("disabled") or guard.has_method("_disable_enemy"):
-		# We poll _guards instead of relying on signal since base_enemy doesn't have a disabled signal
-		pass
+	# Guard death is tracked via _cleanup_guards() which polls _disabled each frame.
+	# tree_exited is unreliable here because _disable_enemy() does not call queue_free().
 
 
 func _cleanup_guards() -> void:

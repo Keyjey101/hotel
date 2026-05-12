@@ -32,6 +32,8 @@ var _rng: RandomNumberGenerator
 func _ready() -> void:
 	_build_layout()
 	_rng = RandomNumberGenerator.new()
+	if GameManager.seed_manager:
+		_rng.seed = GameManager.seed_manager.get_seed() * 313
 
 
 ## Called when player enters basement from a specific floor.
@@ -96,7 +98,11 @@ func _on_exit_reached(_body: Node2D) -> void:
 
 	# Transition back to source floor
 	GameManager.transition_to_floor(source_floor)
-	get_tree().change_scene_to_file("res://scenes/floors/floor_01.tscn")
+	var floor_path := "res://scenes/floors/floor_%02d.tscn" % [clampi(source_floor, 1, 9)]
+	if ResourceLoader.exists(floor_path):
+		get_tree().change_scene_to_file(floor_path)
+	else:
+		get_tree().change_scene_to_file("res://scenes/floors/floor_01.tscn")
 
 
 ## Player died in basement — run over.
@@ -134,9 +140,7 @@ func _strip_weapons() -> void:
 			allowed_weapon_id = "knife"
 		rs.weapon_slots[1] = null
 	else:
-		# Pick random melee
-		_rng = RandomNumberGenerator.new()
-		_rng.seed = Time.get_ticks_msec()
+		# Pick random melee (use seeded _rng)
 		var idx := _rng.randi_range(0, melee_weapons.size() - 1)
 		var kept = melee_weapons[idx]
 		rs.weapon_slots[0] = kept
@@ -170,7 +174,8 @@ func _spawn_basement_enemies(floor_number: int) -> void:
 	var enemy_scenes: Dictionary = es.ENEMY_SCENES
 
 	_rng = RandomNumberGenerator.new()
-	_rng.seed = GameManager.seed_manager.get_seed() * 997
+	if GameManager.seed_manager:
+		_rng.seed = GameManager.seed_manager.get_seed() * 997
 
 	var total_count := _rng.randi_range(enemy_range[0], enemy_range[1])
 
@@ -268,9 +273,7 @@ func _position_player_at_start() -> void:
 ## Generate a random bonus cult artifact from the registry.
 func _random_bonus_artifact() -> Resource:
 	if ArtifactRegistry:
-		var rng := RandomNumberGenerator.new()
-		rng.seed = Time.get_ticks_msec()
-		return ArtifactRegistry.get_random_artifact({1: 0.0, 2: 0.7, 3: 0.3}, rng)
+		return ArtifactRegistry.get_random_artifact({1: 0.0, 2: 0.7, 3: 0.3}, _rng)
 	# Fallback: create a simple Resource with artifact metadata
 	var artifact := Resource.new()
 	artifact.resource_name = "basement_bonus_artifact"

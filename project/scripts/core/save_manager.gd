@@ -25,18 +25,21 @@ var _meta_cache: Dictionary = {}  # in-memory cache, loaded once
 
 func save_run(state: Dictionary) -> void:
 	var file := FileAccess.open(RUN_SAVE_PATH, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify(state, "\t"))
+	if file == null:
+		push_error("Failed to open file for writing: %s" % RUN_SAVE_PATH)
+		return
+	file.store_string(JSON.stringify(state, "\t"))
 
 
 func load_run() -> Dictionary:
 	if not FileAccess.file_exists(RUN_SAVE_PATH):
 		return {}
 	var file := FileAccess.open(RUN_SAVE_PATH, FileAccess.READ)
-	if file:
-		var parsed: Variant = JSON.parse_string(file.get_as_text())
-		return parsed if parsed is Dictionary else {}
-	return {}
+	if file == null:
+		push_error("Failed to open file for reading: %s" % RUN_SAVE_PATH)
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	return parsed if parsed is Dictionary else {}
 
 
 func delete_run() -> void:
@@ -46,28 +49,32 @@ func delete_run() -> void:
 
 func save_settings(settings: Dictionary) -> void:
 	var file := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify(settings, "\t"))
+	if file == null:
+		push_error("Failed to open file for writing: %s" % SETTINGS_PATH)
+		return
+	file.store_string(JSON.stringify(settings, "\t"))
 
 
 func load_settings() -> Dictionary:
 	if not FileAccess.file_exists(SETTINGS_PATH):
 		return _default_settings()
 	var file := FileAccess.open(SETTINGS_PATH, FileAccess.READ)
-	if file:
-		var parsed: Variant = JSON.parse_string(file.get_as_text())
-		return parsed if parsed is Dictionary else {}
-	return _default_settings()
+	if file == null:
+		push_error("Failed to open file for reading: %s" % SETTINGS_PATH)
+		return _default_settings()
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	return parsed if parsed is Dictionary else {}
 
 
 func load_records() -> Dictionary:
 	if not FileAccess.file_exists(RECORDS_PATH):
 		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
 	var file := FileAccess.open(RECORDS_PATH, FileAccess.READ)
-	if file:
-		var parsed: Variant = JSON.parse_string(file.get_as_text())
-		return parsed if parsed is Dictionary else {}
-	return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
+	if file == null:
+		push_error("Failed to open file for reading: %s" % RECORDS_PATH)
+		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	return parsed if parsed is Dictionary else {}
 
 
 func update_records(deepest_floor: int, run_time: float) -> void:
@@ -78,8 +85,10 @@ func update_records(deepest_floor: int, run_time: float) -> void:
 		records["fastest_time"] = run_time
 	records["total_runs"] = records.get("total_runs", 0) + 1
 	var file := FileAccess.open(RECORDS_PATH, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify(records, "\t"))
+	if file == null:
+		push_error("Failed to open file for writing: %s" % RECORDS_PATH)
+		return
+	file.store_string(JSON.stringify(records, "\t"))
 
 
 func _default_settings() -> Dictionary:
@@ -158,7 +167,9 @@ func load_meta() -> Dictionary:
 		return _meta_cache
 	if FileAccess.file_exists(META_PATH):
 		var file := FileAccess.open(META_PATH, FileAccess.READ)
-		if file:
+		if file == null:
+			push_error("Failed to open file for reading: %s" % META_PATH)
+		else:
 			var parsed: Variant = JSON.parse_string(file.get_as_text())
 			if parsed is Dictionary:
 				_meta_cache = parsed
@@ -171,8 +182,10 @@ func load_meta() -> Dictionary:
 func save_meta(meta: Dictionary) -> void:
 	_meta_cache = meta
 	var file := FileAccess.open(META_PATH, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify(meta, "\t"))
+	if file == null:
+		push_error("Failed to open file for writing: %s" % META_PATH)
+		return
+	file.store_string(JSON.stringify(meta, "\t"))
 
 
 func get_meta() -> Dictionary:

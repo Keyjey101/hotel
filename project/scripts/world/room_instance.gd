@@ -35,12 +35,15 @@ func _ready() -> void:
 
 	# Connect door signals
 	for door in doors:
-		if door is Area2D:
+		if door is Area2D and not door.body_entered.is_connected(_on_door_body_entered.bind(door)):
 			door.body_entered.connect(_on_door_body_entered.bind(door))
+
+	# Connect enemy death signal for room clear tracking
+	EventBus.enemy_disabled.connect(_on_enemy_disabled)
 
 
 func _collect_from_container(container_name: String, arr: Array, group_name: String) -> void:
-	var container := find_child(container_name, false, false)
+	var container := find_child(container_name, true, false)
 	if container == null:
 		return
 	for child in container.get_children():
@@ -61,6 +64,9 @@ func activate() -> void:
 	AudioManager.SFXPlayer.play_sfx("door_open")
 	# Update camera bounds
 	var cameras := get_tree().get_nodes_in_group("camera")
+	if cameras.is_empty():
+		call_deferred("activate")
+		return
 	for cam in cameras:
 		if cam.has_method("set_limits"):
 			cam.set_limits(room_bounds)
@@ -130,6 +136,13 @@ func check_cleared() -> bool:
 	return true
 
 
+func _on_enemy_disabled(enemy: CharacterBody2D) -> void:
+	if not is_active:
+		return
+	if enemy in active_enemies:
+		check_cleared()
+
+
 # ---------------------------------------------------------------------------
 # Door transitions
 # ---------------------------------------------------------------------------
@@ -164,7 +177,7 @@ var _enemies_spawned: bool = false
 func setup_from_config(config: RoomConfig, floor_num: int = 1) -> void:
 	room_id = config.room_id
 	room_type = config.room_type
-	room_bounds = Rect2(Vector2.ZERO, config.size_px)
+	room_bounds = Rect2(Vector2.ZERO, Vector2(config.size_px))
 	name = "Room_%s" % config.room_id
 
 	_create_tilemap(config.size_tiles, config.size_px, floor_num)

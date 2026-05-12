@@ -200,7 +200,7 @@ func _death_explode() -> void:
 		get_tree().current_scene.add_child(zone)
 
 	EventBus.enemy_disabled.emit(self)
-	queue_free()
+	queue_free.call_deferred()
 
 
 # ---------------------------------------------------------------------------

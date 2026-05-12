@@ -24,6 +24,7 @@ var _invulnerable: bool = false
 var _invul_timer: float = 0.0
 var _camera: Camera2D = null
 var _pause_menu_instance: Node = null
+var _knockback_velocity: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -39,6 +40,11 @@ func _ready() -> void:
 			break
 	# Connect bloodlust tracking
 	EventBus.enemy_disabled.connect(_on_enemy_killed_bloodlust)
+
+
+func _exit_tree() -> void:
+	if EventBus and EventBus.enemy_disabled.is_connected(_on_enemy_killed_bloodlust):
+		EventBus.enemy_disabled.disconnect(_on_enemy_killed_bloodlust)
 
 
 func _connect_signals() -> void:
@@ -61,11 +67,13 @@ func _physics_process(delta: float) -> void:
 
 	# Movement
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	velocity = input_dir * _current_speed
+	velocity = input_dir * _current_speed + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
 	move_and_slide()
 
 	# Facing / Aim
-	_aim_direction = (get_global_mouse_position() - global_position).normalized()
+	var aim_delta := get_global_mouse_position() - global_position
+	_aim_direction = aim_delta.normalized() if aim_delta.length_squared() > 0.0001 else _facing
 	if input_dir != Vector2.ZERO:
 		_facing = input_dir.normalized()
 
@@ -116,7 +124,7 @@ func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback
 		# Apply damage_taken_mult from artifacts (e.g. Crown of Thorns)
 		var taken_mult: float = 1.0 + float(GameManager.run_state.stat_upgrades.get("damage_taken_mult", 0.0))
 		amount *= (1.0 - reduction) * taken_mult
-		GameManager.run_state.player_hp -= amount
+		GameManager.run_state.player_hp = maxf(GameManager.run_state.player_hp - amount, 0.0)
 	else:
 		amount = 0.0
 
@@ -129,7 +137,7 @@ func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback
 
 	# Knockback
 	if knockback_force > 0.0:
-		velocity = knockback_dir * knockback_force * 5.0
+		_knockback_velocity = knockback_dir * knockback_force * 5.0
 
 	# Flash
 	_flash_white()
@@ -246,7 +254,7 @@ func _on_enemy_killed_bloodlust(_enemy: CharacterBody2D) -> void:
 	var stacks := GameManager.run_state.get_stack_count("s11_bloodlust")
 	if stacks == 0:
 		return
-	GameManager.run_state.bloodlust_stacks = stacks
+	GameManager.run_state.bloodlust_stacks = mini(stacks, 3)
 	GameManager.run_state.bloodlust_timer = 3.0
 
 
@@ -285,7 +293,10 @@ func _attack() -> void:
 		weapon_manager.ranged_attack(weapon, _aim_direction)
 
 	# End attack after brief delay
-	get_tree().create_timer(weapon.attack_speed).timeout.connect(func(): _is_attacking = false)
+	get_tree().create_timer(weapon.attack_speed).timeout.connect(func():
+		if is_instance_valid(self):
+			_is_attacking = false
+	)
 
 
 func _try_pickup() -> void:
@@ -324,12 +335,31 @@ func _flash_white() -> void:
 	tween.tween_property(sprite, "modulate", Color.WHITE, 0.15)
 
 
+enum AnimRow { IDLE = 0, WALK = 1, ATTACK = 2, THROW = 3, HURT = 4 }
+
+var _current_anim: int = AnimRow.IDLE
+var _frame_size := Vector2(24, 36)  # Per-frame size in the spritesheet
+
+
 func _update_sprite_facing() -> void:
-	# Flip sprite based on aim direction
-	if _aim_direction.x < -0.1:
-		sprite.flip_h = true
-	elif _aim_direction.x > 0.1:
-		sprite.flip_h = false
+	# Determine direction column from aim
+	var col := 0  # right
+	if abs(_aim_direction.x) > abs(_aim_direction.y):
+		col = 0 if _aim_direction.x >= 0 else 1
+	else:
+		col = 2 if _aim_direction.y >= 0 else 3  # down, up
+	# Update animation row based on state
+	if _is_attacking:
+		_current_anim = AnimRow.THROW
+	elif _is_hurt:
+		_current_anim = AnimRow.HURT
+	elif velocity.length_squared() > 100.0:
+		_current_anim = AnimRow.WALK
+	else:
+		_current_anim = AnimRow.IDLE
+	sprite.region_enabled = true
+	sprite.region_rect = Rect2(col * _frame_size.x, _current_anim * _frame_size.y, _frame_size.x, _frame_size.y)
+	sprite.flip_h = false
 
 
 func _on_hurtbox_hit(hit_area: Area2D) -> void:
@@ -359,4 +389,6 @@ func _show_pause_menu() -> void:
 		return
 	var pause_scene := preload("res://scenes/ui/pause_menu.tscn")
 	_pause_menu_instance = pause_scene.instantiate()
-	get_tree().current_scene.add_child(_pause_menu_instance)
+	var cs := get_tree().current_scene
+	if cs:
+		cs.add_child(_pause_menu_instance)

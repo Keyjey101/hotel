@@ -28,9 +28,9 @@ static func get_floor_09_rooms() -> Dictionary:
 		"enemies": [{"type": "demon", "count": 2}],
 		"loot": [],
 		"connections": ["a2"],
-		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2i(8 * TILE, 4 * TILE), 6),
+		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(8 * TILE, 4 * TILE), 6),
 		"loot_zone_positions": [],
-		"door_positions": RoomConfig._gen_doors(Vector2i(8 * TILE, 4 * TILE), ["a2"], ["bottom"]),
+		"door_positions": RoomConfig._gen_doors(Vector2(8 * TILE, 4 * TILE), ["a2"], ["bottom"]),
 		"branch": "a",
 	})
 
@@ -49,7 +49,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"connections": ["a1", "hub"],
 		"spawn_point_positions": [],
 		"loot_zone_positions": [],
-		"door_positions": RoomConfig._gen_doors(Vector2i(14 * TILE, 4 * TILE), ["a1", "hub"], ["top", "bottom"]),
+		"door_positions": RoomConfig._gen_doors(Vector2(14 * TILE, 4 * TILE), ["a1", "hub"], ["top", "bottom"]),
 		"branch": "a",
 	})
 
@@ -67,7 +67,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"loot": [],
 		"connections": ["a2", "b1", "c1", "boss1"],
 		"spawn_point_positions": [],
-		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2i(14 * TILE, 12 * TILE), 1),
+		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(14 * TILE, 12 * TILE), 1),
 		"door_positions": RoomConfig._gen_doors(
 			Vector2i(14 * TILE, 12 * TILE),
 			["a2", "b1", "c1", "boss1"],
@@ -91,7 +91,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"connections": ["hub"],
 		"spawn_point_positions": [],
 		"loot_zone_positions": [],
-		"door_positions": RoomConfig._gen_doors(Vector2i(10 * TILE, 8 * TILE), ["hub"], ["left"]),
+		"door_positions": RoomConfig._gen_doors(Vector2(10 * TILE, 8 * TILE), ["hub"], ["left"]),
 		"branch": "b",
 	})
 
@@ -108,9 +108,9 @@ static func get_floor_09_rooms() -> Dictionary:
 		"enemies": [{"type": "demon", "count": 2}],
 		"loot": [],
 		"connections": ["hub", "boss1"],
-		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2i(10 * TILE, 8 * TILE), 8),
+		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(10 * TILE, 8 * TILE), 8),
 		"loot_zone_positions": [],
-		"door_positions": RoomConfig._gen_doors(Vector2i(10 * TILE, 8 * TILE), ["hub", "boss1"], ["left", "right"]),
+		"door_positions": RoomConfig._gen_doors(Vector2(10 * TILE, 8 * TILE), ["hub", "boss1"], ["left", "right"]),
 		"branch": "c",
 		"is_locked": true,
 	})
@@ -128,8 +128,8 @@ static func get_floor_09_rooms() -> Dictionary:
 		"enemies": [{"type": "sister", "count": 1}],
 		"loot": [],
 		"connections": ["hub", "boss2"],
-		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2i(14 * TILE, 12 * TILE), 8),
-		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2i(14 * TILE, 12 * TILE), 1),
+		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(14 * TILE, 12 * TILE), 8),
+		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(14 * TILE, 12 * TILE), 1),
 		"door_positions": RoomConfig._gen_doors(
 			Vector2i(14 * TILE, 12 * TILE),
 			["hub", "boss2"],
@@ -151,8 +151,8 @@ static func get_floor_09_rooms() -> Dictionary:
 		"enemies": [{"type": "satan", "count": 1}],
 		"loot": [{"type": "cult_artifact", "id": "void_contract"}],
 		"connections": ["boss1"],
-		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2i(18 * TILE, 14 * TILE), 10),
-		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2i(18 * TILE, 14 * TILE), 1),
+		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(18 * TILE, 14 * TILE), 10),
+		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(18 * TILE, 14 * TILE), 1),
 		"door_positions": RoomConfig._gen_doors(
 			Vector2i(18 * TILE, 14 * TILE),
 			["boss1"],

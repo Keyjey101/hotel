@@ -92,7 +92,7 @@ func _add_buttons(vbox: VBoxContainer) -> void:
 
 	var menu_btn := _make_button("MAIN MENU")
 	vbox.add_child(menu_btn)
-	menu_btn.pressed.connect(func(): GameManager.restart_run())
+	menu_btn.pressed.connect(func(): GameManager.go_to_title())
 
 
 func _make_button(text: String) -> Button:

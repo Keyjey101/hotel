@@ -484,14 +484,14 @@ func _create_shadow_clone() -> void:
 	if _shadow_clone == null:
 		return
 
+	# Mark as clone BEFORE add_child so _ready can check the meta
+	_shadow_clone.set_meta("is_clone", true)
 	# Reduce clone stats
 	_shadow_clone.set("torso_hp", 80.0)
 	_shadow_clone.set("attack_damage", 5.0)  # 25% of Curator's
 	_shadow_clone.set("move_speed", 100.0)
 	_shadow_clone.modulate.a = 0.5
 	_shadow_clone.global_position = global_position + Vector2(60, 0)
-	# Mark as clone so it can't steal weapons
-	_shadow_clone.set_meta("is_clone", true)
 	get_tree().current_scene.add_child(_shadow_clone)
 
 

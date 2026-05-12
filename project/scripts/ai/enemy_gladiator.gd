@@ -212,9 +212,9 @@ func _perform_unarmed_attack(dir_to_target: Vector2) -> void:
 # ---------------------------------------------------------------------------
 
 func _on_limb_lost(zone: int) -> void:
-	# Don't call super for Gladiator — handle all debuffs ourselves
+	super._on_limb_lost(zone)
 
-	# Mark as severed in base data
+	# Mark as severed in base data (override base debuffs with our own)
 	severed_limbs[zone] = true
 
 	# Weapon arm lost (RIGHT_ARM) — can't hold weapon

@@ -13,6 +13,19 @@ func _ready() -> void:
 	EventBus.player_captured.connect(_on_player_captured)
 
 
+func _exit_tree() -> void:
+	if EventBus.player_damaged.is_connected(_on_player_damaged):
+		EventBus.player_damaged.disconnect(_on_player_damaged)
+	if EventBus.enemy_disabled.is_connected(_on_enemy_disabled):
+		EventBus.enemy_disabled.disconnect(_on_enemy_disabled)
+	if GameManager.run_started.is_connected(_on_run_started):
+		GameManager.run_started.disconnect(_on_run_started)
+	if EventBus.floor_completed.is_connected(_on_floor_completed):
+		EventBus.floor_completed.disconnect(_on_floor_completed)
+	if EventBus.player_captured.is_connected(_on_player_captured):
+		EventBus.player_captured.disconnect(_on_player_captured)
+
+
 func _on_run_started(_seed: int) -> void:
 	# Initialize run
 	gore_system.clear_room_effects()

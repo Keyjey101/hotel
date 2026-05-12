@@ -322,7 +322,7 @@ func _spawn_hazard_at_player(dps: float, dur: float, col: Color, radius: float, 
 		if is_instance_valid(telegraph_rect):
 			telegraph_rect.queue_free()
 
-	if not is_instance_valid(self):
+	if not is_instance_valid(self) or _disabled:
 		return
 
 	var zone = load("res://scripts/combat/hazard_zone.gd").new()

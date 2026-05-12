@@ -7,6 +7,7 @@ signal settings_pressed
 signal quit_pressed
 
 var _settings_open: bool = false
+var _settings_ref: CanvasLayer = null
 
 
 func _ready() -> void:
@@ -69,11 +70,18 @@ func _on_settings() -> void:
 		return
 	_settings_open = true
 	var settings_scene := preload("res://scenes/ui/settings_menu.tscn")
-	var settings := settings_scene.instantiate()
-	settings.back_pressed.connect(func():
-		_settings_open = false
-	)
-	add_child(settings)
+	if _settings_ref and is_instance_valid(_settings_ref):
+		if _settings_ref.back_pressed.is_connected(_on_settings_closed):
+			_settings_ref.back_pressed.disconnect(_on_settings_closed)
+		_settings_ref.queue_free()
+	_settings_ref = settings_scene.instantiate()
+	_settings_ref.back_pressed.connect(_on_settings_closed)
+	add_child(_settings_ref)
+
+
+func _on_settings_closed() -> void:
+	_settings_open = false
+	_settings_ref = null
 
 
 func _on_quit() -> void:

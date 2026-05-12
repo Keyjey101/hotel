@@ -42,12 +42,18 @@ func get_random_upgrade_for_floor(floor_number: int, rng: RandomNumberGenerator)
 	for upg in _all_upgrades:
 		if _is_available_on_floor(upg, floor_number):
 			candidates.append(upg)
-			weights.append(float(upg.spawn_weight))
+			var weight: float = float(upg.get("spawn_weight", 1.0))
+			weights.append(weight)
 
 	if candidates.is_empty():
 		if _all_upgrades.is_empty():
 			return null
-		return _all_upgrades[rng.randi_range(0, _all_upgrades.size() - 1)]
+		candidates = _all_upgrades.duplicate()
+		weights.clear()
+		for upg in candidates:
+			weights.append(float(upg.get("spawn_weight", 1.0)))
+		if candidates.is_empty():
+			return null
 
 	# Weighted selection
 	var total := 0.0
@@ -59,6 +65,8 @@ func get_random_upgrade_for_floor(floor_number: int, rng: RandomNumberGenerator)
 		accumulated += weights[i]
 		if roll <= accumulated:
 			return candidates[i]
+	if candidates.is_empty():
+		return null
 	return candidates[-1]
 
 

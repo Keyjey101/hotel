@@ -517,8 +517,8 @@ func _process_active_projectiles(delta: float) -> void:
 			node.queue_free()
 			to_remove.append(i)
 
-	for i in to_remove:
-		_active_projectiles.remove_at(i)
+	for i in range(to_remove.size() - 1, -1, -1):
+		_active_projectiles.remove_at(to_remove[i])
 
 
 func _process_active_stoves(delta: float) -> void:
@@ -546,8 +546,8 @@ func _process_active_stoves(delta: float) -> void:
 			s["trail_timer"] = 0.0
 			_create_fire_trail_at(node.global_position)
 
-	for i in to_remove:
-		_active_stoves.remove_at(i)
+	for i in range(to_remove.size() - 1, -1, -1):
+		_active_stoves.remove_at(to_remove[i])
 
 
 func _apply_dot_to_player(player: Node, dmg: float, dur: float) -> void:

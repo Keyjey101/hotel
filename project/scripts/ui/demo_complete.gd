@@ -84,9 +84,9 @@ func _build_ui() -> void:
 	play_btn.pressed.connect(func(): GameManager.restart_run())
 
 	# QUIT button
-	var quit_btn := _make_button("QUIT")
+	var quit_btn := _make_button("MAIN MENU")
 	vbox.add_child(quit_btn)
-	quit_btn.pressed.connect(func(): GameManager.restart_run())
+	quit_btn.pressed.connect(func(): GameManager.go_to_title())
 
 
 func _make_button(text: String) -> Button:

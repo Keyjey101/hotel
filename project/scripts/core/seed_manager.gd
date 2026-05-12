@@ -6,6 +6,8 @@ extends RefCounted
 
 var _seed: int
 var _rng: RandomNumberGenerator
+var _floor_rng_cache: Dictionary = {}  # floor -> RandomNumberGenerator
+var _room_rng_cache: Dictionary = {}   # "floor_room" -> RandomNumberGenerator
 
 
 func _init(run_seed: int) -> void:
@@ -19,14 +21,21 @@ func get_seed() -> int:
 
 
 func get_floor_rng(floor_number: int) -> RandomNumberGenerator:
+	if _floor_rng_cache.has(floor_number):
+		return _floor_rng_cache[floor_number]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _seed * floor_number + floor_number * 7
+	_floor_rng_cache[floor_number] = rng
 	return rng
 
 
 func get_room_rng(floor_number: int, room_index: int) -> RandomNumberGenerator:
+	var key := "%d_%d" % [floor_number, room_index]
+	if _room_rng_cache.has(key):
+		return _room_rng_cache[key]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _seed * floor_number + room_index * 31
+	_room_rng_cache[key] = rng
 	return rng
 
 

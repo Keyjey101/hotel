@@ -12,6 +12,7 @@ var active_slot: int = 0
 var stat_upgrades: Dictionary = {}      # stat_name -> accumulated value
 var cult_artifacts: Array = []           # [CultArtifact]
 var collected_upgrade_ids: Array = []    # [String] — tracks upgrade stacking
+var _upgrade_stack_counts: Dictionary = {}  # upgrade_id -> count
 var rooms_cleared: Dictionary = {}      # "floor_room" -> bool
 var mini_boss_defeated: Dictionary = {} # floor -> bool
 var enemies_mutilated: int = 0
@@ -46,6 +47,22 @@ func _init() -> void:
 		EventBus.room_cleared_no_damage.connect(_on_room_no_damage)
 		EventBus.demon_deal_made.connect(_on_demon_deal)
 		EventBus.mini_boss_defeated.connect(_on_mini_boss_defeated)
+
+
+func cleanup() -> void:
+	if EventBus:
+		if EventBus.limb_severed.is_connected(_on_limb_severed):
+			EventBus.limb_severed.disconnect(_on_limb_severed)
+		if EventBus.weapon_was_thrown.is_connected(_on_weapon_thrown):
+			EventBus.weapon_was_thrown.disconnect(_on_weapon_thrown)
+		if EventBus.basement_was_escaped.is_connected(_on_basement_escaped):
+			EventBus.basement_was_escaped.disconnect(_on_basement_escaped)
+		if EventBus.room_cleared_no_damage.is_connected(_on_room_no_damage):
+			EventBus.room_cleared_no_damage.disconnect(_on_room_no_damage)
+		if EventBus.demon_deal_made.is_connected(_on_demon_deal):
+			EventBus.demon_deal_made.disconnect(_on_demon_deal)
+		if EventBus.mini_boss_defeated.is_connected(_on_mini_boss_defeated):
+			EventBus.mini_boss_defeated.disconnect(_on_mini_boss_defeated)
 
 
 func _on_limb_severed() -> void:
@@ -101,16 +118,13 @@ func apply_upgrade(upg: Resource) -> void:
 	if upg == null:
 		return
 	collected_upgrade_ids.append(upg.id)
+	_upgrade_stack_counts[upg.id] = _upgrade_stack_counts.get(upg.id, 0) + 1
 	if upg.stat_key != "" and upg.behavioral_id == "":
 		apply_stat_upgrade(upg.stat_key, upg.delta)
 
 
 func get_stack_count(upgrade_id: String) -> int:
-	var count := 0
-	for uid in collected_upgrade_ids:
-		if uid == upgrade_id:
-			count += 1
-	return count
+	return _upgrade_stack_counts.get(upgrade_id, 0)
 
 
 func get_artifact_stat(key: String, default: float = 0.0) -> float:
@@ -125,6 +139,9 @@ func has_artifact(artifact_id: String) -> bool:
 			return true
 		var a_name: String = a.resource_name if a is Resource else ""
 		if a_name == artifact_id:
+			return true
+		# Also check display_name property
+		if a != null and a.get("display_name") != null and str(a.get("display_name")) == artifact_id:
 			return true
 	return false
 

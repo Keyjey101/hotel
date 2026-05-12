@@ -167,6 +167,8 @@ func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 	# 5. Deactivate boss room initially (unlock after all rooms cleared)
 	if rooms.has("boss"):
 		rooms["boss"].process_mode = Node.PROCESS_MODE_DISABLED
+	elif rooms.has("boss1"):
+		rooms["boss1"].process_mode = Node.PROCESS_MODE_DISABLED
 
 	# 6. Activate start room (a1)
 	if rooms.has("a1"):
@@ -225,6 +227,8 @@ func _activate_room(room_id: String) -> void:
 
 
 func transition_to_room(target_room_id: String) -> void:
+	if target_room_id == active_room_id:
+		return
 	if not rooms.has(target_room_id):
 		push_warning("FloorManager: target room %s not found" % target_room_id)
 		return
@@ -320,9 +324,10 @@ func _spawn_enemies(room: RoomInstance, config: RoomConfig) -> void:
 			continue
 
 		var scene: PackedScene = load(scene_path)
+		var max_enemies := maxi(10, int(room.room_bounds.size.x * room.room_bounds.size.y / 10000.0))
 		for i in range(count):
-			if enemy_count >= 10:
-				push_warning("FloorManager: max 10 enemies per room reached")
+			if enemy_count >= max_enemies:
+				push_warning("FloorManager: max %d enemies per room reached (room size: %s)" % [max_enemies, str(room.room_bounds.size)])
 				return
 			var pos: Vector2 = Vector2(room.room_bounds.size.x * 0.5, room.room_bounds.size.y * 0.5)
 			if spawn_idx < spawn_points.size():
@@ -468,7 +473,12 @@ func _check_clear_progress(rid: String) -> void:
 
 	# Final boss room cleared → floor complete
 	if rid == "boss" or (rid == "boss2"):
-		EventBus.mini_boss_defeated.emit(floor_number)
+		if rid == "boss2":
+			# Already emitted mini_boss_defeated for boss1 above
+			pass
+		elif rid == "boss" and not rooms.has("boss1"):
+			# Single boss floor (1-8): just floor_completed, no mini_boss
+			pass
 		EventBus.floor_completed.emit(floor_number)
 		print("[FloorManager] Floor %d complete!" % floor_number)
 

@@ -67,8 +67,8 @@ func _create_chain_visuals() -> void:
 # ---------------------------------------------------------------------------
 
 func _on_limb_lost(zone: int) -> void:
-	# DON'T call super — Berserker gets STRONGER
-	severed_limbs[zone] = true  # Mark as severed but skip base debuffs
+	super._on_limb_lost(zone)
+	severed_limbs[zone] = true  # Mark as severed but override base debuffs
 
 	var lost_count := _count_missing_limbs()
 	_initial_move_speed = 140.0 + (lost_count * 30.0)

@@ -47,31 +47,20 @@ func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0) -> 
 	# Restart lifetime
 	var lifetime_node = get_node_or_null("Lifetime")
 	if lifetime_node:
+		lifetime_node.stop()
 		lifetime_node.start(_despawn_time)
 
 
 func _ready() -> void:
-	# Apply velocity based on arc type
-	match _weapon.throw_arc:
-		WeaponData.ThrowArc.STRAIGHT:
-			linear_velocity = _direction * _weapon.throw_speed
-		WeaponData.ThrowArc.ARC:
-			linear_velocity = _direction * _weapon.throw_speed
-			gravity_scale = 2.0
-		WeaponData.ThrowArc.SPIN:
-			linear_velocity = _direction * _weapon.throw_speed
-			angular_velocity = 10.0
-		WeaponData.ThrowArc.TUMBLE:
-			linear_velocity = _direction * _weapon.throw_speed
-			angular_velocity = randf_range(-8.0, 8.0)
-		WeaponData.ThrowArc.FLOAT:
-			linear_velocity = _direction * _weapon.throw_speed * 0.5
-			gravity_scale = 0.0
-
+	# Connections are handled in setup() with guards to prevent duplicates.
+	# _ready fires on first instantiate; setup() is called by the pool after.
+	# Velocity is set in setup() — _ready() has no _weapon yet on pool reuse.
 	$Lifetime.timeout.connect(_return_to_pool)
 
-	# Body entered signal for collision
-	body_entered.connect(_on_body_entered)
+	# Body entered signal: connect with guard in setup() instead of here
+	# to avoid double-connection on first spawn.
+	if not body_entered.is_connected(_on_body_entered):
+		body_entered.connect(_on_body_entered)
 
 
 func _on_body_entered(body: Node2D) -> void:

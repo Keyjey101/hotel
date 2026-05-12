@@ -10,6 +10,7 @@ var fog_patches: Array[Area2D] = []
 var steam_valves: Array[StaticBody2D] = []
 var fog_coverage: float = 0.5
 var is_in_fog: bool = false
+var _was_in_fog: bool = false
 var fog_heal_rate: float = 5.0
 var _toxic_fog: bool = false
 
@@ -89,11 +90,10 @@ func _update_fog_state() -> void:
 			is_in_fog = true
 			break
 
-	# Update regen based on fog
-	if is_in_fog:
-		regen_speed_mult = 1.5
-	else:
-		regen_speed_mult = 0.5
+	# Update regen based on fog (only when state changes to avoid flickering)
+	if is_in_fog != _was_in_fog:
+		_was_in_fog = is_in_fog
+		regen_speed_mult = 1.5 if is_in_fog else 0.5
 
 
 func _update_phase() -> void:

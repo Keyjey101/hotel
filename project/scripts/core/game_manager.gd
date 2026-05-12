@@ -105,7 +105,7 @@ func transition_to_floor(floor_number: int) -> void:
 	# Reset bloodlust timer between floors (doesn't carry over)
 	run_state.bloodlust_timer = 0.0
 	run_state.bloodlust_stacks = 0
-	floor_entered.emit(floor_number)
+	floor_entered.emit.call_deferred(floor_number)
 
 	# Check unlock conditions for reaching this floor
 	_check_floor_unlocks(floor_number)
@@ -127,6 +127,7 @@ func transition_to_floor(floor_number: int) -> void:
 func handle_player_death() -> void:
 	if current_state != GameState.PLAYING:
 		return
+	current_state = GameState.BASEMENT  # Prevent re-entry
 	player_died.emit()
 	player_captured.emit()
 	transition_to_basement()
@@ -178,16 +179,7 @@ func handle_victory() -> void:
 	current_state = GameState.VICTORY
 	run_ended.emit(true)
 	# Commit pending unlocks with ending info
-	var ending_id := ""
-	if run_state:
-		if run_state.run_meta.get("player_embraced", false):
-			ending_id = "d"
-		elif run_state.run_meta.get("sister_never_attacked", false):
-			ending_id = "c"
-		elif run_state.run_meta.get("sister_spared", false):
-			ending_id = "b"
-		else:
-			ending_id = "a"
+	var ending_id := _determine_ending_id()
 	_commit_run_end(ending_id)
 	SaveManager.update_records(current_floor, run_state.get_run_time())
 	SaveManager.delete_run()
@@ -216,22 +208,44 @@ func trigger_ending(ending_id: String) -> void:
 
 func handle_final_boss_defeated() -> void:
 	# Determine ending based on run_state flags
-	var ending_id := "a"
+	var ending_id := _determine_ending_id()
+	trigger_ending(ending_id)
+
+
+func _determine_ending_id() -> String:
 	if run_state:
 		if run_state.run_meta.get("player_embraced", false):
-			ending_id = "d"
+			return "d"
 		elif run_state.run_meta.get("sister_never_attacked", false):
-			ending_id = "c"
+			return "c"
 		elif run_state.run_meta.get("sister_spared", false):
-			ending_id = "b"
-		else:
-			ending_id = "a"
-	trigger_ending(ending_id)
+			return "b"
+	return "a"
 
 
 func restart_run() -> void:
 	# Clear run state (pending unlocks are DISCARDED — no free unlocks)
 	# Ensure game is unpaused before returning to title
+	get_tree().paused = false
+	current_state = GameState.MENU
+	current_floor = 1
+	if run_state and run_state.has_method("cleanup"):
+		run_state.cleanup()
+	run_state = null
+	seed_manager = null
+	_pending_artifact_unlocks.clear()
+	_pending_stat_unlocks.clear()
+	_mini_boss_floors_cleared.clear()
+	_basement_escaped_this_run = false
+	selected_starting_upgrade = ""
+	SaveManager.delete_run()
+	_load_title_screen()
+
+
+func go_to_title() -> void:
+	# Return to title without starting a new run
+	if run_state and run_state.has_method("cleanup"):
+		run_state.cleanup()
 	get_tree().paused = false
 	current_state = GameState.MENU
 	current_floor = 1
@@ -243,7 +257,7 @@ func restart_run() -> void:
 	_basement_escaped_this_run = false
 	selected_starting_upgrade = ""
 	SaveManager.delete_run()
-	_load_title_screen()
+	get_tree().change_scene_to_file("res://scenes/ui/title_screen.tscn")
 
 
 func pause_game() -> void:
@@ -264,7 +278,10 @@ func _check_floor_unlocks(floor_num: int) -> void:
 	var meta := SaveManager.get_meta()
 	var unlocked_artifacts: Array = meta.get("unlocked_artifacts", [])
 	var unlocked_stats: Array = meta.get("unlocked_starting_stat_upgrades", [])
-	var runs: int = int(meta.get("runs_completed", 0))
+	var runs_val = meta.get("runs_completed", 0)
+	if runs_val != null and not runs_val is int and not runs_val is float:
+		push_warning("[GameManager] Unexpected type for runs_completed: %s" % typeof(runs_val))
+	var runs: int = int(runs_val) if runs_val != null else 0
 
 	# --- Artifact unlocks by floor ---
 	# Floor 3 → a6_golden_hand (rare)
@@ -358,7 +375,10 @@ func _show_unlock_toast(message: String) -> void:
 	# Instance toast overlay if in a valid scene
 	var tree := get_tree()
 	if tree and tree.current_scene:
-		var toast := load("res://scripts/ui/unlock_toast.gd").new()
+		var toast_script := load("res://scripts/ui/unlock_toast.gd")
+		if toast_script == null:
+			return
+		var toast = toast_script.new()
 		tree.current_scene.add_child(toast)
 		toast.show_toast(message)
 

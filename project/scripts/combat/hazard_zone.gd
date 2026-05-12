@@ -72,6 +72,6 @@ func _on_body_exited(body: Node2D) -> void:
 
 func _apply_dot(body: Node2D, damage: float) -> void:
 	if body.has_method("receive_damage"):
-		body.receive_damage(damage, 5, false)  # Zone 5 = TORSO, no sever
+		body.receive_damage(damage, DamageZone.Zone.TORSO, false)  # Zone TORSO, no sever
 	elif body.has_method("take_damage"):
 		body.take_damage(damage)

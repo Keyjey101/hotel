@@ -2,6 +2,10 @@ extends Control
 
 ## TitleScreen — Main menu with Art Deco styling.
 
+var _stats_panel: Node = null
+var _settings_panel: Node = null
+
+
 func _ready() -> void:
 	_build_ui()
 
@@ -131,9 +135,12 @@ func _make_button(text: String) -> Button:
 
 func _on_stats_pressed() -> void:
 	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	if _stats_panel != null and is_instance_valid(_stats_panel):
+		return  # Already open
 	var stats_scene := preload("res://scenes/ui/stats_screen.tscn")
-	var stats := stats_scene.instantiate()
-	add_child(stats)
+	_stats_panel = stats_scene.instantiate()
+	_stats_panel.tree_exiting.connect(func(): _stats_panel = null)
+	add_child(_stats_panel)
 
 
 func _on_new_run_pressed() -> void:
@@ -143,6 +150,9 @@ func _on_new_run_pressed() -> void:
 
 func _on_settings_pressed() -> void:
 	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	if _settings_panel != null and is_instance_valid(_settings_panel):
+		return  # Already open
 	var settings_scene := preload("res://scenes/ui/settings_menu.tscn")
-	var settings := settings_scene.instantiate()
-	add_child(settings)
+	_settings_panel = settings_scene.instantiate()
+	_settings_panel.tree_exiting.connect(func(): _settings_panel = null)
+	add_child(_settings_panel)

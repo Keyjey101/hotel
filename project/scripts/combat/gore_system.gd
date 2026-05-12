@@ -31,6 +31,7 @@ func spawn_severed_limb(position: Vector2, limb_type: int, owner: CharacterBody2
 	if not limb_scene:
 		_create_placeholder_limb(position, limb_type, owner)
 		return
+	return
 
 	var limb: RigidBody2D = limb_scene.instantiate()
 	limb.global_position = position
@@ -117,7 +118,9 @@ func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: Charact
 	limb.angular_velocity = randf_range(-5.0, 5.0)
 
 	# Freeze after 1s (lands on ground)
-	get_tree().create_timer(1.0).timeout.connect(func():
+	var freeze_timer := get_tree().create_timer(1.0)
+	limb.set_meta("_freeze_timer", freeze_timer)
+	freeze_timer.timeout.connect(func():
 		if is_instance_valid(limb):
 			limb.freeze = true
 	)

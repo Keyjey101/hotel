@@ -46,10 +46,9 @@ func _connect_events() -> void:
 	if _connections_made:
 		return
 	# EventBus and GameManager are autoloads — check they exist
-	if not Engine.has_singleton("EventBus"):
+	if not _has_autoload("EventBus"):
 		# In test mode, autoloads may not be available
-		if not _has_autoload("EventBus"):
-			return
+		return
 	if not _has_autoload("GameManager"):
 		return
 

@@ -30,6 +30,7 @@ func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0, pie
 	# Restart lifetime timer
 	var lifetime_node = get_node_or_null("Lifetime")
 	if lifetime_node:
+		lifetime_node.stop()
 		lifetime_node.start(_lifetime)
 
 

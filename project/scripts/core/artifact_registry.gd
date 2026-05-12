@@ -82,6 +82,8 @@ func get_random_artifact(rarity_weights: Dictionary, rng: RandomNumberGenerator)
 		accumulated += weights[i]
 		if roll <= accumulated:
 			return candidates[i]
+	if candidates.is_empty():
+		return null
 	return candidates[-1]
 
 

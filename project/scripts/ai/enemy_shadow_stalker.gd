@@ -208,6 +208,10 @@ func _physics_process(delta: float) -> void:
 		velocity = _knockback_vel * 0.9
 		_knockback_vel *= 0.9
 		move_and_slide()
+		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+		_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
+		_shadow_mark_cooldown = maxf(0.0, _shadow_mark_cooldown - delta)
+		_state_timer -= delta
 		_process_regen(delta)
 		return
 
@@ -224,6 +228,10 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		if _phase_timer <= 0.0:
 			_end_phase()
+		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+		_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
+		_shadow_mark_cooldown = maxf(0.0, _shadow_mark_cooldown - delta)
+		_state_timer -= delta
 		_process_regen(delta)
 		return
 

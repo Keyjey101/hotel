@@ -70,7 +70,7 @@ func _process(_delta: float) -> void:
 func shake(amplitude: float = 4.0, duration: float = 0.15, _decay: float = 0.9) -> void:
 	if has_meta("shake_enabled") and not get_meta("shake_enabled", true):
 		return
-	if not _camera:
+	if not is_instance_valid(_camera):
 		_refresh_camera()
 	if not _camera:
 		return
@@ -79,6 +79,7 @@ func shake(amplitude: float = 4.0, duration: float = 0.15, _decay: float = 0.9) 
 		_shake_tween.kill()
 
 	_shake_tween = create_tween()
+	_shake_tween.set_speed_scale(Engine.time_scale)
 	var steps := 4
 	var step_time := duration / float(steps)
 	for i in range(steps):
@@ -122,6 +123,8 @@ func hit_stop(duration: float = 0.05) -> void:
 # ============================================================
 
 func update_vignette(player_hp_percent: float) -> void:
+	if not is_instance_valid(_camera):
+		_refresh_camera()
 	if player_hp_percent < 0.3:
 		_vignette_target_alpha = (0.3 - player_hp_percent) / 0.3 * 0.5
 		_vignette_overlay.visible = true
@@ -195,7 +198,7 @@ func chromatic_aberration(duration: float = 0.3, intensity: float = 3.0) -> void
 # ============================================================
 
 func zoom(target_zoom: float = 1.2, duration: float = 0.1, hold: float = 0.05, return_duration: float = 0.2) -> void:
-	if not _camera:
+	if not is_instance_valid(_camera):
 		_refresh_camera()
 	if not _camera:
 		return

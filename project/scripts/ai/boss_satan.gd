@@ -167,18 +167,15 @@ func _physics_process(delta: float) -> void:
 
 func _update_phase() -> void:
 	var hp := limb_health[DamageZone.Zone.TORSO]
+	var total := _phase_1_hp + _phase_2_hp + _phase_3_hp
+	var pct := hp / total
 	var new_phase: int
-
-	if hp > _phase_2_hp + _phase_3_hp:
-		# Phase 1: HP > 600 (500+600=1100 threshold means Phase 1 is first 400)
+	if pct > 0.66:
 		new_phase = 1
-	elif hp > _phase_3_hp:
-		# Phase 2: HP > 600
+	elif pct > 0.33:
 		new_phase = 2
 	else:
-		# Phase 3: HP <= 600
 		new_phase = 3
-
 	if new_phase != _phase:
 		_phase = new_phase
 		_on_phase_changed()
@@ -563,6 +560,8 @@ func _move_projectile(bolt: Area2D) -> void:
 
 	while is_instance_valid(bolt) and elapsed < lifetime:
 		await get_tree().process_frame
+		if not is_instance_valid(bolt):
+			return
 		elapsed += get_process_delta_time()
 
 		var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
@@ -613,6 +612,8 @@ func _show_final_offer() -> void:
 	get_tree().current_scene.add_child(dialog)
 
 	var choice := await EventBus.dialog_choice_made
+	if is_instance_valid(dialog):
+		dialog.queue_free()
 	match choice:
 		"accept":
 			_on_accept_deal()

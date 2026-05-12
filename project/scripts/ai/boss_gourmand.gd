@@ -119,25 +119,25 @@ func _find_player() -> Node2D:
 # ═══════════════════════════════════════════════════════════════
 
 func _physics_process(delta: float) -> void:
+	if _disabled:
+		return
+	# Always tick regen
+	_process_regen(delta)
 	# Handle rolling charge movement
 	if _is_charging:
 		_process_charge(delta)
 		return
-
 	# Handle belly flop arc
 	if _is_flopping:
 		_process_flop(delta)
 		return
-
 	# Summon timer
 	if _summon_timer > 0.0:
 		_summon_timer -= delta
-
 	# Grab DPS
 	if _grab_active:
 		_process_grab(delta)
 		return
-
 	super._physics_process(delta)
 
 
@@ -288,7 +288,7 @@ func _eat_corpse(corpse: StaticBody2D) -> void:
 
 
 func _heal_from_eating(amount: float) -> void:
-	limb_health[DamageZone.Zone.TORSO] = mini(
+	limb_health[DamageZone.Zone.TORSO] = minf(
 		limb_health[DamageZone.Zone.TORSO] + amount,
 		max_torso_hp  # Cap at max (which includes growth bonuses)
 	)

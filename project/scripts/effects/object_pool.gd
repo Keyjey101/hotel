@@ -38,6 +38,15 @@ func get_instance() -> Node:
 		return null
 
 	var instance: Node = _pool.pop_back()
+	while not is_instance_valid(instance) and not _pool.is_empty():
+		instance = _pool.pop_back()
+	if not is_instance_valid(instance):
+		if _active.size() < _max_size:
+			_expand()
+			instance = _scene.instantiate()
+			add_child(instance)
+		else:
+			return null
 	_active.append(instance)
 	instance.set_process(true)
 	instance.set_physics_process(true)

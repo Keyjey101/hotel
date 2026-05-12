@@ -7,6 +7,7 @@ signal back_pressed
 
 func _ready() -> void:
 	layer = 110
+	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 	_build_ui()
 
 
@@ -161,6 +162,7 @@ func _on_back() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_pause"):
+		get_viewport().set_input_as_handled()
 		_on_back()
 
 

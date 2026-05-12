@@ -42,10 +42,12 @@ func get_active_ammo() -> int:
 
 
 func switch_slot() -> void:
-	active_slot = (active_slot + 1) % max_slots
-	var weapon := get_active_weapon()
-	if weapon:
-		EventBus.player_weapon_changed.emit(active_slot, weapon)
+	for i in range(1, max_slots + 1):
+		var s: int = (active_slot + i) % max_slots
+		if equipped[s] != null:
+			active_slot = s
+			EventBus.player_weapon_changed.emit(active_slot, equipped[s])
+			return
 
 
 func equip_weapon(weapon: WeaponData) -> void:
@@ -60,7 +62,7 @@ func equip_weapon(weapon: WeaponData) -> void:
 
 	# Drop current weapon if replacing
 	if equipped[target_slot] != null:
-		_drop_weapon(equipped[target_slot], global_position)
+		_drop_weapon(equipped[target_slot], get_parent().global_position)
 
 	equipped[target_slot] = weapon
 	active_slot = target_slot
@@ -143,6 +145,8 @@ func throw_active_weapon(direction: Vector2) -> void:
 	var weapon := get_active_weapon()
 	if not weapon:
 		return
+	if weapon.throw_damage <= 0.0:
+		return
 
 	AudioManager.SFXPlayer.play_sfx("weapon_throw")
 
@@ -199,8 +203,10 @@ func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weap
 
 	# Hunger Blade: 15% lifesteal on melee hits only
 	if is_melee and GameManager.run_state and GameManager.run_state.has_artifact("Hunger Blade"):
-		var heal_amount := ceili(final_damage * 0.15)
-		EventBus.player_healed.emit(heal_amount)
+		var heal_amount := final_damage * 0.15
+		var player := get_tree().get_first_node_in_group("player")
+		if player and player.has_method("heal"):
+			player.heal(heal_amount)
 
 
 func _get_melee_damage_mult() -> float:

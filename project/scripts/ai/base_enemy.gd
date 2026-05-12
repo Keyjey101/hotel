@@ -70,13 +70,16 @@ func _load_sprite() -> void:
 	var asset_name := ""
 	if enemy_type == "boss":
 		# Bosses use enemy_name for sprite lookup
-		var name_key := enemy_name.to_lower().replace(" ", "_").replace("the_", "")
+		var name_key := enemy_name.to_lower().replace(" ", "_")
+		if name_key.begins_with("the_"):
+			name_key = name_key.substr(4)
 		asset_name = "enemy_%s.png" % name_key
 	else:
 		asset_name = "enemy_%s.png" % enemy_type.to_lower()
 	var asset_path := "res://assets/sprites/characters/enemies/" + asset_name
 	if ResourceLoader.exists(asset_path):
 		sprite.texture = load(asset_path)
+		sprite.region_enabled = false
 
 func _init_health() -> void:
 	limb_health = {
@@ -191,8 +194,8 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 
 	EventBus.enemy_damaged.emit(self, zone, damage)
 
-	# State transition
-	if _current_state == "patrol":
+	# State transition — only alert if still alive and in patrol
+	if not _disabled and _current_state == "patrol":
 		_enter_state("alert")
 
 
@@ -271,7 +274,8 @@ func _process_regen(delta: float) -> void:
 		blood_pact_mult += GameManager.run_state.get_artifact_stat("enemy_regen_speed_mult", 0.0)
 
 	for zone in regen_timers:
-		if not severed_limbs[zone]:
+		# Skip already-severed limbs — they don't regen HP
+		if severed_limbs[zone]:
 			continue
 
 		var timer: Dictionary = regen_timers[zone]
@@ -453,6 +457,11 @@ func _state_retreat(_delta: float) -> void:
 	var away_dir := global_position.direction_to(_target.global_position) * -1.0
 	velocity = away_dir * move_speed * 0.7
 
+	# Re-check target validity before distance check
+	if not is_instance_valid(_target):
+		_enter_state("patrol")
+		return
+
 	# Stop retreating if far enough
 	if global_position.distance_to(_target.global_position) > detection_range * 1.5:
 		_enter_state("patrol")
@@ -510,6 +519,7 @@ func _disable_enemy() -> void:
 	_disabled = true
 	_disabled_timer = 60.0  # Full regen takes 60-90s
 	velocity = Vector2.ZERO
+	sprite.modulate = Color.WHITE
 	AudioManager.SFXPlayer.play_sfx_2d("enemy_death", global_position, 5.0)
 	ScreenEffects.flash(Color(1.0, 0.2, 0.2), 0.08, 0.3)
 	EventBus.enemy_disabled.emit(self)

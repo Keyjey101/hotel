@@ -10,6 +10,7 @@ var _direction: Vector2
 var _damage_mult: float = 1.0
 var _lifespan: float = 0.15
 var _targets_hit: Array[Node2D] = []
+var _despawn_timer_ref: SceneTreeTimer = null
 
 
 func setup(weapon: WeaponData, direction: Vector2, _owner: CharacterBody2D) -> void:
@@ -35,21 +36,30 @@ func setup(weapon: WeaponData, direction: Vector2, _owner: CharacterBody2D) -> v
 	# Reconnect area_entered if disconnected
 	if not area_entered.is_connected(_on_area_entered):
 		area_entered.connect(_on_area_entered)
-	# Restart despawn timer
-	get_tree().create_timer(_lifespan).timeout.connect(_return_to_pool)
+	# Restart despawn timer (stop any old one by using a tracked reference)
+	if _despawn_timer_ref and is_instance_valid(_despawn_timer_ref):
+		_despawn_timer_ref.timeout.disconnect(_return_to_pool)
+	_despawn_timer_ref = get_tree().create_timer(_lifespan)
+	_despawn_timer_ref.timeout.connect(_return_to_pool)
 
 
 func _ready() -> void:
-	area_entered.connect(_on_area_entered)
-	# Auto-despawn
-	get_tree().create_timer(_lifespan).timeout.connect(_return_to_pool)
+	# Signal connections are handled in setup() with guards to prevent duplicates.
+	# No unconditional connections here — pool reuse calls setup() after _ready().
 
 
 func _on_area_entered(area: Area2D) -> void:
 	if not area.is_in_group("enemy_hurtbox"):
 		return
 
-	var enemy := area.get_parent().get_parent()  # HurtboxManager -> Enemy
+	# Walk up tree to find the enemy node (handles varying scene tree depths)
+	var node: Node = area
+	var enemy: Node2D = null
+	while node != null:
+		if node.is_in_group("enemy"):
+			enemy = node as Node2D
+			break
+		node = node.get_parent()
 	if enemy in _targets_hit:
 		return
 

@@ -45,13 +45,13 @@ static func get_zone_from_collision(hurtbox_area: Area2D) -> Zone:
 	var n: String = hurtbox_area.name.to_lower()
 	if "head" in n:
 		return Zone.HEAD
-	elif "arm_l" in n or "left_arm" in n:
+	elif "leftarm" in n or "arm_l" in n or "left_arm" in n:
 		return Zone.LEFT_ARM
-	elif "arm_r" in n or "right_arm" in n:
+	elif "rightarm" in n or "arm_r" in n or "right_arm" in n:
 		return Zone.RIGHT_ARM
-	elif "leg_l" in n or "left_leg" in n:
+	elif "leftleg" in n or "leg_l" in n or "left_leg" in n:
 		return Zone.LEFT_LEG
-	elif "leg_r" in n or "right_leg" in n:
+	elif "rightleg" in n or "leg_r" in n or "right_leg" in n:
 		return Zone.RIGHT_LEG
 	else:
 		return Zone.TORSO

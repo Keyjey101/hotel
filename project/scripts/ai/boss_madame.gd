@@ -53,6 +53,11 @@ var _arena_center: Vector2 = Vector2.ZERO
 # ── Clone damage cooldown (Phase 2) ──────────────────────────
 var _clone_damage_cooldowns: Dictionary = {}  # clone -> float
 
+# ── Shard timer tracking (Bug 8 fix) ──────────────────────────
+var _shard_timers: Array = []
+var _shard_count: int = 0
+const MAX_SHARD_COUNT: int = 20
+
 
 # ═══════════════════════════════════════════════════════════════
 # INIT
@@ -647,7 +652,7 @@ func _process_shard_projectile(data: Dictionary) -> void:
 
 func _continue_shard(node: CharacterBody2D, dir: Vector2, speed: float,
 		damage: float, elapsed: float, max_time: float) -> void:
-	if not is_instance_valid(node):
+	if _disabled or not is_instance_valid(node):
 		return
 	var delta := 0.016
 	var collision := node.move_and_collide(dir * speed * delta)
@@ -656,15 +661,21 @@ func _continue_shard(node: CharacterBody2D, dir: Vector2, speed: float,
 		if collider and collider.is_in_group("player") and collider.has_method("take_damage"):
 			collider.take_damage(damage, dir, 10.0)
 		# Piercing: don't stop, but leave shard hazard
-		_create_shard_hazard(node.global_position)
+		if _shard_count < MAX_SHARD_COUNT:
+			_shard_count += 1
+			_create_shard_hazard(node.global_position)
 		node.queue_free()
 		return
 	elapsed += delta
 	if elapsed >= max_time:
-		_create_shard_hazard(node.global_position)
+		if _shard_count < MAX_SHARD_COUNT:
+			_shard_count += 1
+			_create_shard_hazard(node.global_position)
 		node.queue_free()
 		return
-	get_tree().create_timer(delta).timeout.connect(
+	var t := get_tree().create_timer(delta)
+	_shard_timers.append(t)
+	t.timeout.connect(
 		_continue_shard.bind(node, dir, speed, damage, elapsed, max_time)
 	)
 
@@ -837,3 +848,10 @@ func _disable_enemy() -> void:
 	is_telegraphing = false
 	executing_attack = false
 	_clear_all_clones()
+	# Clean up shard timers
+	for t in _shard_timers:
+		if is_instance_valid(t):
+			if t.timeout.is_connected(_continue_shard):
+				t.timeout.disconnect(_continue_shard)
+	_shard_timers.clear()
+	_shard_count = 0

@@ -148,6 +148,21 @@ func _connect_events() -> void:
 	EventBus.artifact_collected.connect(func(_a): _update_buffs())
 
 
+func _exit_tree() -> void:
+	if EventBus.player_damaged.is_connected(_update_hp_bar):
+		EventBus.player_damaged.disconnect(_update_hp_bar)
+	if EventBus.player_healed.is_connected(_update_hp_bar):
+		EventBus.player_healed.disconnect(_update_hp_bar)
+	if EventBus.player_weapon_changed.is_connected(_update_weapon_slots):
+		EventBus.player_weapon_changed.disconnect(_update_weapon_slots)
+	if EventBus.room_entered.is_connected(_update_floor_indicator):
+		EventBus.room_entered.disconnect(_update_floor_indicator)
+	if EventBus.upgrade_collected.is_connected(_update_buffs):
+		EventBus.upgrade_collected.disconnect(_update_buffs)
+	if EventBus.artifact_collected.is_connected(_update_buffs):
+		EventBus.artifact_collected.disconnect(_update_buffs)
+
+
 func _refresh_all() -> void:
 	_update_hp_bar()
 	_update_weapon_slots()
