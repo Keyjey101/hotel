@@ -283,7 +283,8 @@ func _process_combat(delta: float) -> void:
 			# Player stopped attacking → spare
 			_sister_spared = true
 			_show_dialogue("You're still you.", 3.0)
-			# Signal ending B path
+			_disable_enemy()  # Disable combat, stop attacking
+			# Signal ending B path - proceeds to Satan fight
 			GameManager.run_state.mini_boss_defeated[9] = true
 			GameManager.run_state.run_meta["sister_spared"] = true if GameManager.run_state else null
 			EventBus.mini_boss_defeated.emit(9)

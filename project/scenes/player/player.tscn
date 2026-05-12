@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/combat/weapon_manager.gd" id="2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/player_idle.png" id="3"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(16, 20)
@@ -21,16 +22,9 @@ shape = SubResource("RectangleShape2D_player")
 
 [node name="Sprite" type="Sprite2D" parent="."]
 unique_name_in_owner = true
-texture = null
+texture = ExtResource("3")
 region_enabled = true
 region_rect = Rect2(0, 0, 24, 36)
-
-[node name="PlaceholderSprite" type="ColorRect" parent="Sprite"]
-offset_left = -12.0
-offset_top = -18.0
-offset_right = 12.0
-offset_bottom = 18.0
-color = Color(0.29, 0.478, 0.29, 1)
 
 [node name="WeaponManager" type="Node2D" parent="."]
 unique_name_in_owner = true

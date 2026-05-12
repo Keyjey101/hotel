@@ -1,9 +1,20 @@
-[gd_resource type="TileSet" format=3]
+[gd_resource type="TileSet" load_steps=11 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_floor.png" id="1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_wall.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_corner_ne.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_corner_nw.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_corner_se.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_corner_sw.png" id="6"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_door_closed_h.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_door_closed_v.png" id="8"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_door_open_h.png" id="9"]
+[ext_resource type="Texture2D" path="res://assets/sprites/tiles/floor_04/tile_door_open_v.png" id="10"]
 
 [resource]
 tile_size = Vector2i(32, 32)
 rendering_uv_flip_texture = false
-physics_layer_0/collision_layer = 128
+physics_layer_0/collision_layer = 64
 terrain_set_0/mode = 0
 terrain_set_0/terrain_0/name = "wall"
 terrain_set_0/terrain_0/color = Color(0.5, 0.5, 0.5, 1)
@@ -11,64 +22,64 @@ terrain_set_0/terrain_1/name = "floor"
 terrain_set_0/terrain_1/color = Color(0.3, 0.6, 0.3, 1)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_floor.png")
+texture = ExtResource("1")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_wall.png")
+texture = ExtResource("2")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_2"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_corner_ne.png")
+texture = ExtResource("3")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_corner_nw.png")
+texture = ExtResource("4")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_4"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_corner_se.png")
+texture = ExtResource("5")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_5"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_corner_sw.png")
+texture = ExtResource("6")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_6"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_door_closed_h.png")
+texture = ExtResource("7")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_door_closed_v.png")
+texture = ExtResource("8")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-16, -16, 16, -16, 16, 16, -16, 16)
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_8"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_door_open_h.png")
+texture = ExtResource("9")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_9"]
-texture = ExtResource("res://assets/sprites/tiles/floor_04/tile_door_open_v.png")
+texture = ExtResource("10")
 texture_region_size = Vector2i(32, 32)
 0:0/0 = 0
 

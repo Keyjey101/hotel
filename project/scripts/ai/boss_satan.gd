@@ -785,10 +785,7 @@ func _disable_enemy() -> void:
 
 	# Determine ending
 	EventBus.mini_boss_defeated.emit(9)
-	# Delay for reality collapse visual to play out
-	get_tree().create_timer(1.5).timeout.connect(func():
-		GameManager.handle_final_boss_defeated()
-	)
+	# Let floor_manager handle ending via signal chain
 
 	super._disable_enemy()
 

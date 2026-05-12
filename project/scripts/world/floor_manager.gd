@@ -146,7 +146,7 @@ func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 			continue
 
 		var room_instance := RoomInstance.new()
-		room_instance.setup_from_config(config)
+		room_instance.setup_from_config(config, floor_num)
 		rooms_container.add_child(room_instance)
 
 		# Floor 7: apply darkness zones, cameras, light sources

@@ -57,10 +57,26 @@ var _regen_sfx_played: bool = false
 
 func _ready() -> void:
 	_initial_move_speed = move_speed
+	_load_sprite()
 	_init_health()
 	_connect_signals()
 	_enter_state("patrol")
 
+
+
+func _load_sprite() -> void:
+	if enemy_type == "" or enemy_type == "base":
+		return
+	var asset_name := ""
+	if enemy_type == "boss":
+		# Bosses use enemy_name for sprite lookup
+		var name_key := enemy_name.to_lower().replace(" ", "_").replace("the_", "")
+		asset_name = "enemy_%s.png" % name_key
+	else:
+		asset_name = "enemy_%s.png" % enemy_type.to_lower()
+	var asset_path := "res://assets/sprites/characters/enemies/" + asset_name
+	if ResourceLoader.exists(asset_path):
+		sprite.texture = load(asset_path)
 
 func _init_health() -> void:
 	limb_health = {

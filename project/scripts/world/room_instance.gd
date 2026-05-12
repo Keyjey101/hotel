@@ -161,14 +161,13 @@ func _on_door_body_entered(body: Node2D, door: Area2D) -> void:
 var _enemies_spawned: bool = false
 
 
-func setup_from_config(config: RoomConfig) -> void:
+func setup_from_config(config: RoomConfig, floor_num: int = 1) -> void:
 	room_id = config.room_id
 	room_type = config.room_type
 	room_bounds = Rect2(Vector2.ZERO, config.size_px)
 	name = "Room_%s" % config.room_id
 
-	_create_floor(config.size_px, config.floor_color)
-	_create_walls(config.size_px, config.wall_color)
+	_create_tilemap(config.size_tiles, config.size_px, floor_num)
 	_create_navigation(config.size_px)
 	_create_spawn_points(config.spawn_point_positions)
 	_create_loot_zones(config.loot_zone_positions)
@@ -176,65 +175,61 @@ func setup_from_config(config: RoomConfig) -> void:
 	_create_enemies_container()
 
 
-func _create_floor(size_px: Vector2, color: Color) -> void:
-	var floor_rect := ColorRect.new()
-	floor_rect.name = "FloorVisual"
-	floor_rect.color = color
-	floor_rect.size = size_px
-	add_child(floor_rect)
 
+func _create_tilemap(size_tiles: Vector2i, size_px: Vector2, floor_num: int) -> void:
+	# Load the tileset for this floor
+	var tileset_path := "res://assets/resources/tilesets/floor_%02d_tileset.tres" % floor_num
+	var tileset: TileSet = null
+	if ResourceLoader.exists(tileset_path):
+		tileset = load(tileset_path)
+	if tileset == null:
+		# Fallback to ColorRect if tileset not found
+		var floor_rect := ColorRect.new()
+		floor_rect.name = "FloorVisual"
+		floor_rect.color = Color(0.3, 0.3, 0.3)
+		floor_rect.size = size_px
+		floor_rect.z_index = -2
+		add_child(floor_rect)
+		return
 
-func _create_walls(size_px: Vector2, color: Color) -> void:
-	var wall_thickness := 16.0
-	var walls := StaticBody2D.new()
-	walls.name = "Walls"
-	walls.collision_layer = 128  # environment layer (bit 7)
-	walls.collision_mask = 0
+	# Floor TileMapLayer
+	var floor_tml := TileMapLayer.new()
+	floor_tml.name = "FloorTiles"
+	floor_tml.tile_set = tileset
+	floor_tml.z_index = -2
+	add_child(floor_tml)
 
-	# Wall visuals
-	var wall_visual := ColorRect.new()
-	wall_visual.name = "WallVisual"
-	wall_visual.color = color
-	wall_visual.size = size_px
-	walls.add_child(wall_visual)
+	# Wall TileMapLayer with collision
+	var wall_tml := TileMapLayer.new()
+	wall_tml.name = "WallTiles"
+	wall_tml.tile_set = tileset
+	wall_tml.z_index = -1
+	add_child(wall_tml)
 
-	# Top wall
-	var shape_top := RectangleShape2D.new()
-	shape_top.size = Vector2(size_px.x, wall_thickness)
-	var col_top := CollisionShape2D.new()
-	col_top.name = "WallTop"
-	col_top.position = Vector2(size_px.x * 0.5, 0.0)
-	col_top.shape = shape_top
-	walls.add_child(col_top)
+	var tw := 32  # tile width
+	var th := 32  # tile height
+	var cols := size_tiles.x
+	var rows := size_tiles.y
 
-	# Bottom wall
-	var shape_bottom := RectangleShape2D.new()
-	shape_bottom.size = Vector2(size_px.x, wall_thickness)
-	var col_bottom := CollisionShape2D.new()
-	col_bottom.name = "WallBottom"
-	col_bottom.position = Vector2(size_px.x * 0.5, size_px.y)
-	col_bottom.shape = shape_bottom
-	walls.add_child(col_bottom)
+	# Place floor tiles (source 0 = floor) in interior
+	for y in range(rows):
+		for x in range(cols):
+			floor_tml.set_cell(Vector2i(x, y), 0, Vector2i(0, 0))
 
-	# Left wall
-	var shape_left := RectangleShape2D.new()
-	shape_left.size = Vector2(wall_thickness, size_px.y)
-	var col_left := CollisionShape2D.new()
-	col_left.name = "WallLeft"
-	col_left.position = Vector2(0.0, size_px.y * 0.5)
-	col_left.shape = shape_left
-	walls.add_child(col_left)
+	# Place wall tiles (source 1 = wall) on borders
+	for x in range(cols):
+		wall_tml.set_cell(Vector2i(x, 0), 1, Vector2i(0, 0))         # top
+		wall_tml.set_cell(Vector2i(x, rows - 1), 1, Vector2i(0, 0))  # bottom
+	for y in range(rows):
+		wall_tml.set_cell(Vector2i(0, y), 1, Vector2i(0, 0))         # left
+		wall_tml.set_cell(Vector2i(cols - 1, y), 1, Vector2i(0, 0))  # right
 
-	# Right wall
-	var shape_right := RectangleShape2D.new()
-	shape_right.size = Vector2(wall_thickness, size_px.y)
-	var col_right := CollisionShape2D.new()
-	col_right.name = "WallRight"
-	col_right.position = Vector2(size_px.x, size_px.y * 0.5)
-	col_right.shape = shape_right
-	walls.add_child(col_right)
+	# Place corner tiles (sources 2-5: ne, nw, se, sw)
+	wall_tml.set_cell(Vector2i(cols - 1, 0), 2, Vector2i(0, 0))        # NE
+	wall_tml.set_cell(Vector2i(0, 0), 3, Vector2i(0, 0))              # NW
+	wall_tml.set_cell(Vector2i(cols - 1, rows - 1), 4, Vector2i(0, 0)) # SE
+	wall_tml.set_cell(Vector2i(0, rows - 1), 5, Vector2i(0, 0))       # SW
 
-	add_child(walls)
 
 
 func _create_navigation(size_px: Vector2) -> void:

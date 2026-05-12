@@ -30,17 +30,20 @@ grow_vertical = 2
 [node name="VBox" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Panel/VBox" unique]
+[node name="Label" type="Label" parent="Panel/VBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Choose:"
 
 [node name="HBox" type="HBoxContainer" parent="Panel/VBox"]
 layout_mode = 2
 
-[node name="Option1Button" type="Button" parent="Panel/VBox/HBox" unique]
+[node name="Option1Button" type="Button" parent="Panel/VBox/HBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Accept"
 
-[node name="Option2Button" type="Button" parent="Panel/VBox/HBox" unique]
+[node name="Option2Button" type="Button" parent="Panel/VBox/HBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Reject"
