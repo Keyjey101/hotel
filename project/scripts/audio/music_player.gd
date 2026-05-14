@@ -106,6 +106,7 @@ func play_floor09_phase(phase: int) -> void:
 	match phase:
 		1:
 			stop_all(0.5)
+			await get_tree().process_frame
 			_exploration.stream = _silence_stream
 			_exploration.play()
 		2:
@@ -116,6 +117,7 @@ func play_floor09_phase(phase: int) -> void:
 			_boss.play()
 		4:
 			stop_all(0.0)
+			await get_tree().process_frame
 			_exploration.stream = _silence_stream
 			_exploration.play()
 
@@ -140,8 +142,8 @@ func _generate_silence() -> AudioStream:
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_8_BITS
 	stream.mix_rate = 22050
-	stream.data = PackedByteArray([0])
+	stream.data = PackedByteArray([0, 0, 0, 0])
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
-	stream.loop_end = 1
+	stream.loop_end = 4
 	return stream

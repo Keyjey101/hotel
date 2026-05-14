@@ -61,6 +61,9 @@ func _on_player_captured() -> void:
 func _screen_shake(intensity: float) -> void:
 	var camera := get_tree().get_first_node_in_group("camera")
 	if camera and camera is Camera2D:
+		# Don't override if camera already being tweened (transition in progress)
+		if camera.has_meta("_transitioning") and camera.get_meta("_transitioning", false):
+			return
 		var offset := Vector2(randf_range(-intensity, intensity), randf_range(-intensity, intensity))
 		camera.offset = offset
 		var tween := camera.create_tween()

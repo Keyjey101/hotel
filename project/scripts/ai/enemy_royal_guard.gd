@@ -168,7 +168,7 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 		var facing_dir := _direction.normalized()
 		var incoming_dir := knockback_dir.normalized()
 		var dot := facing_dir.dot(incoming_dir)
-		if dot > 0.0:
+		if dot < 0.0:
 			# Frontal hit while in shield wall
 			if randf() < 0.8:
 				# Blocked!
@@ -190,6 +190,16 @@ func _state_chase(delta: float) -> void:
 		return
 
 	var target_pos := _target.global_position
+
+	if _commanded and _commanded_pos != Vector2.ZERO:
+		navigation.target_position = _commanded_pos
+		if global_position.distance_to(_commanded_pos) < 20.0:
+			_commanded = false
+		var next_pos := navigation.get_next_path_position()
+		var dir := global_position.direction_to(next_pos)
+		velocity = dir * move_speed
+		_direction = dir
+		return
 
 	if _in_shield_wall and _formation_role == "line":
 		# Maintain line formation with partner guard
@@ -239,6 +249,12 @@ func _state_engage(delta: float) -> void:
 
 	velocity = Vector2.ZERO
 	_direction = global_position.direction_to(_target.global_position)
+
+	if _commanded and _commanded_pos != Vector2.ZERO:
+		var dist_to_cmd := global_position.distance_to(_commanded_pos)
+		if dist_to_cmd > 60.0:
+			_enter_state("chase")
+			return
 
 	var dist := global_position.distance_to(_target.global_position)
 
@@ -290,10 +306,12 @@ func _perform_halberd_sweep() -> void:
 			if _target.has_method("receive_damage"):
 				_target.receive_damage(_halberd_damage, 0, false, 60.0, dir_to_target * -1.0)
 
-	# Also hit other enemies in the cone (friendly fire)
+	# Also hit other enemies in the cone (friendly fire, excluding royal guards)
 	var enemies := get_tree().get_nodes_in_group("enemy")
 	for e in enemies:
 		if e == self or not is_instance_valid(e):
+			continue
+		if e.is_in_group("royal_guards"):
 			continue
 		var e_dist := global_position.distance_to(e.global_position)
 		if e_dist <= _halberd_range:
@@ -322,9 +340,9 @@ func _fire_crossbow() -> void:
 	bolt.name = "CrossbowBolt"
 	bolt.size = Vector2(6.0, 2.0)
 	bolt.color = Color(0.5, 0.5, 0.4, 1.0)
-	bolt.position = global_position + dir_to_target * 20.0
 	bolt.z_index = 5
 	get_parent().add_child(bolt)
+	bolt.global_position = global_position + dir_to_target * 20.0
 
 	# Animate bolt to target position
 	var target_pos := _target.global_position
@@ -338,10 +356,12 @@ func _fire_crossbow() -> void:
 			return
 		if is_instance_valid(bolt):
 			bolt.queue_free()
-		# Apply damage on arrival
+		# Apply damage only if player hasn't moved far from bolt arrival point
 		if _target != null and is_instance_valid(_target):
-			if _target.has_method("receive_damage"):
-				_target.receive_damage(_crossbow_damage, 0, false, 20.0, dir_to_target * -1.0)
+			var dist := global_position.distance_to(_target.global_position)
+			if dist <= 30.0:
+				if _target.has_method("receive_damage"):
+					_target.receive_damage(_crossbow_damage, 0, false, 20.0, dir_to_target * -1.0)
 	)
 
 

@@ -12,6 +12,10 @@ var _grab_duration: float = 4.0
 var _grab_timer: float = 0.0
 var _embrace_base_dps: float = 8.0
 var _embrace_poison_dps: float = 16.0
+var _grab_dps_accumulator: float = 0.0
+const GRAB_DPS_INTERVAL: float = 0.25
+
+const HAZARD_SCENE := preload("res://scenes/combat/hazard_zone.tscn")
 
 
 func _ready() -> void:
@@ -96,13 +100,16 @@ func _spawn_poison_splash() -> void:
 
 
 func _spawn_poison_particles(pos: Vector2) -> void:
+	var parent := get_parent()
+	if parent == null:
+		return
 	for i in range(6):
 		var particle := ColorRect.new()
 		particle.size = Vector2(3.0, 3.0)
 		particle.color = Color(0.0, 1.0, 0.0, 0.8)
 		particle.position = pos - particle.size * 0.5
 		particle.z_index = 10
-		get_parent().add_child(particle)
+		parent.add_child(particle)
 
 		# Scatter outward
 		var spread_dir := Vector2(randf() - 0.5, randf() - 0.5).normalized()
@@ -130,9 +137,12 @@ func _state_engage(delta: float) -> void:
 		var dps := _embrace_base_dps
 		if _is_target_poisoned():
 			dps = _embrace_poison_dps
-		# Deal damage every frame (dps * delta)
-		if _target.has_method("receive_damage"):
-			_target.receive_damage(dps * delta, DamageZone.Zone.TORSO, false)
+		_grab_dps_accumulator += delta
+		if _grab_dps_accumulator >= GRAB_DPS_INTERVAL:
+			var tick_damage := dps * _grab_dps_accumulator
+			_grab_dps_accumulator = 0.0
+			if _target.has_method("receive_damage"):
+				_target.receive_damage(tick_damage, DamageZone.Zone.TORSO, false)
 
 		# Auto-release after duration
 		if _grab_timer <= 0.0:
@@ -174,6 +184,7 @@ func _attempt_embrace_grab() -> void:
 func _release_grab() -> void:
 	_grab_active = false
 	_grab_timer = 0.0
+	_grab_dps_accumulator = 0.0
 
 
 func _is_target_poisoned() -> bool:
@@ -208,7 +219,9 @@ func _disable_enemy() -> void:
 
 
 func _spawn_death_burst_visual() -> void:
-	# Expanding green circle visual
+	var parent := get_parent()
+	if parent == null:
+		return
 	var circle := ColorRect.new()
 	circle.name = "DeathBurst"
 	circle.color = Color(0.0, 1.0, 0.0, 0.4)
@@ -216,7 +229,7 @@ func _spawn_death_burst_visual() -> void:
 	circle.size = Vector2(8.0, 8.0)
 	circle.position = global_position - circle.size * 0.5
 	circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	get_parent().add_child(circle)
+	parent.add_child(circle)
 
 	var tween := circle.create_tween()
 	tween.set_parallel(true)
@@ -255,10 +268,7 @@ func _on_limb_lost(zone: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _spawn_poison_cloud(pos: Vector2, dps: float, radius: float, dur: float) -> void:
-	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
-	if hazard_scene == null:
-		return
-	var zone: Area2D = hazard_scene.instantiate()
+	var zone: Area2D = HAZARD_SCENE.instantiate()
 	zone.damage_per_second = dps
 	zone.slow_factor = 1.0
 	zone.duration = dur
@@ -266,7 +276,9 @@ func _spawn_poison_cloud(pos: Vector2, dps: float, radius: float, dur: float) ->
 	zone.zone_radius = radius
 	zone.global_position = pos
 	zone.add_to_group("hazard_zone")
-	get_parent().call_deferred("add_child", zone)
+	var parent := get_parent()
+	if parent:
+		parent.call_deferred("add_child", zone)
 
 
 # ---------------------------------------------------------------------------

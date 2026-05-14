@@ -10,8 +10,15 @@ const FIRE_HAZARD_DURATION: float = 4.0
 const FIRE_HAZARD_RADIUS: float = 48.0
 const FIRE_HAZARD_COLOR: Color = Color(1.0, 0.33, 0.0, 0.5)  # #FF5500 ember orange
 
+const LAYER_PLAYER := 1
+const LAYER_ENEMY := 2
+const LAYER_PROJECTILE := 4
+
 var _rng: RandomNumberGenerator
 
+
+const HazardZoneScene := preload("res://scenes/combat/hazard_zone.tscn")
+const ArenaRoomScript := preload("res://scripts/world/arena_room.gd")
 
 func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 	super.load_floor(floor_num, seed_mgr)
@@ -70,6 +77,9 @@ func _create_fire_hazard(room: RoomInstance, pos: Vector2) -> void:
 	var brazier := Area2D.new()
 	brazier.name = "Brazier"
 	brazier.position = pos
+	brazier.collision_layer = 0
+	brazier.collision_mask = LAYER_PLAYER | LAYER_ENEMY | LAYER_PROJECTILE
+	brazier.monitoring = true
 	brazier.add_to_group("fire_hazards")
 
 	var shape := CircleShape2D.new()
@@ -111,10 +121,13 @@ func _ignite_brazier(brazier: Area2D) -> void:
 	brazier.set_meta("fire_active", true)
 
 	# Create the active fire hazard zone
-	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
-	if hazard_scene == null:
+	var fire_zone
+	if HazardZoneScene:
+		fire_zone = HazardZoneScene.instantiate()
+	else:
+		fire_zone = HazardZone.new()
+	if fire_zone == null:
 		return
-	var fire_zone := hazard_scene.instantiate()
 	fire_zone.damage_per_second = brazier.get_meta("fire_dps", FIRE_HAZARD_DPS)
 	fire_zone.duration = brazier.get_meta("fire_duration", FIRE_HAZARD_DURATION)
 	fire_zone.zone_radius = brazier.get_meta("fire_radius", FIRE_HAZARD_RADIUS)
@@ -176,7 +189,7 @@ func _setup_arena_b1() -> void:
 
 	var arena := Node2D.new()
 	arena.name = "ArenaRoom"
-	arena.set_script(load("res://scripts/world/arena_room.gd"))
+	arena.set_script(ArenaRoomScript)
 
 	# Configure waves for B1 per spec
 	var arena_script := arena as Node2D
@@ -193,7 +206,10 @@ func _setup_arena_b1() -> void:
 			"spawn_point_indices": [0, 1, 2],
 		},
 	])
-	arena.set_meta("door_node_paths", [])
+	room.add_child(arena)
+
+	# Connect room activation to arena start
+	room.player_entered.connect(_on_arena_room_entered.bind(arena))
 
 	# Collect door node paths relative to arena
 	var door_paths: Array[String] = []
@@ -201,11 +217,6 @@ func _setup_arena_b1() -> void:
 		var door := room.doors[i]
 		door_paths.append(arena.get_path_to(door))
 	arena.set_meta("door_node_paths", door_paths)
-
-	room.add_child(arena)
-
-	# Connect room activation to arena start
-	room.player_entered.connect(_on_arena_room_entered.bind(arena))
 
 
 func _on_arena_room_entered(room: RoomInstance, arena: Node2D) -> void:

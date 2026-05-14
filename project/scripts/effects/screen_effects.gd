@@ -79,8 +79,8 @@ func shake(amplitude: float = 4.0, duration: float = 0.15, _decay: float = 0.9) 
 
 	if _shake_tween and _shake_tween.is_valid():
 		_shake_tween.kill()
-			if _camera:
-				_camera.offset = Vector2.ZERO
+		if _camera:
+			_camera.offset = Vector2.ZERO
 
 	_shake_tween = create_tween()
 	var steps := 4
@@ -114,7 +114,8 @@ func flash(color: Color = Color.WHITE, duration: float = 0.05, max_alpha: float 
 
 func hit_stop(duration: float = 0.05) -> void:
 	_hit_stop_count += 1
-	Engine.time_scale = 0.01
+	if _hit_stop_count == 1:
+		Engine.time_scale = 0.01
 	_hit_stop_timer = get_tree().create_timer(duration, true, false, true)
 	_hit_stop_timer.timeout.connect(_on_hit_stop_timeout)
 
@@ -123,7 +124,7 @@ func _on_hit_stop_timeout() -> void:
 	_hit_stop_count -= 1
 	if _hit_stop_count <= 0:
 		_hit_stop_count = 0
-		Engine.time_scale = 1.0
+		Engine.time_scale = maxf(Engine.time_scale, 1.0)
 
 
 func _exit_tree() -> void:

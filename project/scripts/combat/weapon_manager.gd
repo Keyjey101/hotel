@@ -19,7 +19,7 @@ var _thrown_pool: Node
 
 func _ready() -> void:
 	# Check if Crown of Thorns artifact adds a slot
-	if GameManager.run_state and GameManager.run_state.has_artifact("Crown of Thorns"):
+	if GameManager.run_state and GameManager.run_state.has_artifact("a11_crown_of_thorns"):
 		max_slots = 3
 		equipped.append(null)
 		_ammo.append(0)
@@ -58,6 +58,7 @@ func switch_slot() -> void:
 		if equipped[s] != null:
 			active_slot = s
 			EventBus.player_weapon_changed.emit(active_slot, equipped[s])
+			_sync_to_run_state()
 			return
 
 
@@ -88,6 +89,7 @@ func equip_weapon(weapon: WeaponData) -> void:
 		_ammo[target_slot] = -1  # Infinite (melee)
 
 	EventBus.player_weapon_changed.emit(target_slot, weapon)
+	_sync_to_run_state()
 
 
 func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
@@ -99,6 +101,7 @@ func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
 	# Create melee hitbox
 	var hit = _melee_pool.get_instance()
 	hit.setup(weapon, direction, get_parent())
+	var saved_pos := hit.global_position
 	# Reparent to scene tree if pooled
 	if hit.get_parent() != get_tree().current_scene:
 		hit.get_parent().remove_child(hit)
@@ -106,6 +109,7 @@ func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
 			get_tree().current_scene.add_child(hit)
 		else:
 			call_deferred("add_child", hit)
+	hit.global_position = saved_pos
 
 	# Get melee damage multiplier from upgrades
 	var dmg_mult := _get_melee_damage_mult()
@@ -190,6 +194,7 @@ func throw_active_weapon(direction: Vector2) -> void:
 	_ammo[active_slot] = 0
 	EventBus.weapon_dropped.emit(weapon)
 	EventBus.player_weapon_changed.emit(active_slot, null)
+	_sync_to_run_state()
 
 
 func _drop_weapon(weapon: WeaponData, pos: Vector2) -> void:
@@ -222,7 +227,7 @@ func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weap
 	EventBus.weapon_hit_target.emit(weapon, target, final_damage)
 
 	# Hunger Blade: 15% lifesteal on melee hits only
-	if is_melee and GameManager.run_state and GameManager.run_state.has_artifact("Hunger Blade"):
+	if is_melee and GameManager.run_state and GameManager.run_state.has_artifact("a4_hunger_blade"):
 		var heal_amount := final_damage * 0.15
 		var player := get_tree().get_first_node_in_group("player")
 		if player and player.has_method("heal"):
@@ -234,7 +239,7 @@ func _get_melee_damage_mult() -> float:
 	if GameManager.run_state:
 		mult += float(GameManager.run_state.stat_upgrades.get("damage_melee", 0.0))
 		# Demon Eye penalty
-		if GameManager.run_state.has_artifact("Demon Eye"):
+		if GameManager.run_state.has_artifact("a1_demon_eye"):
 			mult -= 0.2
 	return maxf(mult, 0.1)
 
@@ -244,7 +249,7 @@ func _get_ranged_damage_mult() -> float:
 	if GameManager.run_state:
 		mult += float(GameManager.run_state.stat_upgrades.get("damage_ranged", 0.0))
 		# Demon Eye bonus
-		if GameManager.run_state.has_artifact("Demon Eye"):
+		if GameManager.run_state.has_artifact("a1_demon_eye"):
 			mult += 0.3
 	return maxf(mult, 0.1)
 
@@ -254,3 +259,26 @@ func _get_throw_damage_mult() -> float:
 	if GameManager.run_state:
 		mult += float(GameManager.run_state.stat_upgrades.get("damage_throw", 0.0))
 	return maxf(mult, 0.1)
+
+
+func refill_ammo() -> void:
+	for i in range(max_slots):
+		if equipped[i] != null and equipped[i].ammo > 0:
+			var ammo_bonus := 1.0
+			if GameManager.run_state:
+				ammo_bonus = 1.0 + float(GameManager.run_state.stat_upgrades.get("ammo_bonus", 0.0))
+			_ammo[i] = ceili(equipped[i].ammo * ammo_bonus)
+	_sync_to_run_state()
+
+
+func get_ammo_for_slot(slot: int) -> int:
+	if slot < 0 or slot >= _ammo.size():
+		return 0
+	return _ammo[slot]
+
+
+func _sync_to_run_state() -> void:
+	if GameManager.run_state:
+		for i in range(mini(max_slots, GameManager.run_state.weapon_slots.size())):
+			GameManager.run_state.weapon_slots[i] = equipped[i]
+		GameManager.run_state.active_slot = active_slot

@@ -66,7 +66,7 @@ func load_settings() -> Dictionary:
 		push_error("Failed to open file for reading: %s" % SETTINGS_PATH)
 		return _default_settings()
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	return parsed if parsed is Dictionary else {}
+	return parsed if parsed is Dictionary else _default_settings()
 
 
 func load_records() -> Dictionary:
@@ -77,7 +77,7 @@ func load_records() -> Dictionary:
 		push_error("Failed to open file for reading: %s" % RECORDS_PATH)
 		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	return parsed if parsed is Dictionary else {}
+	return parsed if parsed is Dictionary else {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
 
 
 func update_records(deepest_floor: int, run_time: float) -> void:

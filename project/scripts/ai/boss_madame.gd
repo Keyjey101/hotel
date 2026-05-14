@@ -131,7 +131,12 @@ func _find_player() -> Node2D:
 # PHYSICS PROCESS
 # ═══════════════════════════════════════════════════════════════
 
+# ── Delta tracking for timer-based movement ───────────────────
+var _last_physics_delta: float = 1.0 / 60.0
+
+
 func _physics_process(delta: float) -> void:
+	_last_physics_delta = delta
 	_update_position_history(delta)
 	_update_clone_positions(delta)
 	_update_clone_damage_cooldowns(delta)
@@ -428,8 +433,8 @@ func _try_clone_damage(clone: Node2D) -> void:
 		return
 	var dist := clone.global_position.distance_to(_target.global_position)
 	if dist < 30.0:
-		if _target.has_method("take_damage"):
-			_target.take_damage(5.0)
+		if _target.has_method("receive_damage"):
+			_target.receive_damage(5.0, DamageZone.Zone.TORSO, false)
 		_clone_damage_cooldowns[clone] = 1.5  # cooldown before next damage
 
 
@@ -657,12 +662,12 @@ func _continue_shard(node: CharacterBody2D, dir: Vector2, speed: float,
 		damage: float, elapsed: float, max_time: float) -> void:
 	if not is_instance_valid(self) or _disabled or not is_instance_valid(node):
 		return
-	var delta := 0.016
+	var delta := get_physics_process_delta_time()
 	var collision := node.move_and_collide(dir * speed * delta)
 	if collision:
 		var collider := collision.get_collider()
-		if collider and collider.is_in_group("player") and collider.has_method("take_damage"):
-			collider.take_damage(damage, dir, 10.0)
+		if collider and collider.is_in_group("player") and collider.has_method("receive_damage"):
+			collider.receive_damage(damage, DamageZone.Zone.TORSO, false, 10.0, dir)
 		# Piercing: don't stop, but leave shard hazard
 		if _shard_count < MAX_SHARD_COUNT:
 			_shard_count += 1
@@ -708,8 +713,8 @@ func _create_shard_hazard(pos: Vector2) -> void:
 	get_tree().current_scene.add_child(zone)
 
 	zone.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			body.take_damage(5.0)
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+			body.receive_damage(5.0, DamageZone.Zone.TORSO, false)
 	)
 	get_tree().create_timer(5.0).timeout.connect(func() -> void:
 		_shard_count = maxi(0, _shard_count - 1)
@@ -728,8 +733,8 @@ func dash_attack() -> void:
 	var collision := move_and_collide(_direction * 400.0 * 0.016)
 	if collision:
 		var collider := collision.get_collider()
-		if collider and collider.is_in_group("player") and collider.has_method("take_damage"):
-			collider.take_damage(35.0, _direction, 30.0)
+		if collider and collider.is_in_group("player") and collider.has_method("receive_damage"):
+			collider.receive_damage(35.0, DamageZone.Zone.TORSO, false, 30.0, _direction)
 	# Also create hitbox along path
 	_create_melee_hitbox(50.0, 90.0, 35.0, 30.0)
 
@@ -751,8 +756,8 @@ func scream() -> void:
 		if body.is_in_group("player"):
 			if body.has_method("apply_stun"):
 				body.apply_stun(1.0)
-			elif body.has_method("take_damage"):
-				body.take_damage(5.0)  # reduced damage if no stun method
+			elif body.has_method("receive_damage"):
+				body.receive_damage(5.0, DamageZone.Zone.TORSO, false)  # reduced damage if no stun method
 	)
 
 	# Visual pulse
@@ -786,8 +791,8 @@ func _create_melee_hitbox(range_px: float, _angle_deg: float, damage: float,
 	get_tree().current_scene.add_child(area)
 
 	area.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			body.take_damage(damage, _direction, knockback)
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+			body.receive_damage(damage, DamageZone.Zone.TORSO, false, knockback, _direction)
 	)
 
 	get_tree().create_timer(lifespan).timeout.connect(area.queue_free)
@@ -863,7 +868,8 @@ func _disable_enemy() -> void:
 	_clear_all_clones()
 	# Clean up shard timers
 	for t in _shard_timers:
-		if is_instance_valid(t):
-			t.timeout.disconnect_all()
+		if t is SceneTreeTimer:
+			for conn in t.timeout.get_connections():
+				t.timeout.disconnect(conn.callable)
 	_shard_timers.clear()
 	_shard_count = 0

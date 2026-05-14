@@ -46,6 +46,7 @@ func get_room_enemy_config(floor_number: int, room_index: int, spawn_points: int
 	# Decide which spawn points are active
 	var active_points: Array[int] = []
 	var all_points: Array = range(spawn_points)
+	all_points = all_points.duplicate()
 	_deterministic_shuffle(all_points, rng)
 	for i in range(mini(count, all_points.size())):
 		active_points.append(all_points[i])
@@ -55,7 +56,7 @@ func get_room_enemy_config(floor_number: int, room_index: int, spawn_points: int
 func get_room_loot_config(floor_number: int, room_index: int, loot_zones: int) -> Dictionary:
 	var rng := get_room_rng(floor_number, room_index)
 	var loot_rng := RandomNumberGenerator.new()
-	loot_rng.seed = rng.seed + 999  # Offset without mutating original
+	loot_rng.seed = hash(str(rng.seed) + "_loot")
 	var loot_count := loot_rng.randi_range(1, maxi(1, loot_zones - 1))
 	return {"count": loot_count, "seed": loot_rng.seed}
 
@@ -67,6 +68,7 @@ func get_gate_config(floor_number: int, total_branches: int) -> Dictionary:
 	var gate_rng := RandomNumberGenerator.new()
 	gate_rng.seed = rng.seed + 777  # Offset without mutating original
 	var branches: Array = range(total_branches)
+	branches = branches.duplicate()
 	_deterministic_shuffle(branches, gate_rng)
 	var open_branches := branches.slice(0, total_branches - 1)
 	var closed_branch: int = int(branches[total_branches - 1])

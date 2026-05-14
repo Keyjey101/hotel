@@ -33,6 +33,7 @@ var _rng: RandomNumberGenerator
 # ── Belly Flop (Phase 2) ──────────────────────────────────────
 var _is_flopping: bool = false
 var _flop_target_pos: Vector2 = Vector2.ZERO
+var _flop_start_pos: Vector2 = Vector2.ZERO
 var _flop_height: float = 0.0
 var _flop_elapsed: float = 0.0
 const FLOP_DURATION: float = 0.6
@@ -284,8 +285,8 @@ func _eat_corpse(corpse: StaticBody2D) -> void:
 	if corpse.has_method("consume"):
 		corpse.consume()
 	corpses_eaten += 1
-	_heal_from_eating(30.0)
 	_apply_growth()
+	_heal_from_eating(30.0)
 	check_phase_transition()
 
 
@@ -526,6 +527,7 @@ func belly_flop() -> void:
 		return
 	_is_flopping = true
 	_flop_target_pos = _target.global_position
+	_flop_start_pos = global_position
 	_flop_elapsed = 0.0
 	_flop_height = 0.0
 	# Disable collision during jump
@@ -570,7 +572,7 @@ func _process_flop(delta: float) -> void:
 		return
 
 	# Arc movement
-	var start_pos := global_position
+	var start_pos := _flop_start_pos
 	global_position = start_pos.lerp(_flop_target_pos, t)
 	_flop_height = sin(t * PI) * FLOP_MAX_HEIGHT
 
@@ -592,8 +594,8 @@ func grab_devour() -> void:
 		# Eat enemy instead of grabbing player
 		nearest_enemy._disable_enemy()
 		corpses_eaten += 1
-		_heal_from_eating(30.0)
 		_apply_growth()
+		_heal_from_eating(30.0)
 		check_phase_transition()
 		_finish_attack()
 		return
@@ -640,7 +642,7 @@ func _find_nearest_enemy(range_px: float) -> Node:
 			continue
 		if not is_instance_valid(enemy):
 			continue
-		if enemy._disabled:
+		if enemy.get("_disabled") == true:
 			continue
 		var dist := global_position.distance_to(enemy.global_position)
 		if dist < nearest_dist:
@@ -669,13 +671,11 @@ func _process_charge(delta: float) -> void:
 	var collision := move_and_collide(_charge_dir * CHARGE_SPEED * delta)
 	if collision:
 		var collider := collision.get_collider()
-		if collider:
-		if collider.is_in_group("player") and collider.has_method("receive_damage"):
-				collider.receive_damage(50.0, DamageZone.Zone.TORSO, false, 40.0, _charge_dir)
-			# Hit wall or obstacle → stop
-			if collider is StaticBody2D:
-				_end_charge()
-				return
+		if collider and collider.is_in_group("player") and collider.has_method("receive_damage"):
+			collider.receive_damage(50.0, DamageZone.Zone.TORSO, false, 40.0, _charge_dir)
+		if collider and collider is StaticBody2D:
+			_end_charge()
+			return
 
 	# Knockback all entities in path
 	_hit_entities_in_path()

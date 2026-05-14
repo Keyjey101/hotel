@@ -30,11 +30,17 @@ func get_instance() -> Node:
 		if _active.size() < _max_size:
 			_expand()
 		else:
-			# Force return oldest active
-			var oldest: Node = _active.pop_front()
-			if is_instance_valid(oldest):
-				oldest.set_meta("_pool_reclaimed", true)
-				_return(oldest)
+			# Try to find a non-busy active instance to reclaim
+			var reclaimed := false
+			for i in range(_active.size()):
+				var candidate: Node = _active[i]
+				if is_instance_valid(candidate) and not candidate.get_meta("_pool_busy", false):
+					candidate.set_meta("_pool_reclaimed", true)
+					_return(candidate)
+					reclaimed = true
+					break
+			if not reclaimed:
+				return null
 	if _pool.is_empty():
 		return null
 
@@ -48,6 +54,7 @@ func get_instance() -> Node:
 		else:
 			return null
 	_active.append(instance)
+	instance.set_meta("_pool_busy", true)
 	instance.set_process(true)
 	instance.set_physics_process(true)
 	if instance is CanvasItem:
@@ -62,9 +69,11 @@ func return_instance(instance: Node) -> void:
 func _return(instance: Node) -> void:
 	if instance.get_meta("_pool_reclaimed", false):
 		instance.set_meta("_pool_reclaimed", false)
-		if _pool.has(instance):
-			_active.erase(instance)
-			return
+		_active.erase(instance)
+		if not _pool.has(instance):
+			_pool.append(instance)
+		return
+	instance.set_meta("_pool_busy", false)
 	instance.set_process(false)
 	instance.set_physics_process(false)
 	if instance is CanvasItem:
@@ -78,6 +87,7 @@ func _expand() -> void:
 	if not is_inside_tree():
 		return
 	var instance: Node = _scene.instantiate()
+	instance.set_meta("_pool_busy", false)
 	instance.set_process(false)
 	instance.set_physics_process(false)
 	if instance is CanvasItem:

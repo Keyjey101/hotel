@@ -54,6 +54,7 @@ var _initial_move_speed: float = 0.0
 var _alert_sfx_played: bool = false
 var _regen_sfx_played: bool = false
 var _detection_lost_timer: SceneTreeTimer = null
+var _detection_lost_callback: Callable
 var _hurt_tween: Tween = null
 
 
@@ -116,6 +117,7 @@ func _connect_signals() -> void:
 func _physics_process(delta: float) -> void:
 	if _disabled:
 		_disabled_timer -= delta
+		_process_regen(delta)
 		if _disabled_timer <= 0.0:
 			_disabled = false
 			_enter_state("patrol")
@@ -210,6 +212,10 @@ func _sever_limb(zone: int) -> void:
 	# Spawn severed limb entity
 	GoreSystem.spawn_severed_limb(global_position, zone, self)
 
+	# Start extended regen timer for the severed limb
+	var next_regen_time := (base_regen_time / regen_speed_mult) * 3.0
+	regen_timers[zone] = {"current": 0.0, "max": next_regen_time, "paused": false}
+
 	# Adjust behavior based on lost limb
 	_on_limb_lost(zone)
 
@@ -284,10 +290,7 @@ func _process_regen(delta: float) -> void:
 		blood_pact_mult += GameManager.run_state.get_artifact_stat("enemy_regen_speed_mult", 0.0)
 
 	for zone in regen_timers:
-		# Skip already-severed limbs — they don't regen HP
-		if severed_limbs[zone]:
-			continue
-
+		# Severed limbs have extended regen timers that will restore them
 		var timer: Dictionary = regen_timers[zone]
 
 		# Handle pause
@@ -325,6 +328,10 @@ func _regenerate_limb(zone: int) -> void:
 	if not _regen_sfx_played:
 		AudioManager.SFXPlayer.play_sfx("enemy_regen")
 		_regen_sfx_played = true
+		get_tree().create_timer(2.0).timeout.connect(func():
+			if is_instance_valid(self):
+				_regen_sfx_played = false
+		)
 
 	# Restore speed
 	var legs_lost := int(severed_limbs[DamageZone.Zone.LEFT_LEG]) + int(severed_limbs[DamageZone.Zone.RIGHT_LEG])
@@ -528,6 +535,8 @@ func _deal_melee_damage_to_player() -> void:
 
 
 func _disable_enemy() -> void:
+	if _disabled:
+		return
 	_disabled = true
 	_disabled_timer = 60.0  # Full regen takes 60-90s
 	velocity = Vector2.ZERO
@@ -568,7 +577,8 @@ func on_nearby_alert(_source_pos: Vector2) -> void:
 func _on_detection_entered(body: Node2D) -> void:
 	if body.is_in_group("player"):
 		if _detection_lost_timer != null:
-			_detection_lost_timer.timeout.disconnect_all()
+			if _detection_lost_callback.is_valid():
+				_detection_lost_timer.timeout.disconnect(_detection_lost_callback)
 			_detection_lost_timer = null
 		if not _alerted:
 			_target = body
@@ -580,18 +590,17 @@ func _on_detection_exited(body: Node2D) -> void:
 		# Don't immediately forget — keep target for a grace period
 		# Target will be cleared only if truly lost (e.g. far away or scene change)
 		if _current_state in ["chase", "engage"]:
-			# Cancel previous timer if exists
 			if _detection_lost_timer != null:
-				_detection_lost_timer.timeout.disconnect_all()
-			# Schedule target loss after a short delay
+				if _detection_lost_callback.is_valid():
+					_detection_lost_timer.timeout.disconnect(_detection_lost_callback)
 			_detection_lost_timer = get_tree().create_timer(1.5)
-			_detection_lost_timer.timeout.connect(func():
+			_detection_lost_callback = func():
 				_detection_lost_timer = null
 				if _target == null or not is_instance_valid(_target) or global_position.distance_to(_target.global_position) > detection_range * 1.5:
 					_target = null
 					if _current_state in ["chase", "engage"]:
 						_enter_state("patrol")
-			)
+			_detection_lost_timer.timeout.connect(_detection_lost_callback)
 
 
 # ============================================================

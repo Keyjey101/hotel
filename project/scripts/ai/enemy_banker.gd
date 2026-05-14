@@ -7,6 +7,9 @@ extends "res://scripts/ai/base_enemy.gd"
 # Trap types
 const TRAP_TYPES: Array[String] = ["spike_wall", "crusher_ceiling", "lockdown"]
 
+const HAZARD_SCENE := preload("res://scenes/combat/hazard_zone.tscn")
+const DRONE_SCENE := preload("res://scenes/enemies/vault_drone.tscn")
+
 # Ability cooldowns
 var _trap_cooldown: float = 0.0
 var _summon_cooldown: float = 0.0
@@ -19,6 +22,9 @@ var _strafe_timer: float = 0.0
 
 # Mutilation state
 var _arms_lost: int = 0
+
+# Seeded RNG
+var _rng: RandomNumberGenerator
 
 
 func _ready() -> void:
@@ -41,6 +47,9 @@ func _ready() -> void:
 
 	add_to_group("bankers")
 	super._ready()
+	_rng = RandomNumberGenerator.new()
+	if GameManager.seed_manager:
+		_rng.seed = GameManager.seed_manager.get_seed() + hash("banker")
 	_create_pocket_watch()
 
 
@@ -75,7 +84,7 @@ func _update_strafe(delta: float) -> void:
 	_strafe_timer -= delta
 	if _strafe_timer <= 0.0:
 		_strafe_dir *= -1.0
-		_strafe_timer = randf_range(0.5, 1.5)
+		_strafe_timer = _rng.randf_range(0.5, 1.5)
 
 
 # ---------------------------------------------------------------------------
@@ -202,10 +211,7 @@ func _activate_lockdown() -> void:
 
 
 func _spawn_hazard_at_player(dps: float, dur: float, col: Color, radius: float) -> void:
-	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
-	if hazard_scene == null:
-		return
-	var zone: Area2D = hazard_scene.instantiate()
+	var zone: Area2D = HAZARD_SCENE.instantiate()
 
 	zone.damage_per_second = dps
 	zone.slow_factor = 1.0
@@ -248,12 +254,6 @@ func _process_summon_channel(delta: float) -> void:
 
 
 func _spawn_vault_drones() -> void:
-	var drone_scene_path := "res://scenes/enemies/vault_drone.tscn"
-	if not ResourceLoader.exists(drone_scene_path):
-		return
-	var drone_scene: PackedScene = load(drone_scene_path)
-
-	# Find active room for tracking spawned enemies
 	var room: RoomInstance = null
 	var node := get_parent()
 	while node != null:
@@ -263,8 +263,8 @@ func _spawn_vault_drones() -> void:
 		node = node.get_parent()
 
 	for i in range(2):
-		var offset := Vector2(randf_range(-80, 80), randf_range(-80, 80))
-		var drone: CharacterBody2D = drone_scene.instantiate()
+		var offset := Vector2(_rng.randf_range(-80, 80), _rng.randf_range(-80, 80))
+		var drone: CharacterBody2D = DRONE_SCENE.instantiate()
 		if drone == null:
 			continue
 		drone.global_position = global_position + offset

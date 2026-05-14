@@ -14,6 +14,7 @@ var key_location: String = ""       # room_id where the key spawns
 var has_key: bool = false
 var _boss_unlocked: bool = false
 var _floor_completed_emitted: bool = false
+var _already_checked: Array[String] = []
 
 # Enemy scene paths
 const ENEMY_SCENES: Dictionary = {
@@ -26,6 +27,7 @@ const ENEMY_SCENES: Dictionary = {
 	"madame": "res://scenes/bosses/boss_madame.tscn",
 	"chef": "res://scenes/enemies/chef.tscn",
 	"taster": "res://scenes/enemies/taster.tscn",
+	"butcher": "res://scenes/enemies/butcher.tscn",
 	"gourmand": "res://scenes/bosses/boss_gourmand.tscn",
 	# Floor 4 — Vault (M7.2)
 	"banker": "res://scenes/enemies/banker.tscn",
@@ -172,6 +174,7 @@ func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 			load("res://scripts/world/floor_09_config.gd").apply_floor_09_extras(room_instance)
 		rooms[room_id] = room_instance
 		room_instance.deactivate()
+		room_instance.room_cleared.connect(_on_room_instance_cleared)
 
 	# 5. Deactivate boss room initially (unlock after all rooms cleared)
 	if rooms.has("boss"):
@@ -316,8 +319,14 @@ func _spawn_enemies(room: RoomInstance, config: RoomConfig) -> void:
 
 	var enemy_count := 0
 	var spawn_points := room.spawn_points.duplicate()
-	# Shuffle spawn points for variety
-	spawn_points.shuffle()
+	var shuffle_rng := RandomNumberGenerator.new()
+	if GameManager.seed_manager:
+		# Create a local copy so we don't mutate the shared cached RNG
+		var floor_rng := GameManager.seed_manager.get_floor_rng(floor_number)
+		shuffle_rng.seed = floor_rng.seed + hash("shuffle_%s" % room.room_id)
+	else:
+		shuffle_rng.seed = hash(room.room_id)
+	shuffle_rng.shuffle(spawn_points)
 
 	var spawn_idx := 0
 	for enemy_group: Dictionary in config.enemies:
@@ -452,7 +461,10 @@ func _on_pickup_collected(body: Node2D, pickup: Area2D) -> void:
 						push_warning("[FloorManager] No weapons found for random pickup")
 						pickup.queue_free()
 						return
-					weapon_id = available[randi() % available.size()]
+					var weapon_rng := RandomNumberGenerator.new()
+					if GameManager.seed_manager:
+						weapon_rng = GameManager.seed_manager.get_floor_rng(floor_number)
+					weapon_id = available[weapon_rng.randi() % available.size()]
 			print("[FloorManager] Weapon picked up: %s" % weapon_id)
 			if player and player.has_node("WeaponManager"):
 				var path := "res://resources/weapons/%s.tres" % weapon_id
@@ -478,6 +490,8 @@ func _on_pickup_collected(body: Node2D, pickup: Area2D) -> void:
 				var art = null
 				if loot_id == "random":
 					var rng := RandomNumberGenerator.new()
+					if GameManager.seed_manager:
+						rng.seed = GameManager.seed_manager.get_seed() + hash("cult_artifact_%d" % floor_number)
 					art = ArtifactRegistry.get_random_artifact({1:0.3, 2:0.5, 3:0.2}, rng)
 				else:
 					art = ArtifactRegistry.get_artifact(loot_id)
@@ -499,6 +513,9 @@ func _on_event_bus_room_cleared(_floor_num: int, room_id: String) -> void:
 
 
 func _check_clear_progress(rid: String) -> void:
+	if rid in _already_checked:
+		return
+	_already_checked.append(rid)
 	# Check if all non-boss rooms are cleared → unlock boss
 	var all_cleared := true
 	for rid_check in rooms:

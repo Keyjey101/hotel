@@ -202,12 +202,17 @@ func _physics_process(delta: float) -> void:
 		if _disabled_timer <= 0.0:
 			_disabled = false
 			_enter_state("patrol")
+		_process_regen(delta)
 		return
 
 	if _stunned:
 		_stun_timer -= delta
 		if _stun_timer <= 0.0:
 			_stunned = false
+		if _is_phasing:
+			_phase_timer -= delta
+			if _phase_timer <= 0.0:
+				_end_phase()
 		velocity = _knockback_vel * 0.9
 		_knockback_vel *= 0.9
 		move_and_slide()

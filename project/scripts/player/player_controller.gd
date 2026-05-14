@@ -28,156 +28,24 @@ var _pause_menu_instance: Node = null
 var _knockback_velocity: Vector2 = Vector2.ZERO
 var _flash_tween: Tween = null
 var _slow_count: int = 0
+var _active_slows: Array[Dictionary] = []  # [{id: int, mult: float}]
+var _slow_id_counter: int = 0
 
 
-func _ready() -> void:
-	_current_speed = base_speed
-	if GameManager.run_state:
-		_current_speed = GameManager.run_state.player_speed
-	_connect_signals()
-	# Find camera in "camera" group for follow
-	var cameras := get_tree().get_nodes_in_group("camera")
-	for cam in cameras:
-		if cam is Camera2D:
-			_camera = cam
-			break
-	# Connect bloodlust tracking
-	EventBus.enemy_disabled.connect(_on_enemy_killed_bloodlust)
-
-
-func _exit_tree() -> void:
-	if EventBus and EventBus.enemy_disabled.is_connected(_on_enemy_killed_bloodlust):
-		EventBus.enemy_disabled.disconnect(_on_enemy_killed_bloodlust)
-
-
-func _connect_signals() -> void:
-	hurtbox.area_entered.connect(_on_hurtbox_hit)
-	EventBus.player_weapon_changed.connect(_on_weapon_changed)
-
-
-func _physics_process(delta: float) -> void:
-	if _is_dead:
-		return
-
-	# Timers
-	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-	_hurt_timer = maxf(0.0, _hurt_timer - delta)
-	if _hurt_timer <= 0.0:
-		_is_hurt = false
-	_invul_timer = maxf(0.0, _invul_timer - delta)
-	if _invul_timer <= 0.0:
-		_invulnerable = false
-
-	# Movement
-	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	velocity = input_dir * _current_speed + _knockback_velocity
-	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
-	move_and_slide()
-
-	# Facing / Aim
-	var aim_delta := get_global_mouse_position() - global_position
-	_aim_direction = aim_delta.normalized() if aim_delta.length_squared() > 0.0001 else _facing
-	if input_dir != Vector2.ZERO:
-		_facing = input_dir.normalized()
-
-	# Attack
-	if Input.is_action_pressed("attack") and _attack_cooldown <= 0.0 and not _is_attacking:
-		_attack()
-	# Throw
-	if Input.is_action_just_pressed("throw_weapon") and not _is_attacking:
-		weapon_manager.throw_active_weapon(_aim_direction)
-	# Switch weapon
-	if Input.is_action_just_pressed("switch_weapon"):
-		weapon_manager.switch_slot()
-	# Pickup
-	if Input.is_action_just_pressed("interact"):
-		_try_pickup()
-
-	# Update visual facing
-	_update_sprite_facing()
-
-	# Camera follow
-	if _camera and is_instance_valid(_camera):
-		_camera.global_position = global_position
-
-	# Pause input
-	if Input.is_action_just_pressed("ui_pause"):
-		if GameManager.current_state == GameManager.GameState.PLAYING:
-			GameManager.pause_game()
-			_show_pause_menu()
-
-	# S9 Second Wind: passive regen when HP < 30%
-	_check_second_wind_regen(delta)
-
-	# S11 Bloodlust: decay timer
-	if GameManager.run_state:
-		if GameManager.run_state.bloodlust_timer > 0.0:
-			GameManager.run_state.bloodlust_timer -= delta
-			if GameManager.run_state.bloodlust_timer <= 0.0:
-				GameManager.run_state.bloodlust_stacks = 0
-
-
-func take_damage(amount: float, knockback_dir: Vector2 = Vector2.ZERO, knockback_force: float = 0.0) -> void:
-	if _invulnerable or _is_dead:
-		return
-
-	if GameManager.run_state:
-		# Apply damage reduction from upgrades
-		var reduction: float = float(GameManager.run_state.stat_upgrades.get("damage_reduction", 0.0))
-		# Apply damage_taken_mult from artifacts (e.g. Crown of Thorns)
-		var taken_mult: float = 1.0 + float(GameManager.run_state.stat_upgrades.get("damage_taken_mult", 0.0))
-		amount *= maxf(1.0 - reduction, 0.0) * maxf(taken_mult, 0.0)
-		GameManager.run_state.player_hp = maxf(GameManager.run_state.player_hp - amount, 0.0)
-	else:
-		amount = 0.0
-
-	_is_hurt = true
-	_hurt_timer = 0.2
-	_invulnerable = true
-	_invul_timer = 0.5
-
-	AudioManager.SFXPlayer.play_sfx_with_pitch("player_hurt", randf_range(0.85, 1.15))
-
-	# Knockback
-	if knockback_force > 0.0:
-		_knockback_velocity = knockback_dir * knockback_force * 5.0
-
-	# Flash
-	_flash_white()
-
-	# Screen effects
-	ScreenEffects.shake(5.0, 0.2)
-	ScreenEffects.flash(Color.WHITE, 0.05, 0.4)
-	ScreenEffects.update_vignette(get_hp() / get_max_hp())
-
-	# Damage direction indicator on HUD
-	if knockback_force > 0.0:
-		var _hud := get_tree().get_first_node_in_group("hud")
-		if _hud and _hud.has_method("flash_damage_direction"):
-			_hud.flash_damage_direction(knockback_dir)
-
-	EventBus.player_damaged.emit(amount)
-
-	# Check death
-	if GameManager.run_state and GameManager.run_state.player_hp <= 0.0:
-		GameManager.run_state.player_hp = 0.0
-		# S9 Second Wind: prevent first death, heal to 30%
-		if _try_second_wind():
-			return
-		_die()
-
-
-func heal(amount: float) -> void:
-	if _is_dead:
-		return
-	if GameManager.run_state:
-		GameManager.run_state.player_hp = minf(
-			GameManager.run_state.player_hp + amount,
-			GameManager.run_state.player_max_hp
-		)
-	EventBus.player_healed.emit(amount)
-	ScreenEffects.update_vignette(get_hp() / get_max_hp())
-	AudioManager.SFXPlayer.play_sfx("player_heal")
+func apply_slow(mult: float, duration: float) -> void:
+	var slow_id := _slow_id_counter
+	_slow_id_counter += 1
+	_active_slows.append({"id": slow_id, "mult": mult})
+	_update_slow_speed()
+	var timer := get_tree().create_timer(duration)
+	timer.timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			for i in range(_active_slows.size()):
+				if _active_slows[i]["id"] == slow_id:
+					_active_slows.remove_at(i)
+					break
+			_update_slow_speed()
+	)
 
 
 func get_hp() -> float:
@@ -192,16 +60,14 @@ func get_max_hp() -> float:
 	return 100.0
 
 
-func apply_slow(mult: float, duration: float) -> void:
-	_slow_count += 1
-	_current_speed = base_speed * mult
-	get_tree().create_timer(duration).timeout.connect(func() -> void:
-		if is_instance_valid(self):
-			_slow_count -= 1
-			if _slow_count <= 0:
-				_slow_count = 0
-				_current_speed = GameManager.run_state.player_speed if GameManager.run_state else base_speed
-	)
+func _update_slow_speed() -> void:
+	if _active_slows.is_empty():
+		_current_speed = GameManager.run_state.player_speed if GameManager.run_state else base_speed
+	else:
+		var min_mult := _active_slows[0]["mult"]
+		for s in _active_slows:
+			min_mult = minf(min_mult, s["mult"])
+		_current_speed = (GameManager.run_state.player_speed if GameManager.run_state else base_speed) * min_mult
 
 
 # ---------------------------------------------------------------------------
@@ -384,8 +250,14 @@ func _on_hurtbox_hit(hit_area: Area2D) -> void:
 	var knockback_dir: Vector2 = global_position.direction_to(hit_area.global_position)
 	var knockback_force: float = 100.0
 
-	# Try to get damage from the enemy
-	var enemy = hit_area.get_parent()
+	# Walk up the tree to find the enemy node (hitbox may be nested in HurtboxManager)
+	var node: Node = hit_area
+	var enemy: Node2D = null
+	while node != null:
+		if node.is_in_group("enemy"):
+			enemy = node as Node2D
+			break
+		node = node.get_parent()
 	if enemy and enemy.has_method("get_attack_damage"):
 		damage = enemy.get_attack_damage()
 

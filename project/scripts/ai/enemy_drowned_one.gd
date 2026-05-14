@@ -14,6 +14,7 @@ var _regen_water: float = 1.5
 var _regen_land: float = 0.5
 var _emerging: bool = false
 var _water_mult: float = 1.0
+var _rng: RandomNumberGenerator
 
 
 func _ready() -> void:
@@ -35,6 +36,16 @@ func _ready() -> void:
 	coordination = 3.0
 
 	super._ready()
+	_rng = RandomNumberGenerator.new()
+	var gm := get_node_or_null("/root/GameManager")
+	if gm and gm.has_method("get_seed_manager"):
+		var sm = gm.get_seed_manager()
+		if sm and sm.has_method("get_seed_manager"):
+			_rng = sm.get_floor_rng(5)
+		else:
+			_rng.seed = hash("drowned_one") + get_instance_id()
+	else:
+		_rng.seed = hash("drowned_one") + get_instance_id()
 
 
 func _physics_process(delta: float) -> void:
@@ -201,7 +212,7 @@ func _perform_grapple() -> void:
 	if effective_grab <= 0.0:
 		return
 
-	var roll := randf() * 10.0
+	var roll := _rng.randf() * 10.0
 	if roll <= effective_grab:
 		EventBus.player_captured.emit()
 		# Concept: pulling player into water — signal emitted,

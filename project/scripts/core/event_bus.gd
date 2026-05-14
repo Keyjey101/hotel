@@ -37,19 +37,11 @@ signal upgrade_collected(upgrade_data: Resource)
 signal artifact_collected(artifact_data: Resource)
 
 
-var _bridges_connected: bool = false
 ## IMPORTANT: EventBus is a singleton Autoload. Do NOT re-instantiate or reload it.
-## The _bridges_connected flag prevents bridge reconnection, which means hot-reload
-## will NOT reconnect lambda signal bridges. This is by design — keep EventBus as
-## a persistent autoload node throughout the entire application lifecycle.
 
 
 func _ready() -> void:
-	if _bridges_connected:
-		return
-	_bridges_connected = true
-	# Bridge existing signals to counter signals.
-	# NOTE: EventBus must remain a singleton/Autoload to ensure these lambdas
-	# persist for the entire session. Do NOT instantiate EventBus manually.
 	enemy_limb_severed.connect(func(_e, _z): limb_severed.emit())
 	weapon_thrown.connect(func(_w, _o, _d): weapon_was_thrown.emit())
+	if GameManager and GameManager.has_signal("basement_escaped"):
+		GameManager.basement_escaped.connect(func(): basement_was_escaped.emit())

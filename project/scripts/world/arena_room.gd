@@ -17,6 +17,7 @@ var doors_locked: bool = false
 var active_enemies: Array[CharacterBody2D] = []
 var _room_instance: RoomInstance = null
 var _connected: bool = false
+var _enemy_cleanup_done: Dictionary = {}
 
 
 func _ready() -> void:
@@ -94,10 +95,6 @@ func _spawn_wave(index: int) -> void:
 			var enemy := _room_instance.add_enemy(scene, pos)
 			if enemy != null:
 				active_enemies.append(enemy)
-				var _enemy_id := enemy.get_instance_id()
-				# Connect tree_exited as fallback for enemy removal
-				if enemy.has_signal("tree_exited"):
-					enemy.tree_exited.connect(_on_enemy_tree_exited.bind(_enemy_id))
 
 	print("[ArenaRoom] Wave %d spawned (%d enemies)" % [index, active_enemies.size()])
 
@@ -141,13 +138,21 @@ func _get_spawn_position(spawn_points: Array[Marker2D], indices: Array, spawn_id
 # ---------------------------------------------------------------------------
 
 func _on_enemy_disabled(enemy: CharacterBody2D) -> void:
+	if not is_instance_valid(enemy):
+		return
+	var eid := enemy.get_instance_id()
+	if _enemy_cleanup_done.has(eid):
+		return
 	if enemy in active_enemies:
+		_enemy_cleanup_done[eid] = true
 		active_enemies.erase(enemy)
 		_check_wave_cleared()
 
 
 func _on_enemy_tree_exited(enemy_id: int) -> void:
-	# Use instance ID to match since the enemy node is already freed
+	if _enemy_cleanup_done.has(enemy_id):
+		return
+	_enemy_cleanup_done[enemy_id] = true
 	var to_remove: Array[CharacterBody2D] = []
 	for enemy in active_enemies:
 		if not is_instance_valid(enemy) or enemy.get_instance_id() == enemy_id:
@@ -162,7 +167,7 @@ func _check_wave_cleared() -> void:
 	# Filter out invalid/dead enemies
 	var alive: Array[CharacterBody2D] = []
 	for enemy in active_enemies:
-		if is_instance_valid(enemy) and enemy.get("_disabled") != true:
+		if is_instance_valid(enemy) and not enemy.is_disabled():
 			alive.append(enemy)
 	active_enemies = alive
 

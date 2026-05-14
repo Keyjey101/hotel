@@ -23,6 +23,8 @@ var _phase_cooldown_max: float = 5.0
 var _is_phasing: bool = false
 var _phase_timer: float = 0.0
 var _original_collision_mask: int = 0
+const PHASE_LAYER_BIT := 6
+var _invis_cooldown: float = 6.0
 
 # Shadow bolt
 var _bolt_cooldown: float = 0.0
@@ -52,9 +54,13 @@ var _legs_lost: int = 0
 # Drop stolen weapon on damage chance
 var _drop_weapon_on_hit_chance: float = 0.5
 
+# Seeded RNG for deterministic behaviour
+var _rng: RandomNumberGenerator = null
+
 
 func _ready() -> void:
 	if is_clone:
+		super._ready()
 		return
 
 	enemy_name = "The Curator"
@@ -83,6 +89,11 @@ func _ready() -> void:
 	# Pre-load summon scenes
 	if ResourceLoader.exists("res://scenes/enemies/spy.tscn"):
 		_spy_scene = load("res://scenes/enemies/spy.tscn")
+
+	# Initialize seeded RNG
+	_rng = RandomNumberGenerator.new()
+	if GameManager.seed_manager != null:
+		_rng.seed = GameManager.seed_manager.get_seed() + hash("curator")
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +210,9 @@ func _on_phase_changed() -> void:
 func _process_phase_behaviors(delta: float) -> void:
 	# Periodic invisibility (Phase 1+)
 	if _phase >= 1 and not _invisible and not _is_phasing:
-		if randf() < 0.003:  # ~every 6s at 60fps
+		_invis_cooldown -= delta
+		if _invis_cooldown <= 0.0:
+			_invis_cooldown = 6.0
 			_go_invisible(3.0)
 
 	# Summon Spy (Phase 1+)
@@ -244,7 +257,7 @@ func _try_phase() -> void:
 	_is_phasing = true
 	_phase_timer = 1.0
 	# Remove environment collision layer
-	collision_mask = _original_collision_mask & ~(1 << 6)  # Remove bit 7 (layer 7)
+	collision_mask = _original_collision_mask & ~(1 << PHASE_LAYER_BIT)
 	sprite.modulate = Color(0.5, 0.3, 0.7, 0.5)
 	_phase_cooldown = _phase_cooldown_max
 
@@ -310,7 +323,6 @@ func _steal_single(wm, equipped, slot: int) -> void:
 
 	_stolen_weapon = weapon
 	equipped[slot] = null
-	wm.set("_ammo", [wm.get("_ammo")[0], wm.get("_ammo")[1]])  # Trigger update
 	EventBus.weapon_dropped.emit(_stolen_weapon)
 	_steal_cooldown = _steal_cooldown_max
 
@@ -398,20 +410,17 @@ func _move_projectile(bolt: Area2D) -> void:
 	var speed: float = bolt.get_meta("speed", 300.0)
 	var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
 	var damage: float = bolt.get_meta("damage", 20.0)
-	var source = bolt.get_meta("source")
 
 	var lifetime := 3.0
 	var elapsed := 0.0
 
-	while is_instance_valid(bolt) and is_instance_valid(self) and elapsed < lifetime:
-		await get_tree().process_frame
-		if not is_instance_valid(self): return
-		if not is_instance_valid(source):
-			if is_instance_valid(bolt):
-				bolt.queue_free()
+	while is_instance_valid(bolt) and elapsed < lifetime:
+		await get_tree().physics_frame
+		if not is_instance_valid(bolt):
 			return
-		elapsed += get_process_delta_time()
-		bolt.global_position += dir * speed * get_process_delta_time()
+		var frame_delta: float = get_physics_process_delta_time()
+		elapsed += frame_delta
+		bolt.global_position += dir * speed * frame_delta
 
 		# Check if hit player
 		var bodies := bolt.get_overlapping_bodies()
@@ -438,7 +447,7 @@ func _summon_spy() -> void:
 	if spy == null:
 		return
 
-	spy.global_position = global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80))
+	spy.global_position = global_position + Vector2(_rng.randf_range(-80, 80), _rng.randf_range(-80, 80))
 	get_tree().current_scene.add_child(spy)
 
 
@@ -456,6 +465,8 @@ func _create_display_case() -> void:
 	]
 	var room := _find_room_instance()
 	if room == null:
+		return
+	if room.room_bounds == null:
 		return
 	var size := room.room_bounds.size
 
@@ -510,6 +521,9 @@ func _create_shadow_clone() -> void:
 	_shadow_clone.is_clone = true
 	# Reduce clone stats
 	_shadow_clone.set("torso_hp", 80.0)
+	_shadow_clone.set("head_hp", 20.0)
+	_shadow_clone.set("arm_hp", 20.0)
+	_shadow_clone.set("leg_hp", 20.0)
 	_shadow_clone.set("attack_damage", 5.0)  # 25% of Curator's
 	_shadow_clone.set("move_speed", 100.0)
 	_shadow_clone.modulate.a = 0.5
@@ -603,7 +617,7 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 		_decloak()
 
 	# 50% chance to drop stolen weapon
-	if _stolen_weapon != null and randf() < _drop_weapon_on_hit_chance:
+	if _stolen_weapon != null and _rng.randf() < _drop_weapon_on_hit_chance:
 		_drop_stolen_weapon()
 
 	super.receive_damage(damage, zone, sever, knockback_force, knockback_dir)

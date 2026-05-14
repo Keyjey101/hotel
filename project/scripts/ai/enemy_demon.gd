@@ -21,6 +21,8 @@ var _phase_cooldown: float = 0.0
 var _phase_cooldown_max: float = 6.0
 var _phasing: bool = false
 var _phase_timer: float = 0.0
+var _phase_decided: bool = false
+var _original_collision_layer: int = 0
 
 # Dark bolt projectiles
 var _dark_bolts: Array[Area2D] = []
@@ -46,6 +48,7 @@ func _ready() -> void:
 
 	add_to_group("demons")
 	super._ready()
+	_original_collision_layer = collision_layer
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +86,12 @@ func _evaluate_mutilated_behavior() -> void:
 # State overrides
 # ---------------------------------------------------------------------------
 
+func _enter_state(state_name: String) -> void:
+	super._enter_state(state_name)
+	if state_name == "chase":
+		_phase_decided = false
+
+
 func _state_chase(delta: float) -> void:
 	if _target == null or not is_instance_valid(_target):
 		_enter_state("patrol")
@@ -90,10 +99,12 @@ func _state_chase(delta: float) -> void:
 
 	var dist := global_position.distance_to(_target.global_position)
 
-	# Phase behind player if close enough and cooldown ready
-	if dist < 100.0 and _phase_cooldown <= 0.0 and randf() < 0.3:
-		_start_phase()
-		return
+	if dist < 100.0 and _phase_cooldown <= 0.0:
+		if not _phase_decided:
+			_phase_decided = true
+			if randf() < 0.3:
+				_start_phase()
+				return
 
 	# Dark bolt if target is far
 	if dist > 150.0 and _attack_cooldown <= 0.0:
@@ -144,12 +155,13 @@ func _perform_attack() -> void:
 		return
 
 	# Phase behind player check (30% chance when cooldown ready)
-	if _phase_cooldown <= 0.0 and randf() < 0.3:
-		_start_phase()
-		_combo_count += 1
-		return
+	if _phase_cooldown <= 0.0 and not _phase_decided:
+		_phase_decided = true
+		if randf() < 0.3:
+			_start_phase()
+			_combo_count += 1
+			return
 
-	# Claw combo hit
 	var damage: float = _claw_damage[_combo_count] if _combo_count < _claw_damage.size() else 20.0
 	if _target.has_method("receive_damage"):
 		_target.receive_damage(damage, DamageZone.Zone.TORSO, false)
@@ -167,19 +179,17 @@ func _start_phase() -> void:
 	_phase_timer = 0.3
 	_phase_cooldown = _phase_cooldown_max
 	sprite.modulate.a = 0.0
-
-	# Spawn red sparkle particles at disappear location
+	collision_layer = 0
 	_spawn_phase_particles()
-
 
 func _spawn_phase_particles() -> void:
 	for i in range(6):
 		var p := ColorRect.new()
 		p.size = Vector2(2, 2)
-		p.position = global_position + Vector2(randf_range(-10, 10), randf_range(-10, 10))
 		p.color = Color(1.0, 0.0, 0.0, 0.9)
 		p.z_index = 10
 		get_tree().current_scene.add_child(p)
+		p.global_position = global_position + Vector2(randf_range(-10, 10), randf_range(-10, 10))
 		var tween := p.create_tween()
 		tween.tween_property(p, "modulate:a", 0.0, 0.5)
 		tween.tween_callback(p.queue_free)
@@ -188,6 +198,7 @@ func _spawn_phase_particles() -> void:
 func _finish_phase() -> void:
 	_phasing = false
 	sprite.modulate.a = 1.0
+	collision_layer = _original_collision_layer
 
 	if _target == null or not is_instance_valid(_target):
 		return
@@ -302,19 +313,20 @@ func _disable_enemy() -> void:
 			bolt.queue_free()
 	_dark_bolts.clear()
 
-	_disabled = true
-	_disabled_timer = 45.0
 	velocity = Vector2.ZERO
 
-	# Call super first (sets modulate to Color.WHITE), then apply dissolve
+	# Call super FIRST (handles _disabled flag, SFX, flash, EventBus)
 	super._disable_enemy()
+
+	# Override disabled timer for demon (longer regen)
+	_disabled_timer = 45.0
 
 	# Dissolve animation: sprite modulate → transparent over 1.0s (after super resets modulate)
 	var tween := create_tween()
 	tween.tween_property(sprite, "modulate:a", 0.0, 1.0)
 
 	# Spawn shadow pool at death location
-	var hz := HazardZone.new()
+	var hz := preload("res://scenes/combat/hazard_zone.tscn").instantiate()
 	hz.damage_per_second = 0.0
 	hz.slow_factor = 0.5
 	hz.duration = 45.0
@@ -335,6 +347,7 @@ func _physics_process(delta: float) -> void:
 			_disabled = false
 			sprite.modulate.a = 1.0
 			_enter_state("patrol")
+		_process_regen(delta)
 		return
 
 	if _stunned:

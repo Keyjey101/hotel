@@ -11,6 +11,7 @@ var _base_aggression: float = 2.0
 var _decoy_position_history: Array[Vector2] = []
 var _decoy_history_timer: float = 0.0
 const DECOY_DELAY: float = 0.3
+var _rng: RandomNumberGenerator
 
 
 func _ready() -> void:
@@ -33,6 +34,16 @@ func _ready() -> void:
 
 	_base_aggression = aggression
 	super._ready()
+	_rng = RandomNumberGenerator.new()
+	var gm := get_node_or_null("/root/GameManager")
+	if gm and gm.has_method("get_seed_manager"):
+		var sm = gm.get_seed_manager()
+		if sm and sm.has_method("get_floor_rng"):
+			_rng = sm.get_floor_rng(2)
+		else:
+			_rng.seed = hash("seductress")
+	else:
+		_rng.seed = hash("seductress")
 
 
 func _physics_process(delta: float) -> void:
@@ -58,8 +69,7 @@ func _spawn_decoys() -> void:
 	if arms_severed:
 		return
 
-	var count := mini(max_decoys - decoys.size(), randi_range(1, 2))
-	_decoy_position_history.clear()
+	var count := mini(max_decoys - decoys.size(), _rng.randi_range(1, 2))
 	_decoy_history_timer = 0.0
 
 	for i in count:
@@ -90,7 +100,7 @@ func _update_decoy_positions(delta: float) -> void:
 			continue
 		var target_pos := global_position
 		if _decoy_position_history.size() > 0:
-			target_pos = _decoy_position_history[0]
+			target_pos = _decoy_position_history[-1]
 		if legs_severed:
 			target_pos = global_position
 		decoy.global_position = decoy.global_position.lerp(target_pos, 5.0 * delta)

@@ -112,7 +112,6 @@ static func get_floor_09_rooms() -> Dictionary:
 		"loot_zone_positions": [],
 		"door_positions": RoomConfig._gen_doors(Vector2(10 * TILE, 8 * TILE), ["hub", "boss1"], ["left", "right"]),
 		"branch": "c",
-		"is_locked": true,
 	})
 
 	# --- BOSS 1 — The Sister's Chamber ---

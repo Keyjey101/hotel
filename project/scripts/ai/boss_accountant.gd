@@ -235,24 +235,22 @@ func _try_activate_traps() -> void:
 	match _phase:
 		1:
 			if trap_cooldowns["spike_wall"] <= 0.0:
-				activate_trap("spike_wall")
 				trap_cooldowns["spike_wall"] = TRAP_COOLDOWNS["spike_wall"]
+				activate_trap("spike_wall")
 			elif trap_cooldowns["crusher"] <= 0.0:
-				activate_trap("crusher")
 				trap_cooldowns["crusher"] = TRAP_COOLDOWNS["crusher"]
+				activate_trap("crusher")
 		2:
-			# Half cooldowns
 			for trap_type in trap_cooldowns:
 				if trap_cooldowns[trap_type] <= 0.0:
-					activate_trap(trap_type)
 					trap_cooldowns[trap_type] = TRAP_COOLDOWNS[trap_type] * 0.5
+					activate_trap(trap_type)
 					break
 		3:
-			# All traps cycle with halved cooldowns
 			for trap_type in trap_cooldowns:
 				if trap_cooldowns[trap_type] <= 0.0:
-					activate_trap(trap_type)
 					trap_cooldowns[trap_type] = TRAP_COOLDOWNS[trap_type] * 0.5
+					activate_trap(trap_type)
 
 
 func activate_trap(trap_type: String) -> void:
@@ -371,7 +369,7 @@ func _gold_bar_barrage() -> void:
 func _spawn_gold_projectile(dir: Vector2, damage: float) -> void:
 	var proj := Area2D.new()
 	proj.name = "GoldBar"
-	proj.position = global_position
+	proj.global_position = global_position
 	proj.add_to_group("projectiles")
 
 	var shape := RectangleShape2D.new()
@@ -414,9 +412,9 @@ func _move_projectile(proj: Area2D) -> void:
 			if is_instance_valid(proj):
 				proj.queue_free()
 			return
-		var frame_delta := get_process_delta_time()
+		var frame_delta := get_physics_process_delta_time()
 		elapsed += frame_delta
-		proj.position += dir * speed * frame_delta
+		proj.global_position += dir * speed * frame_delta
 
 	if is_instance_valid(proj):
 		proj.queue_free()

@@ -40,14 +40,24 @@ var counters: Dictionary = {
 
 func _init() -> void:
 	run_start_time = Time.get_ticks_msec() / 1000.0
-	# Wire achievement counters to EventBus
+	# Wire achievement counters to EventBus (deferred to handle autoload timing)
+	_wire_events.call_deferred()
+
+
+func _wire_events() -> void:
 	if EventBus:
-		EventBus.limb_severed.connect(_on_limb_severed)
-		EventBus.weapon_was_thrown.connect(_on_weapon_thrown)
-		EventBus.basement_was_escaped.connect(_on_basement_escaped)
-		EventBus.room_cleared_no_damage.connect(_on_room_no_damage)
-		EventBus.demon_deal_made.connect(_on_demon_deal)
-		EventBus.mini_boss_defeated.connect(_on_mini_boss_defeated)
+		if not EventBus.limb_severed.is_connected(_on_limb_severed):
+			EventBus.limb_severed.connect(_on_limb_severed)
+		if not EventBus.weapon_was_thrown.is_connected(_on_weapon_thrown):
+			EventBus.weapon_was_thrown.connect(_on_weapon_thrown)
+		if not EventBus.basement_was_escaped.is_connected(_on_basement_escaped):
+			EventBus.basement_was_escaped.connect(_on_basement_escaped)
+		if not EventBus.room_cleared_no_damage.is_connected(_on_room_no_damage):
+			EventBus.room_cleared_no_damage.connect(_on_room_no_damage)
+		if not EventBus.demon_deal_made.is_connected(_on_demon_deal):
+			EventBus.demon_deal_made.connect(_on_demon_deal)
+		if not EventBus.mini_boss_defeated.is_connected(_on_mini_boss_defeated):
+			EventBus.mini_boss_defeated.connect(_on_mini_boss_defeated)
 
 
 func cleanup() -> void:
@@ -90,9 +100,9 @@ func _on_mini_boss_defeated(floor_number: int) -> void:
 
 func apply_stat_upgrade(stat_name: String, value: float) -> void:
 	var current: float = float(stat_upgrades.get(stat_name, 0.0))
-	# Diminishing returns after 2 stacks
+	# Diminishing returns after 3 stacks (applied from 3rd stack onward)
 	var stack_count: int = _upgrade_stack_counts.get(stat_name, 0)
-	if stack_count >= 2:
+	if stack_count > 2:
 		value *= 0.5
 	stat_upgrades[stat_name] = current + value
 	_recalculate_stats()
@@ -154,6 +164,7 @@ func track_pause(delta: float) -> void:
 
 
 func to_dict() -> Dictionary:
+	var elapsed_at_save := get_run_time()
 	var d := {
 		"current_floor": current_floor,
 		"player_hp": player_hp,
@@ -165,7 +176,7 @@ func to_dict() -> Dictionary:
 		"_upgrade_stack_counts": _upgrade_stack_counts,
 		"enemies_mutilated": enemies_mutilated,
 		"limbs_severed": limbs_severed,
-		"run_start_time": run_start_time,
+		"elapsed_at_save": elapsed_at_save,
 		"second_wind_used": second_wind_used,
 		"rooms_cleared": {},
 		"mini_boss_defeated": {},
@@ -174,6 +185,8 @@ func to_dict() -> Dictionary:
 		"run_meta": {},
 		"counters": counters.duplicate(true),
 		"_paused_duration": _paused_duration,
+		"bloodlust_timer": bloodlust_timer,
+		"bloodlust_stacks": bloodlust_stacks,
 	}
 	for key in rooms_cleared:
 		d["rooms_cleared"][key] = rooms_cleared[key]
@@ -207,7 +220,9 @@ static func from_dict(d: Dictionary) -> RunState:
 	rs.collected_upgrade_ids = d.get("collected_upgrade_ids", [])
 	rs.enemies_mutilated = d.get("enemies_mutilated", 0)
 	rs.limbs_severed = d.get("limbs_severed", 0)
-	rs.run_start_time = d.get("run_start_time", 0.0)
+	# Restore elapsed time correctly across sessions
+	var elapsed_at_save: float = d.get("elapsed_at_save", d.get("run_start_time", 0.0))
+	rs.run_start_time = Time.get_ticks_msec() / 1000.0 - elapsed_at_save
 	rs.second_wind_used = d.get("second_wind_used", false)
 	# Restore rooms_cleared
 	var rc: Dictionary = d.get("rooms_cleared", {})
@@ -243,6 +258,8 @@ static func from_dict(d: Dictionary) -> RunState:
 		rs.counters[key] = cnt[key]
 	rs._upgrade_stack_counts = d.get("_upgrade_stack_counts", {})
 	rs._paused_duration = d.get("_paused_duration", 0.0)
+	rs.bloodlust_timer = d.get("bloodlust_timer", 0.0)
+	rs.bloodlust_stacks = d.get("bloodlust_stacks", 0)
 	rs._recalculate_stats()
 	return rs
 
@@ -276,17 +293,4 @@ func _recalculate_stats() -> void:
 	player_speed = maxf(player_speed, 50.0)
 
 
-func _base_value(stat_name: String) -> float:
-	match stat_name:
-		"max_hp": return 25.0
-		"speed": return 0.12
-		"damage_melee": return 0.20
-		"damage_ranged": return 0.20
-		"damage_throw": return 0.25
-		"damage_reduction": return 0.15
-		"grab_resist": return 0.30
-		"pickup_speed": return 0.20
-		"ammo_bonus": return 0.50
-		"hp_regen_low": return 1.0
-		"kill_damage_buff": return 0.10
-		_: return 1.0
+

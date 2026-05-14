@@ -9,6 +9,7 @@ extends "res://scripts/ai/base_enemy.gd"
 var _phase: int = 1
 var _phase_hp_thresholds: Array[float] = [1.0, 0.0, 0.0]  # Set in _ready
 var _max_phase_hp: float = 400.0
+var _phase_2_start_hp: float = 0.0
 
 # Phase HP pools (simplified: single HP bar, phase transitions at thresholds)
 var _phase_1_hp: float = 400.0
@@ -80,8 +81,8 @@ func _ready() -> void:
 	enemy_name = "Satan"
 	enemy_type = "boss"
 
-	# Start at Phase 1 stats
-	torso_hp = _phase_1_hp
+	# Start at Phase 1 stats — total HP is sum of all phases
+	torso_hp = _phase_1_hp + _phase_2_hp + _phase_3_hp
 	head_hp = 80.0
 	arm_hp = 60.0
 	leg_hp = 60.0
@@ -95,7 +96,7 @@ func _ready() -> void:
 	aggression = 5.0
 	coordination = 5.0
 
-	_max_phase_hp = torso_hp
+	_max_phase_hp = torso_hp  # Total: 1500
 
 	add_to_group("boss")
 
@@ -182,7 +183,10 @@ func _physics_process(delta: float) -> void:
 
 func _update_phase() -> void:
 	var current_hp := limb_health[DamageZone.Zone.TORSO]
-	var hp_pct := current_hp / _max_phase_hp
+	var denominator := _max_phase_hp
+	if _phase >= 2 and _phase_2_start_hp > 0.0:
+		denominator = _phase_2_start_hp
+	var hp_pct := current_hp / denominator
 	var new_phase: int
 	if hp_pct > 0.66:
 		new_phase = 1
@@ -200,14 +204,11 @@ func _on_phase_changed() -> void:
 		2:
 			move_speed = 150.0
 			regen_speed_mult = 1.5
-			_max_phase_hp = _phase_2_hp + _phase_3_hp
-			# Visual: skin cracks → void
+			_phase_2_start_hp = limb_health[DamageZone.Zone.TORSO]
 			sprite.modulate = Color(0.1, 0.1, 0.1, 1.0)
 		3:
 			move_speed = 180.0
 			regen_speed_mult = 2.0
-			_max_phase_hp = _phase_3_hp
-			# Visual: form breaking down
 			sprite.modulate = Color(0.04, 0.04, 0.04, 1.0)
 
 
@@ -304,7 +305,8 @@ func _throw_contract() -> void:
 	bolt.set_meta("source", self)
 	bolt.set_meta("applies_fine_print", true)
 
-	get_tree().current_scene.add_child(bolt)
+	if get_tree().current_scene:
+		get_tree().current_scene.add_child(bolt)
 	_move_projectile(bolt)
 
 
@@ -436,7 +438,7 @@ func _use_stolen_weapon() -> void:
 func _liquidation() -> void:
 	# Create 2 damage zones (telegraphed 1s warning, then 20 dmg/s)
 	for i in range(2):
-		var pos := Vector2(randf_range(60, 500), randf_range(60, 400))
+		var pos := Vector2(_rng.randf_range(60, 500), _rng.randf_range(60, 400))
 
 		# Warning flash
 		var warning := ColorRect.new()
@@ -450,14 +452,19 @@ func _liquidation() -> void:
 		get_tree().create_timer(1.0).timeout.connect(func():
 			if is_instance_valid(warning):
 				warning.queue_free()
-			var hz := HazardZone.new()
+			var hz: HazardZone
+			if ResourceLoader.exists("res://scenes/combat/hazard_zone.tscn"):
+				hz = load("res://scenes/combat/hazard_zone.tscn").instantiate()
+			else:
+				hz = HazardZone.new()
 			hz.damage_per_second = 20.0
 			hz.slow_factor = 1.0
 			hz.duration = 5.0
 			hz.zone_color = Color(0.5, 0.0, 0.0, 0.4)
 			hz.zone_radius = 40.0
 			hz.global_position = pos
-			get_tree().current_scene.add_child(hz)
+			if get_tree().current_scene:
+				get_tree().current_scene.add_child(hz)
 			_liquidation_zones.append(hz)
 		)
 
@@ -500,9 +507,10 @@ func _void_touch() -> void:
 
 	# Disable player healing for 5s via meta flag
 	_target.set_meta("desecrated", true)
+	var _desecrate_target := _target
 	get_tree().create_timer(5.0).timeout.connect(func():
-		if is_instance_valid(_target):
-			_target.set_meta("desecrated", false)
+		if is_instance_valid(_desecrate_target):
+			_desecrate_target.set_meta("desecrated", false)
 	)
 
 
@@ -552,7 +560,8 @@ func _market_crash() -> void:
 		bolt.set_meta("damage", 15.0)
 		bolt.set_meta("source", self)
 
-		get_tree().current_scene.add_child(bolt)
+		if get_tree().current_scene:
+			get_tree().current_scene.add_child(bolt)
 		_move_projectile(bolt)
 
 
@@ -567,10 +576,15 @@ func _move_projectile(bolt: Area2D) -> void:
 	var elapsed := 0.0
 
 	while is_instance_valid(bolt) and elapsed < lifetime:
-		await get_tree().process_frame
+		await get_tree().physics_frame
 		if not is_instance_valid(bolt):
 			return
-		elapsed += get_process_delta_time()
+		if not is_instance_valid(self):
+			if is_instance_valid(bolt):
+				bolt.queue_free()
+			return
+		var frame_delta: float = get_physics_process_delta_time()
+		elapsed += frame_delta
 
 		var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
 		# Homing for contracts
@@ -579,7 +593,7 @@ func _move_projectile(bolt: Area2D) -> void:
 				dir = bolt.global_position.direction_to(_target.global_position)
 				bolt.set_meta("direction", dir)
 
-		bolt.global_position += dir * speed * get_process_delta_time()
+		bolt.global_position += dir * speed * frame_delta
 
 		var bodies := bolt.get_overlapping_bodies()
 		for body in bodies:
@@ -653,7 +667,7 @@ func _on_dialog_choice(choice: String) -> void:
 
 func _show_random_dialogue() -> void:
 	var pool: Array[String] = _p1_dialogue if _phase == 1 else _p2_dialogue if _phase == 2 else _p3_dialogue
-	var text := pool[randi() % pool.size()]
+	var text := pool[_rng.randi() % pool.size()]
 	_show_dialogue_text(text, 2.5)
 
 
@@ -763,11 +777,12 @@ func _perform_attack() -> void:
 func receive_damage(damage: float, zone: int, sever: bool, knockback_force: float = 0.0, knockback_dir: Vector2 = Vector2.ZERO) -> void:
 	# Damage flash: void reveals through skin
 	sprite.modulate = Color(0.04, 0.04, 0.04)
+	var restore_color := Color(0.1, 0.1, 0.1, 1.0) if _phase >= 2 else Color.WHITE
 	var tween := create_tween()
-	tween.tween_property(sprite, "modulate", Color(0.1, 0.1, 0.1, 1.0), 0.15)
+	tween.tween_property(sprite, "modulate", restore_color, 0.15)
 
 	# Drop stolen weapon on hit
-	if _stolen_weapon != null and randf() < 0.5:
+	if _stolen_weapon != null and _rng.randf() < 0.5:
 		# Check if damage likely from player (has knockback)
 		if knockback_force > 0.0:
 			if _stolen_weapon is Resource:
@@ -802,11 +817,19 @@ func _disable_enemy() -> void:
 	if _sister_ally and is_instance_valid(_sister_ally):
 		_sister_ally.queue_free()
 
+	if EventBus.dialog_choice_made.is_connected(_on_dialog_choice):
+		EventBus.dialog_choice_made.disconnect(_on_dialog_choice)
+
 	# Determine ending
 	EventBus.mini_boss_defeated.emit(9)
 	# Let floor_manager handle ending via signal chain
 
 	super._disable_enemy()
+
+
+func _exit_tree() -> void:
+	if EventBus.dialog_choice_made.is_connected(_on_dialog_choice):
+		EventBus.dialog_choice_made.disconnect(_on_dialog_choice)
 
 
 # ---------------------------------------------------------------------------

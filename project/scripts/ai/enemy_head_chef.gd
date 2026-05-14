@@ -47,7 +47,11 @@ var _summon_queue: Array[Dictionary] = []
 var _active_projectiles: Array[Dictionary] = []
 var _active_stoves: Array[Dictionary] = []
 
-var _current_attack_name: String = ""
+	var _current_attack_name: String = ""
+	var _hit_targets: Dictionary = {}
+
+	const STAFF_SCENE := preload("res://scenes/enemies/staff.tscn")
+	const GUARD_SCENE := preload("res://scenes/enemies/guard.tscn")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -107,6 +111,14 @@ func _pick_random_n(arr: Array, n: int) -> Array:
 		var idx := _rng.randi() % copy.size()
 		result.append(copy.pop_at(idx))
 	return result
+
+
+func _seeded_shuffle(arr: Array) -> void:
+	for i in range(arr.size() - 1, 0, -1):
+		var j := _rng.randi() % (i + 1)
+		var tmp = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -274,7 +286,7 @@ func select_phase_patterns(phase: BossPhase) -> void:
 
 	phase_patterns[phase] = selected
 	attack_queue = selected.duplicate()
-	attack_queue.shuffle()
+	_seeded_shuffle(attack_queue)
 
 
 func _apply_mutilation_replacements(patterns: Array) -> Array:
@@ -332,7 +344,7 @@ func _apply_mutilation_effects() -> void:
 		var immobile: Array = ["kitchen_call_x3", "pot_toss", "fling_everything"]
 		phase_patterns[current_phase] = immobile
 		attack_queue = immobile.duplicate()
-		attack_queue.shuffle()
+		_seeded_shuffle(attack_queue)
 
 	if severed_limbs[DamageZone.Zone.RIGHT_ARM] and severed_limbs[DamageZone.Zone.LEFT_ARM]:
 		attack_damage = max(attack_damage * 0.5, 5.0)
@@ -394,7 +406,7 @@ func _end_telegraph() -> void:
 func _select_next_attack() -> void:
 	if attack_queue.is_empty():
 		attack_queue = phase_patterns.get(current_phase, ["kitchen_call"]).duplicate()
-		attack_queue.shuffle()
+		_seeded_shuffle(attack_queue)
 
 	_current_attack_name = attack_queue.pop_front()
 	_start_telegraph(_current_attack_name, _get_telegraph_duration(_current_attack_name))
@@ -441,6 +453,7 @@ func _get_attack_cooldown() -> float:
 
 func _create_melee_hitbox(range_px: float, _angle_deg: float, damage: float,
 		knockback: float, lifespan: float = 0.2) -> void:
+	_hit_targets.clear()
 	var area := Area2D.new()
 	area.collision_layer = 4
 	area.collision_mask = 1
@@ -455,7 +468,8 @@ func _create_melee_hitbox(range_px: float, _angle_deg: float, damage: float,
 	get_tree().current_scene.add_child(area)
 
 	area.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
+		if body.is_in_group("player") and body.has_method("take_damage") and not _hit_targets.has(body.get_instance_id()):
+			_hit_targets[body.get_instance_id()] = true
 			body.take_damage(damage, _direction, knockback)
 	)
 
@@ -574,14 +588,10 @@ func _process_summon_queue(delta: float) -> void:
 
 
 func _do_spawn(type: String) -> void:
-	var paths := {
-		"staff": "res://scenes/enemies/staff.tscn",
-		"guard": "res://scenes/enemies/guard.tscn",
-	}
-	var path: String = paths.get(type, "")
-	if path.is_empty():
-		return
-	var scene := load(path) as PackedScene
+	var scene: PackedScene = null
+	match type:
+		"staff": scene = STAFF_SCENE
+		"guard": scene = GUARD_SCENE
 	if scene == null:
 		return
 	var enemy := scene.instantiate()
@@ -593,7 +603,7 @@ func _do_spawn(type: String) -> void:
 func _get_summon_spawn_position() -> Vector2:
 	var offsets := [Vector2(-150, -100), Vector2(150, -100),
 			Vector2(-150, 100), Vector2(150, 100)]
-	offsets.shuffle()
+	_seeded_shuffle(offsets)
 	for offset in offsets:
 		var pos: Vector2 = global_position + offset
 		if _target:
@@ -663,11 +673,6 @@ func _create_fire_trail_at(pos: Vector2) -> void:
 	zone.global_position = pos
 	get_tree().current_scene.add_child(zone)
 
-	zone.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			body.take_damage(8.0)
-	)
-
 	for i in range(4):
 		get_tree().create_timer(float(i + 1)).timeout.connect(func() -> void:
 			if is_instance_valid(zone):
@@ -720,7 +725,7 @@ func furious_chop() -> void:
 
 
 func meat_hook() -> void:
-	# Telegraph 0.4s → sweeping hook, 30 dmg, pull 80px
+	_hit_targets.clear()
 	var area := Area2D.new()
 	area.collision_layer = 4
 	area.collision_mask = 1
@@ -734,7 +739,8 @@ func meat_hook() -> void:
 
 	var boss_pos := global_position
 	area.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
+		if body.is_in_group("player") and body.has_method("take_damage") and not _hit_targets.has(body.get_instance_id()):
+			_hit_targets[body.get_instance_id()] = true
 			body.take_damage(30.0, Vector2.ZERO, 0.0)
 			var pull := (boss_pos - body.global_position).normalized()
 			body.global_position += pull * 80.0

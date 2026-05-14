@@ -121,27 +121,26 @@ func _state_alert(delta: float) -> void:
 
 func _on_limb_lost(zone: int) -> void:
 	super._on_limb_lost(zone)
-	var damage_zones = load("res://scripts/combat/damage_zones.gd")
 
 	# Lost arm → switch to kick/headbutt (damage 12), fall back to another Guard
-	if zone == damage_zones.DamageZone.LEFT_ARM or zone == damage_zones.DamageZone.RIGHT_ARM:
+	if DamageZone.is_arm(zone):
 		attack_damage = 12.0  # kick/headbutt damage
 		if _current_state != "retreat":
 			_enter_state("retreat")
 		return
 
-	# Lost leg → command post: coordination radius +50%, don't move
-	if zone == damage_zones.DamageZone.LEFT_LEG or zone == damage_zones.DamageZone.RIGHT_LEG:
+	# Lost one leg → command post: coordination radius +50%, don't move
+	if DamageZone.is_leg(zone):
 		coordination = 8.0 * 1.5
-		# Stay in place, direct others (base engage handles stationary)
+		move_speed = 0.0
+		# Stay in place, direct others
 		return
 
 	# Lost both legs → full command post mode
-	var legs_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_LEG, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_LEG, false)
+	var legs_severed: bool = severed_limbs.get(DamageZone.Zone.LEFT_LEG, false) and \
+		severed_limbs.get(DamageZone.Zone.RIGHT_LEG, false)
 	if legs_severed:
 		coordination = 8.0 * 1.5
-		# Don't move, direct others from position
 		move_speed = 0.0
 
 

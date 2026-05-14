@@ -208,7 +208,7 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 		var facing_dir := _direction.normalized()
 		var incoming_dir := knockback_dir.normalized()
 		var dot := facing_dir.dot(incoming_dir)
-		if dot > 0.0:
+		if dot < 0.0:
 			# Frontal hit — attempt parry
 			_player_melee_count += 1
 			_update_adaptive_ai()
@@ -356,7 +356,7 @@ func _perform_attack() -> void:
 	# Schedule the actual hit after windup
 	var timer := get_tree().create_timer(windup)
 	var gen := _combo_generation
-		timer.timeout.connect(func() -> void: _deliver_combo_hit(step, damage, gen))
+	timer.timeout.connect(func() -> void: _deliver_combo_hit(step, damage, gen))
 
 	_combo_count += 1
 	_combo_active = true

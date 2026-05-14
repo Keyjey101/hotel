@@ -41,6 +41,10 @@ var _crown_visual: ColorRect
 var _guards_spawned: bool = false
 
 
+# Seeded RNG
+var _consort_rng: RandomNumberGenerator = null
+
+
 func _ready() -> void:
 	enemy_name = "The Consort"
 	enemy_type = "boss"
@@ -70,6 +74,11 @@ func _ready() -> void:
 
 	# Create visuals
 	_create_visuals()
+
+	# Initialize seeded RNG
+	_consort_rng = RandomNumberGenerator.new()
+	if GameManager.seed_manager != null:
+		_consort_rng.seed = GameManager.seed_manager.get_seed() + hash("consort")
 
 
 func _create_visuals() -> void:
@@ -107,6 +116,7 @@ func _physics_process(delta: float) -> void:
 		if _disabled_timer <= 0.0:
 			_disabled = false
 			_enter_state("chase")
+		_process_regen(delta)
 		return
 
 	if _stunned:
@@ -251,13 +261,9 @@ func _cleanup_guards() -> void:
 	var i := _guards.size() - 1
 	while i >= 0:
 		var g := _guards[i]
-		if not is_instance_valid(g) or g.get("_disabled") == true:
+		if not is_instance_valid(g) or (g.has_method("is_disabled") and g.is_disabled()):
 			_guards.remove_at(i)
 		i -= 1
-
-
-func _on_guard_tree_exited(guard: CharacterBody2D) -> void:
-	_guards.erase(guard)
 
 
 func _spawn_replacement_guard() -> void:
@@ -275,7 +281,7 @@ func _issue_next_command() -> void:
 		return
 
 	# Rotate through command patterns
-	var cmd_index := randi() % _command_rotation.size()
+	var cmd_index := _consort_rng.randi_range(0, _command_rotation.size() - 1)
 	_current_command = _command_rotation[cmd_index]
 
 	var target_pos: Vector2 = _target.global_position
@@ -404,15 +410,19 @@ func _move_projectile(proj: Area2D) -> void:
 	var lifetime := 3.0
 	var elapsed := 0.0
 
-	while is_instance_valid(proj) and elapsed < lifetime:
-		await get_tree().process_frame
-		elapsed += get_process_delta_time()
-		proj.global_position += dir * speed * get_process_delta_time()
+	while is_instance_valid(proj) and is_instance_valid(self) and elapsed < lifetime:
+		await get_tree().physics_frame
+		if not is_instance_valid(self):
+			# Let the projectile continue flying even after boss death
+			break
+		var frame_delta: float = get_physics_process_delta_time()
+		elapsed += frame_delta
+		proj.global_position += dir * speed * frame_delta
 
 		var bodies := proj.get_overlapping_bodies()
 		for body in bodies:
 			if body.is_in_group("player") and body.has_method("receive_damage"):
-				body.receive_damage(damage, 0, false, 30.0, dir * -1.0)
+				body.receive_damage(damage, DamageZone.Zone.TORSO, false, 30.0, dir * -1.0)
 				if is_instance_valid(proj):
 					proj.queue_free()
 				return
@@ -435,7 +445,7 @@ func _rapier_thrust() -> void:
 
 	var dir := global_position.direction_to(_target.global_position)
 	if _target.has_method("receive_damage"):
-		_target.receive_damage(_rapier_damage, 0, false, 60.0, dir * -1.0)
+		_target.receive_damage(_rapier_damage, DamageZone.Zone.TORSO, false, 60.0, dir * -1.0)
 
 	# Visual flash
 	sprite.modulate = Color(1.0, 1.5, 1.5, 1.0)
@@ -456,7 +466,7 @@ func _fan_swipe() -> void:
 	var dot := _direction.normalized().dot(dir_to_target)
 	if dot > 0.5:  # Within 120° cone
 		if _target.has_method("receive_damage"):
-			_target.receive_damage(_fan_damage, 0, false, 100.0, dir_to_target * -1.0)
+			_target.receive_damage(_fan_damage, DamageZone.Zone.TORSO, false, 100.0, dir_to_target * -1.0)
 
 
 func _desperate_scream() -> void:
@@ -491,8 +501,8 @@ func _complete_summon() -> void:
 	_is_summoning = false
 	sprite.modulate = Color(1.5, 1.2, 1.2, 1.0)
 
-	if not _guards.is_empty():
-		return  # Only summon if all guards are dead
+	if _guards.size() >= 3:
+		return  # Only summon if fewer than 3 guards alive
 
 	_spawn_guard_at_offset(0)
 
@@ -559,7 +569,7 @@ func _state_engage(delta: float) -> void:
 		3:
 			# Personal combat
 			if _attack_cooldown <= 0.0:
-				if randf() < 0.6:
+				if _consort_rng.randf() < 0.6:
 					_rapier_thrust()
 				else:
 					_fan_swipe()
@@ -582,7 +592,7 @@ func _state_engage(delta: float) -> void:
 
 func _perform_attack() -> void:
 	if _phase == 3:
-		if randf() < 0.6:
+		if _consort_rng.randf() < 0.6:
 			_rapier_thrust()
 		else:
 			_fan_swipe()
@@ -636,9 +646,10 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 func _disable_enemy() -> void:
 	# Remaining guards go berserk
 	for g in _guards:
-		if is_instance_valid(g) and not g._disabled:
+		if is_instance_valid(g) and not g.get("_disabled"):
 			g.aggression += 3.0
-			g._in_shield_wall = false
+			if g.has_method("go_berserk"):
+				g.go_berserk()
 			if g.has_method("receive_command"):
 				g.receive_command("surround", g.global_position)
 

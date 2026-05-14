@@ -13,6 +13,7 @@ var current_boss_state: BossState = BossState.WATCHING
 var wave_number: int = 0
 var max_waves: int = 2
 var wave_enemies_remaining: int = 0
+var _killed_enemy_ids: Dictionary = {}
 var shield_hp: float = 80.0
 var has_shield: bool = true
 
@@ -144,6 +145,17 @@ func _physics_process(delta: float) -> void:
 # Pattern variation (SeedManager)
 # ---------------------------------------------------------------------------
 
+var _rng: RandomNumberGenerator = null
+
+
+func _get_rng() -> RandomNumberGenerator:
+	if _rng == null:
+		_rng = RandomNumberGenerator.new()
+		if GameManager.seed_manager != null:
+			_rng.seed = GameManager.seed_manager.get_seed() + hash("champion")
+	return _rng
+
+
 func _setup_pattern_variation() -> void:
 	# Select 3 of 4 patterns per phase (one always included)
 	# Uses SeedManager for per-run determinism
@@ -162,8 +174,12 @@ func _select_patterns(all: Array[String], required: String, rng: RandomNumberGen
 	for p in all:
 		if p != required:
 			optional.append(p)
-	# Shuffle and pick 2
-	optional.shuffle()
+	# Shuffle and pick 2 using seeded RNG (Fisher-Yates)
+	for i in range(optional.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp = optional[i]
+		optional[i] = optional[j]
+		optional[j] = tmp
 	result.append(optional[0])
 	result.append(optional[1])
 	return result
@@ -209,26 +225,31 @@ func _spawn_wave_enemies(wave: int) -> void:
 			elif group["type"] == "berserker" and _berserker_scene != null:
 				scene = _berserker_scene
 
-			if scene != null:
-				var enemy := scene.instantiate() as CharacterBody2D
-				if enemy != null:
-					enemy.global_position = global_position + Vector2(randf_range(-100, 100), randf_range(-80, 80))
-					# Apply wave damage buff
-					if "attack_damage" in enemy:
-						enemy.attack_damage *= (1.0 + _wave_damage_buff)
-					# Connect death signal to track wave progress
-					if enemy.has_signal("enemy_disabled"):
-						enemy.enemy_disabled.connect(func() -> void: emit_signal("enemy_died", enemy))
-					elif enemy.has_signal("tree_exited"):
-						enemy.tree_exited.connect(func() -> void: emit_signal("enemy_died", enemy))
+				if scene != null:
+					var enemy := scene.instantiate() as CharacterBody2D
+					if enemy != null:
+						enemy.global_position = global_position + Vector2(_get_rng().randf_range(-100, 100), _get_rng().randf_range(-80, 80))
+						# Apply wave damage buff
+						if "attack_damage" in enemy:
+							enemy.attack_damage *= (1.0 + _wave_damage_buff)
+						# Connect death via EventBus.enemy_disabled (one-shot per enemy)
+						EventBus.enemy_disabled.connect(func(_e: CharacterBody2D) -> void:
+							if is_instance_valid(enemy) and _e == enemy:
+								enemy_died.emit(enemy)
+						, Object.CONNECT_ONE_SHOT)
 					get_tree().current_scene.add_child(enemy)
 			else:
 				print("[Champion] Wave enemy scene not found: %s" % group["type"])
 
 
 func _on_wave_enemy_died(enemy: CharacterBody2D) -> void:
+	var id := enemy.get_instance_id()
+	if _killed_enemy_ids.has(id):
+		return
+	_killed_enemy_ids[id] = true
 	wave_enemies_remaining -= 1
 	if wave_enemies_remaining <= 0:
+		_killed_enemy_ids.clear()
 		print("[Champion] Wave %d cleared!" % wave_number)
 		_start_next_wave()
 
@@ -390,6 +411,7 @@ func _drop_shield() -> void:
 	# Add second sword visual
 	if _sword_visual and is_instance_valid(_sword_visual):
 		var second_sword := ColorRect.new()
+		second_sword.name = "SwordVisual2"
 		second_sword.size = Vector2(5, 50)
 		second_sword.color = Color(0.753, 0.753, 0.753)
 		second_sword.position = Vector2(-16.0, -35.0)
@@ -494,11 +516,10 @@ func _throw_swords() -> void:
 	if _sword_visual and is_instance_valid(_sword_visual):
 		_sword_visual.queue_free()
 		_sword_visual = null
-	# Remove any second sword too
+	# Remove any swords too
 	for child in sprite.get_children():
-		if child is ColorRect and child != _cape_visual and child != _shield_visual:
-			if child.name != "PlaceholderSprite":
-				child.queue_free()
+		if child is ColorRect and child.name.begins_with("SwordVisual"):
+			child.queue_free()
 
 
 func _perform_attack() -> void:
@@ -515,7 +536,7 @@ func _perform_attack() -> void:
 			_target.receive_damage(damage, DamageZone.Zone.TORSO, false, 30.0, dir_to_target * -1.0)
 
 		# Grab attempt (Phase 3)
-		if dist <= 50.0 and randf() < 0.3:
+		if dist <= 50.0 and _get_rng().randf() < 0.3:
 			_perform_grab_throw()
 	else:
 		# Standard attack from base
@@ -540,7 +561,7 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 		return
 
 	# Shield block
-	if has_shield and shield_hp > 0.0:
+	if has_shield and shield_hp > 0.0 and knockback_dir != Vector2.ZERO:
 		var facing_dir := _direction.normalized()
 		var incoming_dir := knockback_dir.normalized() if knockback_dir != Vector2.ZERO else -facing_dir
 		var dot := facing_dir.dot(incoming_dir)

@@ -83,10 +83,9 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	if _can_parry and knockback_dir != Vector2.ZERO:
 		var facing_dir := _direction.normalized()
 		var incoming_dir := knockback_dir.normalized()
-		# Dot product > 0 means the knockback direction points the same way
-		# as our facing — the attack comes from the front
+		# Dot product < 0 means the attack comes from the front
 		var dot := facing_dir.dot(incoming_dir)
-		if dot > 0.0 and randf() < 0.5:
+		if dot < 0.0 and randf() < 0.5:
 			# Parried! Negate damage, flash visual, counter-attack
 			_flash_parry()
 			_counter_attack()
@@ -157,8 +156,9 @@ func _state_engage(delta: float) -> void:
 	var dist := global_position.distance_to(_target.global_position)
 	if dist > _spear_range * 3.0:
 		if _blocking:
-			# Stay put, just face player
-			pass
+			# Drop block and chase if player is too far
+			_blocking = false
+			_enter_state("chase")
 		else:
 			_enter_state("chase")
 
@@ -195,7 +195,7 @@ func _perform_attack() -> void:
 
 
 func _perform_unarmed_attack(dir_to_target: Vector2) -> void:
-	"""Kick and headbutt when weapon arm is lost."""
+	# Kick and headbutt when weapon arm is lost.
 	if _target == null or not is_instance_valid(_target):
 		return
 

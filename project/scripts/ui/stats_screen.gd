@@ -115,7 +115,7 @@ func _add_stat(parent: VBoxContainer, label: String, value: String) -> void:
 
 
 func _on_back() -> void:
-	if AudioManager:
+	if AudioManager and AudioManager.SFXPlayer:
 		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	queue_free()
 

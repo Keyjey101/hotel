@@ -288,6 +288,10 @@ func _perform_steam_blast() -> void:
 		_is_blasting = false
 		return
 
+	if _target == null or not is_instance_valid(_target):
+		_is_blasting = false
+		return
+
 	# AoE damage + stun
 	if _target.has_method("receive_damage"):
 		_target.receive_damage(30.0, DamageZone.Zone.TORSO, false, 30.0, global_position.direction_to(_target.global_position))
@@ -295,7 +299,7 @@ func _perform_steam_blast() -> void:
 		_target.apply_stun(1.0)
 
 	# Hazard zone for visual
-	var zone = load("res://scripts/combat/hazard_zone.gd").new()
+	var zone = load("res://scenes/combat/hazard_zone.tscn").instantiate()
 	zone.damage_per_second = 0.0
 	zone.slow_factor = 1.0
 	zone.duration = 0.5
@@ -372,7 +376,7 @@ func _make_fog_toxic() -> void:
 	for patch in fog_patches:
 		if not is_instance_valid(patch):
 			continue
-		var zone = load("res://scripts/combat/hazard_zone.gd").new()
+		var zone = load("res://scenes/combat/hazard_zone.tscn").instantiate()
 		zone.damage_per_second = 3.0
 		zone.slow_factor = 0.7
 		zone.duration = 999.0  # Effectively permanent

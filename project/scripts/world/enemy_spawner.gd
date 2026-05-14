@@ -176,8 +176,14 @@ static func spawn_from_config(room: RoomInstance, enemies_config: Array[Dictiona
 
 ## Apply per-floor HP/speed scaling to an enemy.
 static func _apply_scaling(enemy: CharacterBody2D, hp_mult: float, speed_mult: float) -> void:
-	# Scale HP if enemy has max_hp property
-	if "max_hp" in enemy:
+	# Scale HP — check for limb_health/torso_hp first (base_enemy), then max_hp/hp
+	if "limb_health" in enemy:
+		var lh: Dictionary = enemy.limb_health
+		for zone in lh:
+			lh[zone] = float(lh[zone]) * hp_mult
+		if "torso_hp" in enemy:
+			enemy.torso_hp = float(enemy.torso_hp) * hp_mult
+	elif "max_hp" in enemy:
 		enemy.max_hp = float(enemy.max_hp) * hp_mult
 		if "hp" in enemy:
 			enemy.hp = float(enemy.hp) * hp_mult

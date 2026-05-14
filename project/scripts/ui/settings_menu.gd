@@ -160,6 +160,7 @@ func _on_reset_defaults() -> void:
 	SaveManager.save_and_apply(default_settings)
 	# Rebuild UI with defaults — free all children first to prevent duplicate Background nodes
 	for child in get_children():
+		remove_child(child)
 		child.queue_free()
 	call_deferred("_rebuild_ui_deferred")
 

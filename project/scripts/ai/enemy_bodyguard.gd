@@ -65,6 +65,14 @@ func get_enemy_type() -> String:
 	return enemy_type
 
 
+## Called by BossConsort when it dies — guard goes berserk.
+func go_berserk() -> void:
+	aggression = 10.0
+	coordination = 0.0
+	if _current_state in ["patrol", "retreat"]:
+		_enter_state("chase")
+
+
 # ---------------------------------------------------------------------------
 # Damage — Shield Block override
 # ---------------------------------------------------------------------------
@@ -77,10 +85,10 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	if has_shield and knockback_dir != Vector2.ZERO:
 		var facing_dir := _direction.normalized()
 		var incoming_dir := knockback_dir.normalized()
-		# Dot product > 0 means the knockback direction points the same way
-		# as our facing — i.e. the attack comes from the front
+		# Dot product < 0 means the knockback direction is opposite to facing
+		# — i.e. the attack comes from the front (facing toward attacker)
 		var dot := facing_dir.dot(incoming_dir)
-		if dot > 0.0:
+		if dot < 0.0:
 			# Shield absorbs the damage
 			shield_hp -= damage
 			if shield_hp <= 0.0:
@@ -212,21 +220,20 @@ func _perform_attack() -> void:
 
 func _on_limb_lost(zone: int) -> void:
 	super._on_limb_lost(zone)
-	var damage_zones = load("res://scripts/combat/damage_zones.gd")
 
 	# Right arm lost (shield arm) → drop shield immediately
-	if zone == damage_zones.DamageZone.RIGHT_ARM:
+	if zone == DamageZone.Zone.RIGHT_ARM:
 		if has_shield:
 			_break_shield()
 		return
 
 	# Left arm lost → continues bash and grab with one hand (no special change)
-	if zone == damage_zones.DamageZone.LEFT_ARM:
+	if zone == DamageZone.Zone.LEFT_ARM:
 		return
 
 	# Both legs lost → sit, hold shield up as static barrier
-	var both_legs_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_LEG, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_LEG, false)
+	var both_legs_severed: bool = severed_limbs.get(DamageZone.Zone.LEFT_LEG, false) and \
+		severed_limbs.get(DamageZone.Zone.RIGHT_LEG, false)
 	if both_legs_severed:
 		move_speed = 0.0
 		# Remain in engage if we have a target — act as static shield barrier

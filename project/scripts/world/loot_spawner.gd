@@ -182,8 +182,8 @@ static func _spawn_stat_upgrade(room: RoomInstance, pos: Vector2, rng: RandomNum
 static func _spawn_ammo(room: RoomInstance, floor_number: int, seed_mgr: SeedManager) -> void:
 	if room.loot_zones.is_empty():
 		return
-	var rng := seed_mgr.get_room_rng(floor_number, 0)
-	rng.seed += 555
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_mgr.get_room_rng(floor_number, 0).seed + 555
 	if rng.randf() < 0.5:
 		return  # 50% chance for ammo in corridor
 	_spawn_ammo_at(room, room.loot_zones[0].position)
@@ -282,15 +282,18 @@ static func _create_pickup_node(loot_item: Dictionary, pos: Vector2) -> Area2D:
 	pickup.body_entered.connect(func(body: Node2D):
 		if not body.is_in_group("player"):
 			return
-		var loot_type_local: String = loot_item.get("type", "")
-		var loot_id_local: String = loot_item.get("id", "")
+		if pickup.get_meta("collected", false):
+			return
 		# Delegate to FloorManager if available
 		var fm := _find_floor_manager(body.get_tree().root)
 		if fm == null:
-			fm = body.get_tree().current_scene as Node
+			var cs := body.get_tree().current_scene
+			if cs and cs.has_method("_on_pickup_collected"):
+				fm = cs
 		if fm and fm.has_method("_on_pickup_collected"):
 			fm._on_pickup_collected(body, pickup)
 		else:
+			pickup.set_meta("collected", true)
 			pickup.queue_free()
 	)
 

@@ -355,6 +355,8 @@ static func _add_surveillance_cameras(room: RoomInstance) -> void:
 
 ## Camera spotted the player -> alert all enemies in room
 static func _on_camera_detected_player(body: Node2D, room: RoomInstance) -> void:
+	if not is_instance_valid(room):
+		return
 	if not body.is_in_group("player"):
 		return
 
@@ -366,6 +368,8 @@ static func _on_camera_detected_player(body: Node2D, room: RoomInstance) -> void
 ## Camera hit by player attack -> destroy + alert nearby enemies
 static func _on_camera_hit(area: Area2D, cam: Area2D, room: RoomInstance) -> void:
 	if not is_instance_valid(cam):
+		return
+	if not is_instance_valid(room):
 		return
 
 	# Only react to player attack areas (melee hits, projectiles)

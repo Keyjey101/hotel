@@ -71,9 +71,12 @@ func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("enemy"):
 		_has_hit = true
 		var zone := DamageZone.Zone.TORSO  # Throws tend to hit torso
-		if randf() < 0.3:
-			zone = [DamageZone.Zone.LEFT_ARM, DamageZone.Zone.RIGHT_ARM,
-				DamageZone.Zone.LEFT_LEG, DamageZone.Zone.RIGHT_LEG].pick_random()
+		var _throw_rng := RandomNumberGenerator.new()
+		_throw_rng.seed = hash(global_position) + OS.get_ticks_msec()
+		if _throw_rng.randf() < 0.3:
+			var limbs := [DamageZone.Zone.LEFT_ARM, DamageZone.Zone.RIGHT_ARM,
+				DamageZone.Zone.LEFT_LEG, DamageZone.Zone.RIGHT_LEG]
+			zone = limbs[_throw_rng.randi() % limbs.size()]
 		AudioManager.SFXPlayer.play_sfx_2d("weapon_throw_impact", global_position)
 		hit.emit(body, zone)
 
@@ -98,10 +101,10 @@ func _on_body_entered(body: Node2D) -> void:
 		linear_velocity *= 0.1
 		angular_velocity *= 0.2
 
-		# Check for discharge effect (gun throw)
-		if _weapon.throw_effect == "discharge" and randf() < _weapon.throw_effect_chance:
-			AudioManager.SFXPlayer.play_sfx("weapon_discharge")
-			_discharge()
+		# Apply throw effect for environment hits
+		_apply_throw_effect(body)
+		if not visible:
+			return
 
 		# Bounce for bat
 		if _weapon.throw_effect == "bounce":
@@ -110,9 +113,10 @@ func _on_body_entered(body: Node2D) -> void:
 
 		# Shatter for bottle
 		if _weapon.throw_effect == "shatter" or _weapon.weapon_id == "bottle":
-			AudioManager.SFXPlayer.play_sfx("weapon_shatter")
-			_create_shatter_zone()
-			_return_to_pool()
+			if visible:
+				AudioManager.SFXPlayer.play_sfx("weapon_shatter")
+				_create_shatter_zone()
+				_return_to_pool()
 			return
 
 		if _return_timer and is_instance_valid(_return_timer):
@@ -189,6 +193,8 @@ func _apply_stick_bleed() -> void:
 	freeze = true
 	# Create HazardZone at impact point (3 dmg/s, 3s, radius 20)
 	var zone := HazardZone.new()
+	zone.collision_layer = 0
+	zone.collision_mask = 1
 	zone.damage_per_second = 3.0
 	zone.duration = 3.0
 	zone.zone_radius = 20.0
@@ -204,15 +210,14 @@ func _apply_stick_bleed() -> void:
 
 
 func _apply_pin(target: Node2D) -> void:
-	# Knife throw: pin to target or wall
 	if target is CharacterBody2D:
-		# Pin to enemy
 		var offset := global_position - target.global_position
 		reparent(target)
 		position = offset
 		set_physics_process(false)
 		freeze = true
-		# Return to pool if target is freed while weapon is pinned
+		if target.is_connected("tree_exiting", _return_to_pool):
+			target.tree_exiting.disconnect(_return_to_pool)
 		target.tree_exiting.connect(_return_to_pool)
 		# Fall off after 3 seconds
 		if _return_timer and is_instance_valid(_return_timer):
@@ -235,19 +240,24 @@ func _apply_embed(target: Node2D) -> void:
 		set_physics_process(false)
 		freeze = true
 		# Return to pool if target is freed while weapon is embedded
+		if target.is_connected("tree_exiting", _return_to_pool):
+			target.tree_exiting.disconnect(_return_to_pool)
 		target.tree_exiting.connect(_return_to_pool)
 		# Apply 40% slow (0.6x speed) for 7 seconds
 		if "move_speed" in target:
-			if not target.has_meta("_original_speed"):
-				target.set_meta("_original_speed", target.move_speed)
-			target.move_speed = target.get_meta("_original_speed") * 0.6
+			if not target.has_meta("_embed_original_speed"):
+				target.set_meta("_embed_original_speed", target.move_speed)
+			target.move_speed = target.get_meta("_embed_original_speed") * 0.6
 			get_tree().create_timer(7.0).timeout.connect(func():
-				if is_instance_valid(target) and target.has_meta("_original_speed"):
-					target.move_speed = target.get_meta("_original_speed")
-					target.remove_meta("_original_speed")
+				if is_instance_valid(target) and target.has_meta("_embed_original_speed"):
+					target.move_speed = target.get_meta("_embed_original_speed")
+					target.remove_meta("_embed_original_speed")
 				if is_instance_valid(self):
 					_return_to_pool()
 			)
+		else:
+			if is_instance_valid(self):
+				_return_to_pool()
 		# Visual: handle sticking out
 		var handle := ColorRect.new()
 		handle.size = Vector2(3, 10)
@@ -263,7 +273,7 @@ func _apply_embed(target: Node2D) -> void:
 func _apply_demoralize() -> void:
 	# Severed Limb throw: AoE reduce aggression in radius 60px
 	var radius := 60.0
-	var enemies := get_tree().get_nodes_in_group("enemies")
+	var enemies := get_tree().get_nodes_in_group("enemy")
 	for enemy in enemies:
 		if not is_instance_valid(enemy) or not enemy is Node2D:
 			continue
@@ -300,13 +310,13 @@ func _apply_tangle(target: Node2D) -> void:
 	if target is CharacterBody2D:
 		var slow_mult := 0.5
 		if "move_speed" in target:
-			if not target.has_meta("_original_speed"):
-				target.set_meta("_original_speed", target.move_speed)
-			target.move_speed = target.get_meta("_original_speed") * slow_mult
+			if not target.has_meta("_tangle_original_speed"):
+				target.set_meta("_tangle_original_speed", target.move_speed)
+			target.move_speed = target.get_meta("_tangle_original_speed") * slow_mult
 			get_tree().create_timer(4.0).timeout.connect(func():
-				if is_instance_valid(target) and target.has_meta("_original_speed"):
-					target.move_speed = target.get_meta("_original_speed")
-					target.remove_meta("_original_speed")
+				if is_instance_valid(target) and target.has_meta("_tangle_original_speed"):
+					target.move_speed = target.get_meta("_tangle_original_speed")
+					target.remove_meta("_tangle_original_speed")
 			)
 	# Visual: wire line from throw origin to target (fades)
 	var wire := ColorRect.new()
@@ -350,6 +360,8 @@ func _apply_reality_tear() -> void:
 	# Cult Relic throw: AoE 80px, HazardZone 10 dmg/s for 6s
 	var radius := 80.0
 	var zone := HazardZone.new()
+	zone.collision_layer = 0
+	zone.collision_mask = 1
 	zone.damage_per_second = 10.0
 	zone.duration = 6.0
 	zone.zone_radius = radius
@@ -357,7 +369,7 @@ func _apply_reality_tear() -> void:
 	zone.global_position = global_position
 	get_tree().current_scene.add_child(zone)
 	# All enemies in zone: aggression +5 for 4s
-	var enemies := get_tree().get_nodes_in_group("enemies")
+	var enemies := get_tree().get_nodes_in_group("enemy")
 	for enemy in enemies:
 		if not is_instance_valid(enemy) or not enemy is Node2D:
 			continue

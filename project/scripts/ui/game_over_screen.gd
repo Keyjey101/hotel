@@ -108,10 +108,12 @@ func _make_button(text: String) -> Button:
 
 
 func _on_restart_pressed() -> void:
-	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	GameManager.restart_run()
 
 
 func _on_quit_pressed() -> void:
-	AudioManager.SFXPlayer.play_sfx("ui_cancel")
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_cancel")
 	GameManager.go_to_title()

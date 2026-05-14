@@ -19,32 +19,30 @@ var active_enemies: Array[CharacterBody2D] = []
 var is_active: bool = false
 var is_cleared: bool = false
 
+var _enemy_disabled_callable: Callable
 
 func _ready() -> void:
-	# Gather spawn points from children
+	_enemy_disabled_callable = _on_enemy_disabled
 	for child in get_children():
 		if child is Marker2D:
 			if child.is_in_group("spawn_points"):
 				spawn_points.append(child)
 			elif child.is_in_group("loot_zones"):
 				loot_zones.append(child)
-	# Gather from containers
 	_collect_from_container("SpawnPoints", spawn_points, "spawn_points")
 	_collect_from_container("LootZones", loot_zones, "loot_zones")
 	_collect_from_container("Doors", doors, "doors")
 
-	# Connect door signals
 	for door in doors:
 		if door is Area2D and not door.body_entered.is_connected(_on_door_body_entered.bind(door)):
 			door.body_entered.connect(_on_door_body_entered.bind(door))
 
-	# Connect enemy death signal for room clear tracking
-	EventBus.enemy_disabled.connect(_on_enemy_disabled)
+	EventBus.enemy_disabled.connect(_enemy_disabled_callable)
 
 
 func _exit_tree() -> void:
-	if EventBus.enemy_disabled.is_connected(_on_enemy_disabled):
-		EventBus.enemy_disabled.disconnect(_on_enemy_disabled)
+	if EventBus.enemy_disabled.is_connected(_enemy_disabled_callable):
+		EventBus.enemy_disabled.disconnect(_enemy_disabled_callable)
 
 
 func _collect_from_container(container_name: String, arr: Array, group_name: String) -> void:

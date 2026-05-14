@@ -9,6 +9,7 @@ var blood_pool_scene: PackedScene
 
 var _active_pools: Array[Node2D] = []
 var _active_limbs: Array[RigidBody2D] = []
+var _active_droplets: Array[RigidBody2D] = []
 var max_pools_per_room: int = 15
 var max_limbs: int = 30
 
@@ -27,6 +28,16 @@ func _on_room_entered(_floor_number: int, _room_name: String) -> void:
 		if is_instance_valid(pool):
 			pool.queue_free()
 	_active_pools.clear()
+	# Clean up severed limbs from previous room
+	for limb in _active_limbs:
+		if is_instance_valid(limb):
+			limb.queue_free()
+	_active_limbs.clear()
+	# Clean up blood droplets from previous room
+	for drop in _active_droplets:
+		if is_instance_valid(drop):
+			drop.queue_free()
+	_active_droplets.clear()
 
 
 func spawn_severed_limb(position: Vector2, limb_type: int, owner: CharacterBody2D) -> void:
@@ -36,11 +47,11 @@ func spawn_severed_limb(position: Vector2, limb_type: int, owner: CharacterBody2
 		return
 
 	var limb: RigidBody2D = limb_scene.instantiate()
-	limb.global_position = position
 	limb.set_meta("limb_type", limb_type)
-	limb.apply_impulse(Vector2(randf_range(-100, 100), randf_range(-200, -50)))
 
-	get_tree().current_scene.add_child(limb)
+	_safe_add_to_scene(limb)
+	limb.global_position = position
+	limb.apply_impulse(Vector2(randf_range(-100, 100), randf_range(-200, -50)))
 	_active_limbs.append(limb)
 
 	# Cleanup old limbs
@@ -69,7 +80,7 @@ func spawn_blood_pool(position: Vector2) -> void:
 
 	var pool: Node2D = blood_pool_scene.instantiate()
 	pool.global_position = position + Vector2(randf_range(-8, 8), randf_range(-8, 8))
-	get_tree().current_scene.add_child(pool)
+	_safe_add_to_scene(pool)
 	_active_pools.append(pool)
 
 	_cleanup_pools()
@@ -113,9 +124,11 @@ func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: Charact
 	limb.add_child(shape)
 	limb.add_child(vis)
 	limb.add_child(stump)
-	limb.global_position = position
 	# Random initial velocity
 	var impulse_dir := Vector2(randf_range(-1, 1), randf_range(-1, -0.3)).normalized()
+
+	_safe_add_to_scene(limb)
+	limb.global_position = position
 	limb.apply_impulse(impulse_dir * randf_range(100, 200))
 	limb.angular_velocity = randf_range(-5.0, 5.0)
 
@@ -137,17 +150,17 @@ func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: Charact
 		tween.tween_callback(limb.queue_free)
 	)
 
-	get_tree().current_scene.add_child(limb)
 	_active_limbs.append(limb)
 	_cleanup_limbs()
 
 
 func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
-	# Blood splash: 3-5 RigidBody2D droplets
 	var count := randi_range(3, 5)
 	for i in range(count):
 		var drop := RigidBody2D.new()
 		drop.gravity_scale = 1.0
+		drop.contact_monitor = true
+		drop.max_contacts_reported = 4
 		var vis := ColorRect.new()
 		vis.size = Vector2(2, 2)
 		var r_variation := randf_range(0.6, 1.0)
@@ -159,12 +172,11 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 		drop_col.shape = drop_shape
 		drop.add_child(drop_col)
 		drop.global_position = position
-		# Random velocity in a cone ±30° around direction
-		var angle_offset := randf_range(-0.524, 0.524)  # ~±30°
+		var angle_offset := randf_range(-0.524, 0.524)
 		var drop_dir := direction.rotated(angle_offset)
 		drop.linear_velocity = drop_dir * randf_range(50, 150)
-		get_tree().current_scene.add_child(drop)
-		# Freeze on contact with StaticBody2D, lifetime 5s
+		_safe_add_to_scene(drop)
+		_active_droplets.append(drop)
 		drop.contact_monitor = true
 		drop.body_entered.connect(func(body):
 			if body is StaticBody2D or body is TileMapLayer:
@@ -173,6 +185,7 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 		get_tree().create_timer(5.0).timeout.connect(func():
 			if not is_instance_valid(drop):
 				return
+			_active_droplets.erase(drop)
 			var tween := drop.create_tween()
 			tween.tween_property(drop, "modulate:a", 0.0, 0.5)
 			tween.tween_callback(drop.queue_free)
@@ -197,7 +210,7 @@ func _spawn_placeholder_pool(position: Vector2) -> void:
 	# Organic offset
 	pool.global_position = position + Vector2(randf_range(-4, 4), randf_range(-4, 4)) - vis.size / 2.0
 	pool.z_index = -1
-	get_tree().current_scene.add_child(pool)
+	_safe_add_to_scene(pool)
 	_active_pools.append(pool)
 	_cleanup_pools()
 
@@ -219,11 +232,14 @@ func _cleanup_limbs() -> void:
 
 
 func clear_room_effects() -> void:
-	# Blood pools are persistent — only clear limbs between rooms
 	for limb in _active_limbs:
 		if is_instance_valid(limb):
 			limb.queue_free()
 	_active_limbs.clear()
+	for drop in _active_droplets:
+		if is_instance_valid(drop):
+			drop.queue_free()
+	_active_droplets.clear()
 
 
 func clear_all_effects() -> void:
@@ -235,3 +251,16 @@ func clear_all_effects() -> void:
 		if is_instance_valid(limb):
 			limb.queue_free()
 	_active_limbs.clear()
+	for drop in _active_droplets:
+		if is_instance_valid(drop):
+			drop.queue_free()
+	_active_droplets.clear()
+
+
+func _safe_add_to_scene(node: Node) -> void:
+	var cs := get_tree().current_scene
+	if cs:
+		cs.add_child(node)
+	else:
+		push_warning("[GoreSystem] Cannot spawn effect: current_scene is null")
+		node.queue_free()

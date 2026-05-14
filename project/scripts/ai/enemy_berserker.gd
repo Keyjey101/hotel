@@ -15,6 +15,7 @@ var _charge_damage: float = 30.0
 
 # Friendly fire multiplier
 var _friendly_fire_mult: float = 2.0
+var _berserker_base_speed: float = 140.0
 
 
 func _ready() -> void:
@@ -70,8 +71,8 @@ func _on_limb_lost(zone: int) -> void:
 	super._on_limb_lost(zone)  # Already sets severed_limbs[zone] = true
 
 	var lost_count := _count_missing_limbs()
-	_initial_move_speed = 140.0 + (lost_count * 30.0)
-	move_speed = _initial_move_speed
+	_berserker_base_speed = 140.0 + (lost_count * 30.0)
+	move_speed = _berserker_base_speed
 	attack_damage = 20.0 + (lost_count * 6.0)
 	attack_speed = 1.0 + (lost_count * 0.3)
 	grab_strength = 5.0 + (lost_count * 2.0)
@@ -98,6 +99,16 @@ func _count_missing_limbs() -> int:
 		if severed_limbs.get(zone, false):
 			count += 1
 	return count
+
+
+func _on_limb_recovered(limb_name: String) -> void:
+	super._on_limb_recovered(limb_name)
+	# Preserve rage speed boost even after limb regeneration
+	var lost_count := _count_missing_limbs()
+	if lost_count == 0:
+		move_speed = 140.0
+	else:
+		move_speed = 140.0 + (lost_count * 30.0)
 
 
 func _evaluate_mutilated_behavior() -> void:
@@ -205,7 +216,7 @@ func _perform_attack() -> void:
 
 
 func _perform_tackle() -> void:
-	"""Charge tackle: 30 dmg + knockback + stun."""
+	# Charge tackle: 30 dmg + knockback + stun.
 	if _target == null or not is_instance_valid(_target):
 		return
 
@@ -219,7 +230,7 @@ func _perform_tackle() -> void:
 
 
 func _deal_friendly_fire(damage: float, attack_dir: Vector2) -> void:
-	"""Hit nearby enemies in range — Berserker has zero coordination."""
+	# Hit nearby enemies in range — Berserker has zero coordination.
 	var enemies := get_tree().get_nodes_in_group("enemy")
 	for enemy in enemies:
 		if not is_instance_valid(enemy) or enemy == self:

@@ -8,6 +8,7 @@ extends "res://scripts/ai/base_enemy.gd"
 var _revealed: bool = false
 var _reveal_timer: float = 0.0
 var _reveal_duration: float = 3.0
+var _decloak_tween_active: bool = false
 
 # Smoke bomb
 var _smoke_cooldown: float = 0.0
@@ -52,7 +53,8 @@ func _go_invisible() -> void:
 	if _revealed:
 		return
 	sprite.modulate.a = 0.1
-	# Keep eye glint visible at full alpha
+	if hurtbox_manager:
+		hurtbox_manager.process_mode = Node.PROCESS_MODE_DISABLED
 	var eye := sprite.get_node_or_null("EyeGlint")
 	if eye:
 		eye.modulate.a = 1.0
@@ -132,8 +134,11 @@ func _state_engage(_delta: float) -> void:
 
 	# Decloak before attacking
 	if sprite.modulate.a < 1.0:
-		var tween := create_tween()
-		tween.tween_property(sprite, "modulate:a", 1.0, 0.3)
+		if not _decloak_tween_active:
+			_decloak_tween_active = true
+			var tween := create_tween()
+			tween.tween_property(sprite, "modulate:a", 1.0, 0.3)
+			tween.tween_callback(func() -> void: _decloak_tween_active = false)
 		_revealed = true
 		_reveal_timer = _reveal_duration
 		# Wait for decloak before attacking — mark cooldown so we don't
@@ -211,9 +216,11 @@ func _try_smoke_bomb() -> void:
 	if not _can_smoke or _smoke_cooldown > 0.0:
 		return
 	if _arms_lost >= 2:
-		return  # Cannot throw smoke without arms
+		return
 	if limb_health[DamageZone.Zone.TORSO] >= torso_hp * 0.3:
-		return  # Only at low HP
+		return
+	if get_tree() == null or get_tree().current_scene == null:
+		return
 
 	_can_smoke = false
 	_smoke_cooldown = _smoke_cooldown_max
@@ -260,7 +267,7 @@ func _on_limb_lost(zone: int) -> void:
 	if DamageZone.is_arm(zone):
 		_arms_lost = int(severed_limbs[DamageZone.Zone.LEFT_ARM]) + \
 			int(severed_limbs[DamageZone.Zone.RIGHT_ARM])
-		if _arms_lost >= 1:
+		if _arms_lost == 1:
 			attack_speed *= 0.5
 		if _arms_lost >= 2:
 			_can_smoke = false

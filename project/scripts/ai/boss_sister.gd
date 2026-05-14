@@ -231,6 +231,7 @@ func _choose_fight() -> void:
 	# Copy player's weapons
 	_copy_player_weapons()
 	await get_tree().create_timer(2.0).timeout
+	if not is_instance_valid(self): return
 	_enter_state("chase")
 
 
@@ -278,19 +279,17 @@ func _process_combat(delta: float) -> void:
 			return
 
 	# Check if HP < 10% — Sister stops fighting
-	if hp_pct < 0.1 and not _sister_spared:
+	if hp_pct <= 0.1 and not _sister_spared:
 		velocity = Vector2.ZERO
 		# Wait for player to decide
 		if _player_attack_pause_timer >= 3.0:
 			# Player stopped attacking → spare
 			_sister_spared = true
 			_show_dialogue("You're still you.", 3.0)
-			_disable_enemy()  # Disable combat, stop attacking
-			# Signal ending B path - proceeds to Satan fight
 			if GameManager.run_state:
 				GameManager.run_state.mini_boss_defeated[9] = true
 				GameManager.run_state.run_meta["sister_spared"] = true
-			EventBus.mini_boss_defeated.emit(9)
+			_disable_enemy()
 		return
 
 	_process_state(delta)
@@ -329,8 +328,8 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	if zone == DamageZone.Zone.TORSO:
 		var hp_threshold := _max_torso_hp * 0.1
 		var torso_hp := limb_health[DamageZone.Zone.TORSO]
-		if torso_hp - damage <= 0.0 and torso_hp >= hp_threshold:
-			damage = torso_hp - hp_threshold  # Cap at 10%
+		if torso_hp - damage < hp_threshold:
+			damage = maxi(0, torso_hp - hp_threshold)  # Never drop below 10% via damage
 
 	# Check if killed
 	if zone == DamageZone.Zone.TORSO:
@@ -357,7 +356,7 @@ func _start_listen_path() -> void:
 	_encounter_phase = 3
 
 	# Check Void Contract — blocks Ending C
-	if GameManager.run_state and GameManager.run_state.has_artifact("Void Contract"):
+	if GameManager.run_state and GameManager.run_state.has_artifact("a4_void_contract"):
 		_show_dialogue("You signed the contract. No revelation for you.", 3.0)
 		await get_tree().create_timer(3.0).timeout
 		# Force combat
@@ -406,6 +405,8 @@ func _start_embrace_path() -> void:
 	# Check if player survives
 	await get_tree().create_timer(0.5).timeout
 	var player_node := get_tree().get_first_node_in_group("player")
+	if player_node == null:
+		return
 	var current_hp := player_node.get_hp() if player_node and player_node.has_method("get_hp") else (GameManager.run_state.player_hp if GameManager.run_state else 0.0)
 	if current_hp > 0.0:
 		_player_embraced = true
@@ -460,6 +461,8 @@ func _process_dialogue_queue() -> void:
 	# Wait then process next
 	var total_time := duration + 0.6  # include fade in/out
 	get_tree().create_timer(total_time).timeout.connect(func():
+		if not is_instance_valid(self):
+			return
 		_showing_dialogue = false
 		_process_dialogue_queue()
 	)

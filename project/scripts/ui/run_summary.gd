@@ -9,6 +9,8 @@ var _stats_label: Label
 var _personal_best_label: Label
 var _auto_timer: Timer = null
 var _continued: bool = false
+var _auto_cancelled: bool = false
+var _summary_active: bool = false
 
 
 func _ready() -> void:
@@ -96,10 +98,10 @@ func _build_ui() -> void:
 	vbox.add_child(btn)
 
 	btn.pressed.connect(func():
-		AudioManager.SFXPlayer.play_sfx("ui_confirm")
+		if AudioManager and AudioManager.SFXPlayer:
+			AudioManager.SFXPlayer.play_sfx("ui_confirm")
 		_continued = true
-		if _auto_timer and is_instance_valid(_auto_timer):
-			_auto_timer.stop()
+		_auto_cancelled = true
 		continue_pressed.emit()
 	)
 
@@ -107,13 +109,16 @@ func _build_ui() -> void:
 
 
 func show_summary(floor_number: int) -> void:
+	if _summary_active:
+		return
+	_summary_active = true
 	_floor_label.text = "FLOOR %d COMPLETE" % floor_number
 	_refresh_stats()
-	AudioManager.SFXPlayer.play_sfx("ui_floor_complete")
-	# Auto-continue after 3 seconds
-	_auto_timer = get_tree().create_timer(3.0)
-	_auto_timer.timeout.connect(func():
-		if not _continued:
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_floor_complete")
+	_auto_cancelled = false
+	get_tree().create_timer(3.0).timeout.connect(func():
+		if not _auto_cancelled and not _continued:
 			continue_pressed.emit()
 	)
 

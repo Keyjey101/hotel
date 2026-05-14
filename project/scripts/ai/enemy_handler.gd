@@ -96,30 +96,24 @@ func _state_engage(delta: float) -> void:
 
 func _on_limb_lost(zone: int) -> void:
 	super._on_limb_lost(zone)
-	var damage_zones = load("res://scripts/combat/damage_zones.gd")
 
-	# Lost one arm → grab_strength drops to 6.0, continues grab with one hand
-	if zone == damage_zones.DamageZone.LEFT_ARM or zone == damage_zones.DamageZone.RIGHT_ARM:
-		grab_strength = 6.0
-		return
-
-	# Lost both arms → bite attack (damage 8, grab_strength 3.0)
-	var arms_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_ARM, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_ARM, false)
-	if arms_severed:
+	# Check if both arms are lost first (bite attack mode)
+	var arms_lost := int(severed_limbs.get(DamageZone.Zone.LEFT_ARM, false)) + \
+		int(severed_limbs.get(DamageZone.Zone.RIGHT_ARM, false))
+	if arms_lost >= 2:
 		attack_damage = 8.0
 		grab_strength = 3.0
 		attack_range = 30.0  # bite range
 		return
 
-	# Lost one leg → limps but DOES NOT STOP (speed * 0.7)
-	if zone == damage_zones.DamageZone.LEFT_LEG or zone == damage_zones.DamageZone.RIGHT_LEG:
-		# Base class already handles speed reduction; Handler just doesn't retreat
+	# Lost one arm → grab_strength drops to 6.0, continues grab with one hand
+	if DamageZone.is_arm(zone):
+		grab_strength = 6.0
 		return
 
 	# Lost both legs → CRAWLS toward player (speed * 0.15)
-	var legs_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_LEG, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_LEG, false)
+	var legs_severed: bool = severed_limbs.get(DamageZone.Zone.LEFT_LEG, false) and \
+		severed_limbs.get(DamageZone.Zone.RIGHT_LEG, false)
 	if legs_severed:
 		# Override the base class speed reduction to Handler-specific 0.15
 		move_speed = 80.0 * 0.15

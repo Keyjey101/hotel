@@ -17,6 +17,7 @@ const HEAL_RADIUS: float = 80.0
 const HEAL_PERCENT: float = 0.15
 const FOG_RANGE: float = 150.0
 const TOUCH_RANGE: float = 40.0
+const HAZARD_SCENE := preload("res://scenes/combat/hazard_zone.tscn")
 
 
 func _ready() -> void:
@@ -41,10 +42,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	super._physics_process(delta)
 	_fog_cooldown = maxf(0.0, _fog_cooldown - delta)
 	_heal_cooldown = maxf(0.0, _heal_cooldown - delta)
-	# Tick heal channel timer here so it progresses in ALL states (chase/engage/etc.)
+	super._physics_process(delta)
 	if _is_channeling_heal:
 		_healing_channel_timer -= delta
 		if _healing_channel_timer <= 0.0:
@@ -142,10 +142,7 @@ func _perform_fog_breath() -> void:
 	if _arms_lost >= 1:
 		fog_radius = 30.0  # Weaker fog with one arm
 
-	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
-	if hazard_scene == null:
-		return
-	var hz := hazard_scene.instantiate()
+	var hz := HAZARD_SCENE.instantiate()
 	hz.damage_per_second = 0.0
 	hz.slow_factor = 0.6
 	hz.duration = 4.0

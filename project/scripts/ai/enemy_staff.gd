@@ -51,10 +51,12 @@ func _update_group_courage() -> void:
 
 
 func _count_nearby_staff(radius: float) -> int:
-	var count := 1  # include self
+	var count := 1  # include self (intentional)
 	var enemies := get_tree().get_nodes_in_group("enemy")
 	for e in enemies:
 		if e == self:
+			continue
+		if not is_instance_valid(e):
 			continue
 		if not e.has_method("get_enemy_type"):
 			continue
@@ -99,26 +101,21 @@ func _state_chase(delta: float) -> void:
 
 func _on_limb_lost(zone: int) -> void:
 	super._on_limb_lost(zone)
-	var damage_zones = load("res://scripts/combat/damage_zones.gd")
 
-	# Check all-severed condition FIRST — lie down, act as alert beacon
-	var arms_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_ARM, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_ARM, false)
-	var legs_severed: bool = severed_limbs.get(damage_zones.DamageZone.LEFT_LEG, false) and \
-		severed_limbs.get(damage_zones.DamageZone.RIGHT_LEG, false)
+	var arms_severed: bool = severed_limbs.get(DamageZone.Zone.LEFT_ARM, false) and \
+		severed_limbs.get(DamageZone.Zone.RIGHT_ARM, false)
+	var legs_severed: bool = severed_limbs.get(DamageZone.Zone.LEFT_LEG, false) and \
+		severed_limbs.get(DamageZone.Zone.RIGHT_LEG, false)
 	if arms_severed and legs_severed:
-		# Scream continuously as alert beacon
 		_alert_nearby()
 		return
 
-	# Lost arm → drop weapon, flee toward nearest Guard
-	if zone == damage_zones.DamageZone.LEFT_ARM or zone == damage_zones.DamageZone.RIGHT_ARM:
+	if zone == DamageZone.Zone.LEFT_ARM or zone == DamageZone.Zone.RIGHT_ARM:
 		if _current_state != "retreat":
 			_enter_state("retreat")
 		return
 
-	# Lost leg → crawl toward room exit (retreat direction)
-	if zone == damage_zones.DamageZone.LEFT_LEG or zone == damage_zones.DamageZone.RIGHT_LEG:
+	if zone == DamageZone.Zone.LEFT_LEG or zone == DamageZone.Zone.RIGHT_LEG:
 		if _current_state != "retreat":
 			_enter_state("retreat")
 		return
@@ -134,6 +131,8 @@ func _find_nearest_ally(radius: float) -> Node2D:
 	var enemies := get_tree().get_nodes_in_group("enemy")
 	for e in enemies:
 		if e == self:
+			continue
+		if not is_instance_valid(e):
 			continue
 		if not e.has_method("get_enemy_type"):
 			continue

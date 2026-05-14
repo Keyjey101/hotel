@@ -68,18 +68,23 @@ func _process(delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if _affected_bodies.has(body):
 		return
-	_affected_bodies[body] = {"timer": 0.0}
+	var callable := _on_body_tree_exiting.bind(body)
+	_affected_bodies[body] = {"timer": 0.0, "callable": callable}
 	# Apply slow
 	if slow_factor < 1.0 and body.has_method("apply_hazard_slow"):
 		body.apply_hazard_slow(slow_factor)
 	# Track tree_exiting so slow is removed if body is freed inside the zone
-	body.tree_exiting.connect(_on_body_tree_exiting.bind(body))
+	body.tree_exiting.connect(callable)
 
 
 func _on_body_exited(body: Node2D) -> void:
+	if _affected_bodies.has(body):
+		if _affected_bodies[body].has("callable") and is_instance_valid(body):
+			if body.tree_exiting.is_connected(_affected_bodies[body]["callable"]):
+				body.tree_exiting.disconnect(_affected_bodies[body]["callable"])
 	_affected_bodies.erase(body)
 	# Remove slow
-	if slow_factor < 1.0 and body.has_method("remove_hazard_slow"):
+	if slow_factor < 1.0 and is_instance_valid(body) and body.has_method("remove_hazard_slow"):
 		body.remove_hazard_slow(slow_factor)
 
 

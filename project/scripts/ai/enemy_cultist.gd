@@ -105,9 +105,9 @@ func _move_projectile(bolt: Area2D) -> void:
 	while is_instance_valid(bolt) and is_instance_valid(self) and elapsed < lifetime:
 		await get_tree().physics_frame
 		if not is_instance_valid(self): return
-		elapsed += get_process_delta_time()
+		elapsed += get_physics_process_delta_time()
 		var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
-		bolt.global_position += dir * speed * get_process_delta_time()
+		bolt.global_position += dir * speed * get_physics_process_delta_time()
 
 		var bodies := bolt.get_overlapping_bodies()
 		for body in bodies:

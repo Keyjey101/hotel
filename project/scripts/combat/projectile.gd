@@ -39,13 +39,6 @@ func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0, pie
 func _ready() -> void:
 	$Lifetime.timeout.connect(_return_to_pool)
 
-	# Connect to hurtbox detection
-	# Use body detection since CharacterBody2D
-	# We need an Area2D child for detection
-	# For now, use movement + overlap check
-	velocity = _direction * _speed
-	rotation = _direction.angle()
-
 
 func _physics_process(delta: float) -> void:
 	var collision := move_and_collide(velocity * delta)
@@ -91,5 +84,8 @@ func _pick_random_limb() -> int:
 	var zones := [DamageZone.Zone.TORSO, DamageZone.Zone.HEAD,
 		DamageZone.Zone.LEFT_ARM, DamageZone.Zone.RIGHT_ARM,
 		DamageZone.Zone.LEFT_LEG, DamageZone.Zone.RIGHT_LEG]
-	_limb_rng.seed = hash(global_position) + hash(_weapon.resource_name if _weapon else "")
+	var seed_val: int = hash(global_position) + hash(_weapon.resource_name if _weapon else "")
+	if GameManager.seed_manager:
+		seed_val = GameManager.seed_manager.get_seed() + hash(global_position)
+	_limb_rng.seed = seed_val
 	return zones[_limb_rng.randi() % zones.size()]

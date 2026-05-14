@@ -8,6 +8,7 @@ extends "res://scripts/ai/base_enemy.gd"
 var _overcharge_charging: bool = false
 var _overcharge_timer: float = 0.0
 var _overcharge_cooldown: float = 0.0
+var _overcharge_decided: bool = false
 const OVERCHARGE_CHARGE_TIME: float = 3.0
 const OVERCHARGE_DAMAGE: float = 40.0
 const OVERCHARGE_SELF_DAMAGE: float = 15.0
@@ -142,32 +143,13 @@ func receive_damage(damage: float, _zone: int, sever: bool, knockback_force: flo
 	if _disabled:
 		return
 
-	# Redirect all damage to torso
-	limb_health[DamageZone.Zone.TORSO] -= damage
-
-	# Visual: spark flash on hit
 	_trigger_spark()
-	_flash_hurt()
-	AudioManager.SFXPlayer.play_sfx_with_pitch("enemy_hurt", randf_range(0.8, 1.2))
 
-	# Knockback
-	if knockback_force > 0.0:
-		_knockback_vel = knockback_dir * knockback_force * 5.0
+	var effective_zone := DamageZone.Zone.TORSO
+	super.receive_damage(damage, effective_zone, false, knockback_force, knockback_dir)
 
-	# Alert on damage
-	if not _alerted:
-		_alert_nearby()
-
-	EventBus.enemy_damaged.emit(self, DamageZone.Zone.TORSO, damage)
-
-	# Check torso death — explode instead of normal disable
-	if limb_health[DamageZone.Zone.TORSO] <= 0.0:
+	if _disabled and limb_health.get(DamageZone.Zone.TORSO, 0.0) <= 0.0:
 		_death_explode()
-		return
-
-	# State transition
-	if _current_state == "patrol":
-		_enter_state("alert")
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +192,12 @@ func _death_explode() -> void:
 # State overrides
 # ---------------------------------------------------------------------------
 
+func _enter_state(state_name: String) -> void:
+	super._enter_state(state_name)
+	if state_name == "engage":
+		_overcharge_decided = false
+
+
 func _state_chase(_delta: float) -> void:
 	if _target == null or not is_instance_valid(_target):
 		_enter_state("patrol")
@@ -230,14 +218,14 @@ func _state_engage(_delta: float) -> void:
 		_enter_state("patrol")
 		return
 
-	# Face target
 	_direction = global_position.direction_to(_target.global_position)
 
-	# Overcharge if available and enough time
 	if _overcharge_cooldown <= 0.0 and not _overcharge_charging:
-		if randf() < 0.3:  # 30% chance to overcharge each tick while in range
-			_start_overcharge()
-			return
+		if not _overcharge_decided:
+			_overcharge_decided = true
+			if randf() < 0.3:
+				_start_overcharge()
+				return
 
 	# Standard shock attack
 	if _attack_cooldown <= 0.0:
@@ -247,6 +235,7 @@ func _state_engage(_delta: float) -> void:
 	# Stay close to target
 	var dist := global_position.distance_to(_target.global_position)
 	if dist > attack_range * 1.5:
+		_overcharge_decided = false
 		_enter_state("chase")
 	elif dist > attack_range:
 		# Drift toward player

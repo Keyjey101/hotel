@@ -358,7 +358,7 @@ static func _destroy_chandelier(chandelier: Area2D, room: RoomInstance) -> void:
 			var bodies := hazard.get_overlapping_bodies()
 			for body in bodies:
 				if body.has_method("receive_damage"):
-					body.receive_damage(damage, 0, false, 80.0, Vector2.ZERO)
+					body.receive_damage(damage, DamageZone.Zone.TORSO, false, 80.0, Vector2.ZERO)
 		)
 
 	# Remove hazard after 0.5s

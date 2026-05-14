@@ -31,22 +31,30 @@ var floor_names := {
 	9: "SATAN'S SANCTUM",
 }
 
+var _edge_tweens: Dictionary = {}
 var _low_hp_tween: Tween = null
 var _floor_tween: Tween = null
-var _slot_style: StyleBoxFlat = null
 var _conn_damaged: Callable
 var _conn_healed: Callable
 var _conn_weapon_changed: Callable
 var _conn_room_entered: Callable
 var _conn_upgrade_collected: Callable
 var _conn_artifact_collected: Callable
+var _hud_slot_count: int = 2
 
 
 func _ready() -> void:
 	add_to_group("hud")
+	_determine_slot_count()
 	_build_ui()
 	_connect_events()
 	_refresh_all()
+
+
+func _determine_slot_count() -> void:
+	_hud_slot_count = 2
+	if GameManager.run_state and GameManager.run_state.has_artifact("a11_crown_of_thorns"):
+		_hud_slot_count = 3
 
 
 func _process(_delta: float) -> void:
@@ -74,7 +82,7 @@ func _build_ui() -> void:
 	add_child(hp_low_vignette)
 
 	# --- Weapon Slots (top-left) ---
-	for i in range(2):
+	for i in range(_hud_slot_count):
 		var slot := Panel.new()
 		slot.position = Vector2(8, 8 + i * 36)
 		slot.size = Vector2(56, 32)
@@ -154,7 +162,7 @@ func _connect_events() -> void:
 	_conn_weapon_changed = func(_s, _w): _update_weapon_slots()
 	_conn_room_entered = func(_f, _r): _update_floor_indicator()
 	_conn_upgrade_collected = func(_u): _update_buffs()
-	_conn_artifact_collected = func(_a): _update_buffs()
+	_conn_artifact_collected = func(_a): _update_buffs(); _on_artifact_for_slots(_a)
 	EventBus.player_damaged.connect(_conn_damaged)
 	EventBus.player_healed.connect(_conn_healed)
 	EventBus.player_weapon_changed.connect(_conn_weapon_changed)
@@ -224,9 +232,9 @@ func _update_weapon_slots() -> void:
 	var slots = GameManager.run_state.weapon_slots
 	var active = GameManager.run_state.active_slot
 
-	for i in range(2):
+	for i in range(_hud_slot_count):
 		_apply_slot_border(weapon_slots[i], i == active)
-		var weapon = slots[i]
+		var weapon = slots[i] if i < slots.size() else null
 		if weapon == null:
 			weapon_icons[i].color = Color(0.15, 0.15, 0.15)
 			ammo_displays[i].text = ""
@@ -246,21 +254,25 @@ func _update_weapon_slots() -> void:
 			_:
 				weapon_icons[i].color = Color(0.5, 0.5, 0.5)
 
-		# Ammo display for ranged weapons
 		if weapon.weapon_type == WeaponData.WeaponType.RANGED and weapon.ammo > 0:
-			ammo_displays[i].text = str(weapon.ammo)
+			var current_ammo := weapon.ammo
+			var player := get_tree().get_first_node_in_group("player")
+			if player and player.has_node("WeaponManager"):
+				var wm = player.get_node("WeaponManager")
+				if wm and wm.has_method("get_ammo_for_slot"):
+					current_ammo = wm.get_ammo_for_slot(i)
+			ammo_displays[i].text = str(current_ammo)
 		else:
 			ammo_displays[i].text = ""
 
 
 func _apply_slot_border(panel: Panel, active: bool) -> void:
-	if _slot_style == null:
-		_slot_style = StyleBoxFlat.new()
-		_slot_style.set_border_width_all(2)
-		_slot_style.set_corner_radius_all(0)
-	_slot_style.border_color = Color(0.855, 0.647, 0.125) if active else Color(0.29, 0.29, 0.29)
-	_slot_style.bg_color = Color(0.1, 0.1, 0.1, 0.8) if active else Color(0.1, 0.1, 0.1, 0.5)
-	panel.add_theme_stylebox_override("panel", _slot_style)
+	var style := StyleBoxFlat.new()
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(0)
+	style.border_color = Color(0.855, 0.647, 0.125) if active else Color(0.29, 0.29, 0.29)
+	style.bg_color = Color(0.1, 0.1, 0.1, 0.8) if active else Color(0.1, 0.1, 0.1, 0.5)
+	panel.add_theme_stylebox_override("panel", style)
 
 
 # ============================================================
@@ -322,7 +334,11 @@ func flash_damage_direction(knockback_dir: Vector2) -> void:
 		edge = dmg_edges["right"] if source_dir.x > 0 else dmg_edges["left"]
 	else:
 		edge = dmg_edges["bottom"] if source_dir.y > 0 else dmg_edges["top"]
+	var edge_name := "right" if source_dir.x > 0 else ("left" if abs_x > abs_y else ("bottom" if source_dir.y > 0 else "top"))
+	if _edge_tweens.has(edge_name) and _edge_tweens[edge_name].is_valid():
+		_edge_tweens[edge_name].kill()
 	var tween := create_tween()
+	_edge_tweens[edge_name] = tween
 	tween.tween_property(edge, "color:a", 0.6, 0.0)
 	tween.tween_property(edge, "color:a", 0.0, 0.15)
 
@@ -346,6 +362,57 @@ func hide_interaction_prompt() -> void:
 	var tween := create_tween()
 	tween.tween_property(interaction_prompt, "modulate:a", 0.0, 0.15)
 	tween.tween_callback(func(): interaction_prompt.visible = false)
+
+
+# ============================================================
+# Artifact Slot Expansion
+# ============================================================
+
+func _on_artifact_for_slots(_artifact: Resource) -> void:
+	var new_count := 2
+	if GameManager.run_state and GameManager.run_state.has_artifact("a11_crown_of_thorns"):
+		new_count = 3
+	if new_count != _hud_slot_count:
+		_hud_slot_count = new_count
+		_rebuild_weapon_slots()
+
+
+func _rebuild_weapon_slots() -> void:
+	for slot in weapon_slots:
+		if is_instance_valid(slot):
+			slot.queue_free()
+	weapon_slots.clear()
+	weapon_icons.clear()
+	ammo_displays.clear()
+	weapon_name_labels.clear()
+	for i in range(_hud_slot_count):
+		var slot := Panel.new()
+		slot.position = Vector2(8, 8 + i * 36)
+		slot.size = Vector2(56, 32)
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(slot)
+		weapon_slots.append(slot)
+
+		var icon := _make_rect(4, 2, 16, 16, Color(0.15, 0.15, 0.15))
+		slot.add_child(icon)
+		weapon_icons.append(icon)
+
+		var ammo := Label.new()
+		ammo.position = Vector2(2, 22)
+		ammo.size = Vector2(36, 8)
+		ammo.add_theme_font_size_override("font_size", 6)
+		slot.add_child(ammo)
+		ammo_displays.append(ammo)
+
+		var wname := Label.new()
+		wname.position = Vector2(22, 4)
+		wname.size = Vector2(32, 14)
+		wname.add_theme_font_size_override("font_size", 6)
+		wname.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		wname.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(wname)
+		weapon_name_labels.append(wname)
+	_update_weapon_slots()
 
 
 # ============================================================

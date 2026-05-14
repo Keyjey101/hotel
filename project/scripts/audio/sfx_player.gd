@@ -47,6 +47,7 @@ const SFX_NAMES: Dictionary = {
 var _global_pool: Array[AudioStreamPlayer] = []
 var _positional_pool: Array[AudioStreamPlayer2D] = []
 var _silence_stream: AudioStream
+var _sfx_cache: Dictionary = {}
 
 
 func _ready() -> void:
@@ -77,7 +78,7 @@ func play_sfx(name: String, volume_db: float = 0.0) -> void:
 	player.pitch_scale = 1.0
 	player.stop()
 	player.volume_db = volume_db
-	player.stream = _silence_stream
+	player.stream = _get_sfx_stream(name)
 	player.play()
 
 
@@ -92,7 +93,7 @@ func play_sfx_2d(name: String, position: Vector2, volume_db: float = 0.0) -> voi
 	player.stop()
 	player.position = position
 	player.volume_db = volume_db
-	player.stream = _silence_stream
+	player.stream = _get_sfx_stream(name)
 	player.play()
 
 
@@ -104,7 +105,7 @@ func play_sfx_with_pitch(name: String, pitch: float) -> void:
 	if player == null:
 		return
 	player.pitch_scale = pitch
-	player.stream = _silence_stream
+	player.stream = _get_sfx_stream(name)
 	player.play()
 
 
@@ -125,12 +126,23 @@ func _get_available_positional() -> AudioStreamPlayer2D:
 	return _positional_pool[0]
 
 
+func _get_sfx_stream(name: String) -> AudioStream:
+	if _sfx_cache.has(name):
+		return _sfx_cache[name]
+	var path := "res://assets/audio/sfx/%s.wav" % name
+	if ResourceLoader.exists(path):
+		var stream := load(path)
+		_sfx_cache[name] = stream
+		return stream
+	return _silence_stream
+
+
 func _generate_silence() -> AudioStream:
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_8_BITS
 	stream.mix_rate = 22050
-	stream.data = PackedByteArray([0])
+	stream.data = PackedByteArray([0, 0, 0, 0])
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
-	stream.loop_end = 1
+	stream.loop_end = 4
 	return stream

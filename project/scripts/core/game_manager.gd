@@ -67,9 +67,15 @@ func show_loadout() -> void:
 
 
 func start_new_run() -> void:
+	# Cleanup previous run state if it exists (prevent EventBus leak)
+	if run_state != null and run_state.has_method("cleanup"):
+		run_state.cleanup()
 	var run_seed := randi()
 	seed_manager = SeedManager.new(run_seed)
 	run_state = RunState.new()
+	if run_state == null:
+		push_error("[GameManager] Failed to create RunState")
+		return
 	current_floor = starting_floor
 	current_state = GameState.PLAYING
 

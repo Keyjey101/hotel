@@ -21,7 +21,7 @@ func _process(_delta: float) -> void:
 	# HP bar
 	var hp := _player.get_hp()
 	var max_hp := _player.get_max_hp()
-	var ratio := hp / max_hp
+	var ratio := hp / maxf(max_hp, 1.0)
 	hp_bar.size.x = 120.0 * ratio
 
 	# Debug info
