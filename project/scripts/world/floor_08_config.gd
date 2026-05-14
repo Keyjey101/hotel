@@ -4,6 +4,7 @@
 ##   white #F5F5F0 marble, red carpet #8B0000.
 ## Blood: #DD0000 | BG: #1A1A1A
 
+extends "res://scripts/world/floor_01_config.gd"
 const F8_FLOOR := Color(0.165, 0.165, 0.165, 1.0)  # #2A2A2A deep black
 const F8_WALL := Color(0.102, 0.102, 0.102, 1.0)   # #1A1A1A near-black luxury
 const TILE := 32
@@ -63,9 +64,9 @@ static func get_floor_08_rooms() -> Dictionary:
 		"wall_color": F8_WALL,
 		"enemies": [
 			{"type": "royal_guard", "count": 2},
-			{"type": "champion_enemy", "count": 1},
+			{"type": "champion", "count": 1},
 		],
-		"loot": [{"type": "weapon", "id": "shotgun"}],
+		"loot": [{"type": "weapon", "id": "ranged_shotgun"}],
 		"connections": ["a2", "b1", "c1", "d1"],
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(20 * TILE, 16 * TILE), 14),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(20 * TILE, 16 * TILE), 2),
@@ -91,7 +92,7 @@ static func get_floor_08_rooms() -> Dictionary:
 			{"type": "royal_guard", "count": 2},
 			{"type": "cultist", "count": 1},
 		],
-		"loot": [{"type": "weapon", "id": "axe"}],
+		"loot": [{"type": "weapon", "id": "melee_axe"}],
 		"connections": ["hub", "b2"],
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(10 * TILE, 8 * TILE), 10),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(10 * TILE, 8 * TILE), 2),
@@ -109,7 +110,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"size_px": Vector2(8 * TILE, 8 * TILE),
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
-		"enemies": [{"type": "champion_enemy", "count": 1}],
+		"enemies": [{"type": "champion", "count": 1}],
 		"loot": [{"type": "stat_upgrade"}, {"type": "key", "chance": 0.5}],
 		"connections": ["b1"],
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(8 * TILE, 8 * TILE), 8),
@@ -132,7 +133,7 @@ static func get_floor_08_rooms() -> Dictionary:
 			{"type": "royal_guard", "count": 3},
 			{"type": "cultist", "count": 1},
 		],
-		"loot": [{"type": "weapon", "id": "sword"}],
+		"loot": [{"type": "weapon", "id": "melee_machete"}],
 		"connections": ["hub", "c2"],
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(12 * TILE, 10 * TILE), 10),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(12 * TILE, 10 * TILE), 2),
@@ -152,7 +153,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"floor_color": F8_FLOOR,
 		"wall_color": F8_WALL,
 		"enemies": [
-			{"type": "champion_enemy", "count": 1},
+			{"type": "champion", "count": 1},
 			{"type": "cultist", "count": 1},
 		],
 		"loot": [{"type": "key", "chance": 0.5}, {"type": "ammo"}],
@@ -175,9 +176,9 @@ static func get_floor_08_rooms() -> Dictionary:
 		"wall_color": F8_WALL,
 		"enemies": [
 			{"type": "royal_guard", "count": 2},
-			{"type": "champion_enemy", "count": 1},
+			{"type": "champion", "count": 1},
 		],
-		"loot": [{"type": "weapon", "id": "bat"}],
+		"loot": [{"type": "weapon", "id": "melee_bat"}],
 		"connections": ["hub", "d2"],
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(10 * TILE, 8 * TILE), 10),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(10 * TILE, 8 * TILE), 1),
@@ -197,7 +198,7 @@ static func get_floor_08_rooms() -> Dictionary:
 		"wall_color": F8_WALL,
 		"enemies": [
 			{"type": "royal_guard", "count": 2},
-			{"type": "champion_enemy", "count": 1},
+			{"type": "champion", "count": 1},
 		],
 		"loot": [{"type": "weapon", "id": "random"}, {"type": "key", "chance": 0.5}],
 		"connections": ["d1"],
@@ -352,7 +353,7 @@ static func _destroy_chandelier(chandelier: Area2D, room: RoomInstance) -> void:
 	# Apply AoE damage after one physics frame so Area2D can detect overlapping bodies
 	var tree := room.get_tree()
 	if tree:
-		tree.create_timer(0.0).timeout.connect(func() -> void:
+		tree.create_timer(0.05).timeout.connect(func() -> void:
 			if not is_instance_valid(hazard):
 				return
 			var bodies := hazard.get_overlapping_bodies()

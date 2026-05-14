@@ -9,8 +9,10 @@ const ENDING_TEXT := "The Hotel continues. The blood flows. The system perpetuat
 
 
 func _save_ending(ending_id: String) -> void:
+	if not SaveManager:
+		return
 	var meta := SaveManager.get_meta()
-	var endings: Array = meta.get("secret_endings_seen", [])
+	var endings: Array = meta.get("secret_endings_seen", []).duplicate()
 	if not endings.has(ending_id):
 		endings.append(ending_id)
 	meta["secret_endings_seen"] = endings
@@ -98,11 +100,11 @@ func _add_stats(vbox: VBoxContainer) -> void:
 func _add_buttons(vbox: VBoxContainer) -> void:
 	var play_btn := _make_button("PLAY AGAIN")
 	vbox.add_child(play_btn)
-	play_btn.pressed.connect(func(): GameManager.restart_run())
+	play_btn.pressed.connect(func(): if GameManager: GameManager.restart_run())
 
 	var menu_btn := _make_button("MAIN MENU")
 	vbox.add_child(menu_btn)
-	menu_btn.pressed.connect(func(): GameManager.go_to_title())
+	menu_btn.pressed.connect(func(): if GameManager: GameManager.go_to_title())
 
 
 func _make_button(text: String) -> Button:

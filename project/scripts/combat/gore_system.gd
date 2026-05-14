@@ -10,16 +10,27 @@ var blood_pool_scene: PackedScene
 var _active_pools: Array[Node2D] = []
 var _active_limbs: Array[RigidBody2D] = []
 var _active_droplets: Array[RigidBody2D] = []
+const MAX_ACTIVE_DROPLETS := 30
+
 var max_pools_per_room: int = 15
 var max_limbs: int = 30
 
 
 func _ready() -> void:
-	# Load scenes (will be created later)
+	# Load scenes - commented out because scene files do not exist yet.
+	# These scenes need to be created before uncommenting:
+	#   res://scenes/effects/blood_splash.tscn
+	#   res://scenes/effects/severed_limb.tscn
+	#   res://scenes/effects/blood_pool.tscn
 	# blood_particles_scene = preload("res://scenes/effects/blood_splash.tscn")
 	# limb_scene = preload("res://scenes/effects/severed_limb.tscn")
 	# blood_pool_scene = preload("res://scenes/effects/blood_pool.tscn")
 	EventBus.room_entered.connect(_on_room_entered)
+
+
+func _exit_tree() -> void:
+	if EventBus.room_entered.is_connected(_on_room_entered):
+		EventBus.room_entered.disconnect(_on_room_entered)
 
 
 func _on_room_entered(_floor_number: int, _room_name: String) -> void:
@@ -119,6 +130,13 @@ func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: Charact
 			stump.size = Vector2(2, 3)
 			stump.color = Color(0.545, 0.0, 0.0)
 			stump.position = Vector2(5, 12)
+		DamageZone.Zone.TORSO, _:
+			rect_shape.size = Vector2(16, 20)
+			vis.size = Vector2(16, 20)
+			vis.color = Color(0.65, 0.2, 0.2)
+			stump.size = Vector2(2, 3)
+			stump.color = Color(0.545, 0.0, 0.0)
+			stump.position = Vector2(7, 17)
 
 	shape.shape = rect_shape
 	limb.add_child(shape)
@@ -155,6 +173,11 @@ func _create_placeholder_limb(position: Vector2, limb_type: int, _owner: Charact
 
 
 func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
+	# Enforce MAX_ACTIVE_DROPLETS cap
+	while _active_droplets.size() >= MAX_ACTIVE_DROPLETS:
+		var oldest: RigidBody2D = _active_droplets.pop_front()
+		if is_instance_valid(oldest):
+			oldest.queue_free()
 	var count := randi_range(3, 5)
 	for i in range(count):
 		var drop := RigidBody2D.new()
@@ -178,18 +201,19 @@ func _spawn_placeholder_blood(position: Vector2, direction: Vector2) -> void:
 		_safe_add_to_scene(drop)
 		_active_droplets.append(drop)
 		drop.contact_monitor = true
-		drop.body_entered.connect(func(body):
+		drop.body_entered.connect(func(d, body):
 			if body is StaticBody2D or body is TileMapLayer:
-				drop.freeze = true
-		)
-		get_tree().create_timer(5.0).timeout.connect(func():
-			if not is_instance_valid(drop):
+				d.freeze = true
+		.bind(drop), CONNECT_DEFERRED)
+		var _drop_ref := drop
+		get_tree().create_timer(5.0).timeout.connect(func(d):
+			_active_droplets.erase(d)
+			if not is_instance_valid(d):
 				return
-			_active_droplets.erase(drop)
-			var tween := drop.create_tween()
-			tween.tween_property(drop, "modulate:a", 0.0, 0.5)
-			tween.tween_callback(drop.queue_free)
-		)
+			var tween := d.create_tween()
+			tween.tween_property(d, "modulate:a", 0.0, 0.5)
+			tween.tween_callback(d.queue_free)
+		.bind(drop))
 
 
 func _spawn_placeholder_pool(position: Vector2) -> void:

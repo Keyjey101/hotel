@@ -30,6 +30,169 @@ var _flash_tween: Tween = null
 var _slow_count: int = 0
 var _active_slows: Array[Dictionary] = []  # [{id: int, mult: float}]
 var _slow_id_counter: int = 0
+var _hazard_slow_count: int = 0
+var _hazard_slow_mult: float = 1.0
+var _active_hazard_slows: Array[float] = []
+var _regen_hp_timer: float = 0.0
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle
+# ---------------------------------------------------------------------------
+
+func _ready() -> void:
+	if hurtbox:
+		if not hurtbox.area_entered.is_connected(_on_hurtbox_hit):
+			hurtbox.area_entered.connect(_on_hurtbox_hit)
+	else:
+		push_error("PlayerController: Hurtbox not found!")
+	_current_speed = base_speed
+	if GameManager.run_state:
+		_current_speed = GameManager.run_state.player_speed
+
+
+func _physics_process(delta: float) -> void:
+	if _is_dead:
+		return
+
+	var rs := GameManager.run_state
+
+	# Cooldowns
+	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+	if _hurt_timer > 0.0:
+		_hurt_timer -= delta
+		if _hurt_timer <= 0.0:
+			_is_hurt = false
+	if _invulnerable:
+		_invul_timer -= delta
+		if _invul_timer <= 0.0:
+			_invulnerable = false
+
+	# Bloodlust decay
+	if rs:
+		if rs.bloodlust_timer > 0.0:
+			rs.bloodlust_timer -= delta
+			if rs.bloodlust_timer <= 0.0:
+				rs.bloodlust_stacks = 0
+
+	# Second Wind regen
+	_check_second_wind_regen(delta)
+
+	# HP regen from upgrades
+	if rs and rs.player_hp > 0.0:
+		var hp_regen := float(rs.stat_upgrades.get("hp_regen", 0.0))
+		var hp_regen_low := float(rs.stat_upgrades.get("hp_regen_low", 0.0))
+		if hp_regen > 0.0:
+			rs.player_hp = minf(rs.player_hp + hp_regen * delta, rs.player_max_hp)
+		elif hp_regen_low > 0.0 and rs.player_hp < rs.player_max_hp * 0.3:
+			rs.player_hp = minf(rs.player_hp + hp_regen_low * delta, rs.player_max_hp * 0.3)
+
+	# Movement
+	var input_dir := Vector2.ZERO
+	input_dir.x = Input.get_axis("move_left", "move_right")
+	input_dir.y = Input.get_axis("move_up", "move_down")
+	if input_dir.length_squared() > 0.01:
+		input_dir = input_dir.normalized()
+		_aim_direction = input_dir
+
+	var effective_speed := _current_speed * _hazard_slow_mult
+	velocity = input_dir * effective_speed + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 500.0 * delta)
+
+	move_and_slide()
+	_update_sprite_facing()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _is_dead:
+		return
+
+	if event.is_action_pressed("attack"):
+		if _attack_cooldown <= 0.0:
+			_attack()
+	elif event.is_action_pressed("interact"):
+		_try_pickup()
+	elif event.is_action_pressed("switch_weapon"):
+		if weapon_manager:
+			weapon_manager.switch_slot()
+	elif event.is_action_pressed("throw_weapon"):
+		if weapon_manager:
+			weapon_manager.throw_active_weapon(_aim_direction)
+	elif event.is_action_pressed("pause"):
+		_show_pause_menu()
+
+
+# ---------------------------------------------------------------------------
+# Damage / Healing
+# ---------------------------------------------------------------------------
+
+func receive_damage(damage: float, _zone: int, _sever: bool = false,
+		knockback_force: float = 0.0, knockback_dir: Vector2 = Vector2.ZERO) -> void:
+	take_damage(damage, knockback_dir, knockback_force)
+
+
+func take_damage(damage: float, knockback_dir: Vector2 = Vector2.ZERO,
+		knockback_force: float = 0.0) -> void:
+	if _is_dead or _invulnerable:
+		return
+
+	if GameManager.run_state:
+		# Apply damage reduction
+		var dmg_reduction := float(GameManager.run_state.stat_upgrades.get("damage_reduction", 0.0))
+		damage = maxf(damage - dmg_reduction, 0.0)
+
+		GameManager.run_state.player_hp -= damage
+		if GameManager.run_state.player_hp <= 0.0:
+			# Try Second Wind before dying
+			if not _try_second_wind():
+				_on_hurtbox_hit_take_damage(knockback_dir, knockback_force)
+				_die()
+				return
+	else:
+		_die()
+		return
+
+	_on_hurtbox_hit_take_damage(knockback_dir, knockback_force)
+
+
+func _on_hurtbox_hit_take_damage(knockback_dir: Vector2, knockback_force: float) -> void:
+	_is_hurt = true
+	_hurt_timer = 0.3
+	_invulnerable = true
+	_invul_timer = 0.5
+	if knockback_force > 0.0:
+		_knockback_velocity = knockback_dir * knockback_force * 3.0
+	_flash_white()
+	if AudioManager and AudioManager.SFXPlayer: AudioManager.SFXPlayer.play_sfx("player_hurt")
+	if ScreenEffects: ScreenEffects.flash(Color(1.0, 0.0, 0.0, 0.3), 0.05, 0.2)
+
+
+func heal(amount: float) -> void:
+	if GameManager.run_state:
+		GameManager.run_state.heal(amount)
+
+
+func apply_hazard_slow(mult: float) -> void:
+	if mult not in _active_hazard_slows:
+		_active_hazard_slows.append(mult)
+	_apply_worst_hazard_slow()
+
+
+func remove_hazard_slow(mult: float) -> void:
+	_active_hazard_slows.erase(mult)
+	_apply_worst_hazard_slow()
+
+
+func _apply_worst_hazard_slow() -> void:
+	if _active_hazard_slows.is_empty():
+		_hazard_slow_mult = 1.0
+	else:
+		_hazard_slow_mult = _active_hazard_slows.min()
+
+
+func apply_stun(duration: float) -> void:
+	_invulnerable = true
+	_invul_timer = maxf(_invul_timer, duration)
 
 
 func apply_slow(mult: float, duration: float) -> void:
@@ -94,7 +257,7 @@ func _try_second_wind() -> bool:
 	_invulnerable = true
 	_invul_timer = 2.0
 	# Visual feedback
-	ScreenEffects.flash(Color(0.8, 0.9, 1.0), 0.1, 0.5)
+	if ScreenEffects: ScreenEffects.flash(Color(0.8, 0.9, 1.0), 0.1, 0.5)
 	print("[Player] Second Wind activated! Healed to %.0f HP" % heal_amount)
 	return true
 
@@ -169,7 +332,10 @@ func _attack() -> void:
 	if _attack_end_timer != null and is_instance_valid(_attack_end_timer):
 		_attack_end_timer.timeout.disconnect(_on_attack_end)
 	_attack_end_timer = get_tree().create_timer(weapon.attack_speed)
-	_attack_end_timer.timeout.connect(_on_attack_end)
+	_attack_end_timer.timeout.connect(func():
+		if is_instance_valid(self):
+			_on_attack_end()
+	)
 
 
 func _on_attack_end() -> void:
@@ -190,6 +356,8 @@ func _try_pickup() -> void:
 
 	if closest:
 		var weapon: WeaponData = closest.get_weapon_data()
+		if weapon == null:
+			return
 		weapon_manager.equip_weapon(weapon)
 		closest.queue_free()
 		EventBus.weapon_picked_up.emit(weapon)
@@ -198,7 +366,7 @@ func _try_pickup() -> void:
 func _die() -> void:
 	_is_dead = true
 	velocity = Vector2.ZERO
-	AudioManager.SFXPlayer.play_sfx("playerDeath", 5.0)
+	if AudioManager and AudioManager.SFXPlayer: AudioManager.SFXPlayer.play_sfx("player_death", 5.0)
 	# Trigger capture sequence after brief delay
 	get_tree().create_timer(0.5).timeout.connect(func():
 		GameManager.handle_player_death()
@@ -206,6 +374,8 @@ func _die() -> void:
 
 
 func _flash_white() -> void:
+	if sprite == null:
+		return
 	sprite.modulate = Color.WHITE
 	if _flash_tween:
 		_flash_tween.kill()
@@ -221,6 +391,8 @@ var _frame_size := Vector2(24, 36)  # Per-frame size in the spritesheet
 
 
 func _update_sprite_facing() -> void:
+	if sprite == null:
+		return
 	# Determine direction column from aim
 	var col := 0  # right
 	if abs(_aim_direction.x) > abs(_aim_direction.y):
@@ -247,7 +419,7 @@ func _on_hurtbox_hit(hit_area: Area2D) -> void:
 		return
 
 	var damage: float = 15.0  # Default damage
-	var knockback_dir: Vector2 = global_position.direction_to(hit_area.global_position)
+	var _dir_to_enemy: Vector2 = global_position.direction_to(hit_area.global_position)
 	var knockback_force: float = 100.0
 
 	# Walk up the tree to find the enemy node (hitbox may be nested in HurtboxManager)
@@ -261,7 +433,7 @@ func _on_hurtbox_hit(hit_area: Area2D) -> void:
 	if enemy and enemy.has_method("get_attack_damage"):
 		damage = enemy.get_attack_damage()
 
-	take_damage(damage, -knockback_dir, knockback_force)
+	take_damage(damage, -_dir_to_enemy, knockback_force)
 
 
 func _on_weapon_changed(slot: int, _weapon: Resource) -> void:
@@ -269,11 +441,14 @@ func _on_weapon_changed(slot: int, _weapon: Resource) -> void:
 	pass
 
 
+const PauseMenuScene := preload("res://scenes/ui/pause_menu.tscn")
+
 func _show_pause_menu() -> void:
 	if _pause_menu_instance != null and is_instance_valid(_pause_menu_instance):
 		return
-	var pause_scene := preload("res://scenes/ui/pause_menu.tscn")
-	_pause_menu_instance = pause_scene.instantiate()
+	_pause_menu_instance = PauseMenuScene.instantiate()
 	var cs := get_tree().current_scene
 	if cs:
 		cs.add_child(_pause_menu_instance)
+	else:
+		_pause_menu_instance.queue_free()

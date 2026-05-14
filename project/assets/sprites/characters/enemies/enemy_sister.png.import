@@ -1,12 +1,20 @@
 [remap]
+
 importer="texture"
 type="CompressedTexture2D"
-path="res://.godot/imported/enemy_sister.png-5fcabbe991707349.ctexture"
+uid="uid://xe5xw28u8oe5"
+path="res://.godot/imported/enemy_sister.png-0c6ce488971b05880d7da679558de98f.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
+
 source_file="res://assets/sprites/characters/enemies/enemy_sister.png"
+dest_files=["res://.godot/imported/enemy_sister.png-0c6ce488971b05880d7da679558de98f.ctex"]
 
 [params]
+
 compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
@@ -16,6 +24,7 @@ compress/channel_pack=0
 mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
+roughness/src_normal=""
 process/fix_alpha_border=true
 process/premult_alpha=false
 process/normal_map_invert_y=false
@@ -23,4 +32,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0

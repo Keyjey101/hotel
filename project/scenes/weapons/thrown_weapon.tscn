@@ -1,8 +1,11 @@
-[gd_scene format=3 uid="uid://thrown_weapon"]
+[gd_scene load_steps=2 format=3 uid="uid://thrown_weapon"]
+
+[ext_resource type="Script" path="res://scripts/combat/thrown_weapon.gd" id="1"]
 
 [node name="ThrownWeapon" type="RigidBody2D"]
-collision_layer = 8
-collision_mask = 7
+collision_layer = 128
+collision_mask = 76
+script = ExtResource("1")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 

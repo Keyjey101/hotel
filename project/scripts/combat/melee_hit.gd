@@ -11,9 +11,14 @@ var _damage_mult: float = 1.0
 var _lifespan: float = 0.15
 var _targets_hit: Array[Node2D] = []
 var _despawn_timer_ref: SceneTreeTimer = null
+var _in_pool: bool = false
 
 
 func setup(weapon: WeaponData, direction: Vector2, _owner: CharacterBody2D) -> void:
+	if not is_inside_tree():
+		push_warning("MeleeHit: setup called outside tree")
+		return
+	_in_pool = false
 	_weapon = weapon
 	_direction = direction
 	_lifespan = 0.15
@@ -24,10 +29,12 @@ func setup(weapon: WeaponData, direction: Vector2, _owner: CharacterBody2D) -> v
 	global_position = _owner.global_position + offset
 
 	# Set collision shape based on weapon range
-	var shape := $CollisionShape2D.shape as RectangleShape2D
-	if shape:
-		shape.size = Vector2(weapon.attack_range, 20.0)
-		rotation = direction.angle()
+	var col_node := get_node_or_null("CollisionShape2D")
+	if col_node:
+		var shape := col_node.shape as RectangleShape2D
+		if shape:
+			shape.size = Vector2(weapon.attack_range, 20.0)
+	rotation = direction.angle()
 
 	# Re-activate for pool reuse
 	set_process(true)
@@ -39,6 +46,8 @@ func setup(weapon: WeaponData, direction: Vector2, _owner: CharacterBody2D) -> v
 	# Restart despawn timer (stop any old one by using a tracked reference)
 	if _despawn_timer_ref and is_instance_valid(_despawn_timer_ref):
 		_despawn_timer_ref.timeout.disconnect(_return_to_pool)
+	if not is_inside_tree():
+		return
 	_despawn_timer_ref = get_tree().create_timer(_lifespan)
 	_despawn_timer_ref.timeout.connect(_return_to_pool)
 
@@ -76,8 +85,16 @@ func _on_area_entered(area: Area2D) -> void:
 
 
 func _return_to_pool() -> void:
+	if _in_pool:
+		return
+	_in_pool = true
 	_targets_hit.clear()
 	_lifespan = 0.15
+	# Disable despawn timer to prevent double-fire
+	if _despawn_timer_ref and is_instance_valid(_despawn_timer_ref):
+		if _despawn_timer_ref.timeout.is_connected(_return_to_pool):
+			_despawn_timer_ref.timeout.disconnect(_return_to_pool)
+	_despawn_timer_ref = null
 	set_process(false)
 	set_physics_process(false)
 	visible = false

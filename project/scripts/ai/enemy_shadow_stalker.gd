@@ -63,6 +63,9 @@ func _try_phase() -> void:
 	if _target == null or not is_instance_valid(_target):
 		return
 
+	if not is_inside_tree():
+		return
+
 	# Check for doors in the direction — cannot phase through closed doors
 	var dir_to_target := global_position.direction_to(_target.global_position)
 	var space_state := get_world_2d().direct_space_state
@@ -91,6 +94,9 @@ func _try_phase() -> void:
 
 func _end_phase() -> void:
 	_is_phasing = false
+	# Set collision_mask directly — _end_phase is called from _physics_process
+	# after move_and_slide(), so the mask applies next frame.
+	# Using set_deferred would leave one frame with the wrong mask active.
 	collision_mask = _original_collision_mask
 	sprite.modulate = Color.WHITE
 
@@ -197,34 +203,12 @@ func _on_limb_lost(zone: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
-	if _disabled:
-		_disabled_timer -= delta
-		if _disabled_timer <= 0.0:
-			_disabled = false
-			_enter_state("patrol")
-		_process_regen(delta)
-		return
+	# Stalker-specific cooldowns
+	_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
+	_shadow_mark_cooldown = maxf(0.0, _shadow_mark_cooldown - delta)
 
-	if _stunned:
-		_stun_timer -= delta
-		if _stun_timer <= 0.0:
-			_stunned = false
-		if _is_phasing:
-			_phase_timer -= delta
-			if _phase_timer <= 0.0:
-				_end_phase()
-		velocity = _knockback_vel * 0.9
-		_knockback_vel *= 0.9
-		move_and_slide()
-		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-		_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
-		_shadow_mark_cooldown = maxf(0.0, _shadow_mark_cooldown - delta)
-		_state_timer -= delta
-		_process_regen(delta)
-		return
-
-	# Phase handling
-	if _is_phasing:
+	# Phase handling — managed entirely by stalker
+	if not _disabled and not _stunned and _is_phasing:
 		_phase_timer -= delta
 		# Continue moving toward target while phasing
 		if _target and is_instance_valid(_target):
@@ -237,29 +221,22 @@ func _physics_process(delta: float) -> void:
 		if _phase_timer <= 0.0:
 			_end_phase()
 		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-		_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
-		_shadow_mark_cooldown = maxf(0.0, _shadow_mark_cooldown - delta)
 		_state_timer -= delta
 		_process_regen(delta)
 		return
 
-	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-	_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
-	_shadow_mark_cooldown = maxf(0.0, _shadow_mark_cooldown - delta)
-	_state_timer -= delta
-
 	# Dissolve effect when fully mutilated
-	if _dissolving:
+	if not _disabled and not _stunned and _dissolving:
 		sprite.modulate.a = move_toward(sprite.modulate.a, 0.3, 0.2 * delta)
 		_dissolve_timer -= delta
 		if _dissolve_timer <= 0.0:
 			_disable_enemy()
 			return
 
-	_process_state(delta)
-	_process_regen(delta)
+	# Handle stunned + phasing timer
+	if not _disabled and _stunned and _is_phasing:
+		_phase_timer -= delta
+		if _phase_timer <= 0.0:
+			_end_phase()
 
-	_knockback_vel = _knockback_vel.move_toward(Vector2.ZERO, 500.0 * delta)
-	velocity += _knockback_vel
-
-	move_and_slide()
+	super._physics_process(delta)

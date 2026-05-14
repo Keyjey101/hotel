@@ -48,6 +48,7 @@ var _offer_timer: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _final_choice_made: bool = false
 var _dialogue_label: Label = null
+var _dialogue_tween: Tween = null
 
 # ── Sister ally ──
 var _sister_ally: CharacterBody2D = null
@@ -119,6 +120,10 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if _disabled:
+		_disabled_timer -= delta
+		if _disabled_timer <= 0.0:
+			_disabled = false
+			_enter_state("chase")
 		return
 
 	if _stunned:
@@ -167,12 +172,22 @@ func _physics_process(delta: float) -> void:
 	if _offer_state != "":
 		_process_offer_state(delta)
 
+	# Process projectiles
+	_process_bolts(delta)
+
 	# Normal state processing
 	_process_state(delta)
 	_process_regen(delta)
 
 	_knockback_vel = _knockback_vel.move_toward(Vector2.ZERO, 500.0 * delta)
 	velocity += _knockback_vel
+
+	# Economic collapse: damage outside safe zone
+	if _collapse_active and _target and is_instance_valid(_target):
+		var dist := global_position.distance_to(_target.global_position)
+		if dist > _collapse_radius:
+			if _target.has_method("receive_damage"):
+				_target.receive_damage(10.0 * delta, DamageZone.Zone.TORSO, false)
 
 	move_and_slide()
 
@@ -183,19 +198,18 @@ func _physics_process(delta: float) -> void:
 
 func _update_phase() -> void:
 	var current_hp := limb_health[DamageZone.Zone.TORSO]
-	var denominator := _max_phase_hp
-	if _phase >= 2 and _phase_2_start_hp > 0.0:
-		denominator = _phase_2_start_hp
-	var hp_pct := current_hp / denominator
-	var new_phase: int
+	var total_hp := _phase_1_hp + _phase_2_hp + _phase_3_hp
+	var hp_pct := current_hp / total_hp
+	var target_phase: int
 	if hp_pct > 0.66:
-		new_phase = 1
+		target_phase = 1
 	elif hp_pct > 0.33:
-		new_phase = 2
+		target_phase = 2
 	else:
-		new_phase = 3
-	if new_phase != _phase:
-		_phase = new_phase
+		target_phase = 3
+	# Transition through all skipped phases sequentially
+	while _phase < target_phase:
+		_phase += 1
 		_on_phase_changed()
 
 
@@ -419,6 +433,11 @@ func _execute_steal() -> void:
 
 	_stolen_weapon = weapon
 	equipped[active_slot] = null
+	var _ammo_arr = wm.get("_ammo")
+	if _ammo_arr != null:
+		_ammo_arr[active_slot] = 0
+	if wm.has_method("_sync_to_run_state"):
+		wm._sync_to_run_state()
 	_steal_cooldown = 15.0
 
 
@@ -454,7 +473,7 @@ func _liquidation() -> void:
 				warning.queue_free()
 			var hz: HazardZone
 			if ResourceLoader.exists("res://scenes/combat/hazard_zone.tscn"):
-				hz = load("res://scenes/combat/hazard_zone.tscn").instantiate()
+				hz = preload("res://scenes/combat/hazard_zone.tscn").instantiate()
 			else:
 				hz = HazardZone.new()
 			hz.damage_per_second = 20.0
@@ -569,46 +588,72 @@ func _market_crash() -> void:
 # Projectile system
 # ---------------------------------------------------------------------------
 
-func _move_projectile(bolt: Area2D) -> void:
-	var speed: float = bolt.get_meta("speed", 250.0)
-	var damage: float = bolt.get_meta("damage", 20.0)
-	var lifetime := 4.0
-	var elapsed := 0.0
+var _active_bolt_count: int = 0
+var _active_bolt_projectiles: Array[Dictionary] = []
+const MAX_ACTIVE_BOLTS := 8
 
-	while is_instance_valid(bolt) and elapsed < lifetime:
-		await get_tree().physics_frame
+func _move_projectile(bolt: Area2D) -> void:
+	if _active_bolt_count >= MAX_ACTIVE_BOLTS:
+		if is_instance_valid(bolt):
+			bolt.queue_free()
+		return
+	_active_bolt_count += 1
+	_active_bolt_projectiles.append({
+		"bolt": bolt,
+		"direction": bolt.get_meta("direction", Vector2.RIGHT),
+		"speed": bolt.get_meta("speed", 250.0),
+		"damage": bolt.get_meta("damage", 20.0),
+		"elapsed": 0.0,
+		"lifetime": 4.0,
+	})
+
+func _process_bolts(delta: float) -> void:
+	var i := _active_bolt_projectiles.size() - 1
+	while i >= 0:
+		var entry: Dictionary = _active_bolt_projectiles[i]
+		var bolt: Area2D = entry["bolt"]
 		if not is_instance_valid(bolt):
-			return
-		if not is_instance_valid(self):
+			_active_bolt_projectiles.remove_at(i)
+			_active_bolt_count -= 1
+			i -= 1
+			continue
+		entry["elapsed"] += delta
+		if entry["elapsed"] >= entry["lifetime"]:
 			if is_instance_valid(bolt):
 				bolt.queue_free()
-			return
-		var frame_delta: float = get_physics_process_delta_time()
-		elapsed += frame_delta
+			_active_bolt_projectiles.remove_at(i)
+			_active_bolt_count -= 1
+			i -= 1
+			continue
+		var dir: Vector2 = entry["direction"]
+		var speed: float = entry["speed"]
+		var damage: float = entry["damage"]
 
-		var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
 		# Homing for contracts
 		if bolt.get_meta("applies_fine_print", false):
 			if _target and is_instance_valid(_target):
 				dir = bolt.global_position.direction_to(_target.global_position)
 				bolt.set_meta("direction", dir)
+				entry["direction"] = dir
 
-		bolt.global_position += dir * speed * frame_delta
+		bolt.global_position += dir * speed * delta
 
 		var bodies := bolt.get_overlapping_bodies()
+		var hit := false
 		for body in bodies:
 			if body.is_in_group("player") and body.has_method("receive_damage"):
 				body.receive_damage(damage, DamageZone.Zone.TORSO, false)
-				# Fine print: speed reduction
 				if bolt.get_meta("applies_fine_print", false):
 					if body.has_method("apply_slow"):
 						body.apply_slow(0.85, 5.0)
 				if is_instance_valid(bolt):
 					bolt.queue_free()
-				return
-
-	if is_instance_valid(bolt):
-		bolt.queue_free()
+				_active_bolt_projectiles.remove_at(i)
+				_active_bolt_count -= 1
+				hit = true
+				break
+		if not hit:
+			i -= 1
 
 
 # ---------------------------------------------------------------------------
@@ -684,7 +729,10 @@ func _show_dialogue_text(text: String, duration: float) -> void:
 	_dialogue_label.modulate.a = 0.0
 	get_tree().current_scene.add_child(_dialogue_label)
 
-	var tween := create_tween()
+	if _dialogue_tween and _dialogue_tween.is_valid():
+		_dialogue_tween.kill()
+	_dialogue_tween = create_tween()
+	var tween := _dialogue_tween
 	tween.tween_property(_dialogue_label, "modulate:a", 1.0, 0.3)
 	tween.tween_interval(duration)
 	tween.tween_property(_dialogue_label, "modulate:a", 0.0, 0.3)
@@ -714,9 +762,14 @@ func _spawn_sister_ally() -> void:
 	# Configure as ally
 	if ally.has_method("become_ally"):
 		ally.become_ally()
-		# Set target to Satan (self)
-		ally.set("_target", self)
+		# Sister targets enemies, not Satan — her AI will find targets via group lookup
 		_sister_ally = ally
+		# Remove from enemy_hitbox so player doesn't take damage from ally
+		if ally.is_in_group("enemy_hitbox"):
+			ally.remove_from_group("enemy_hitbox")
+		for child in ally.get_children():
+			if child is Area2D and child.is_in_group("enemy_hitbox"):
+				child.remove_from_group("enemy_hitbox")
 
 
 # ---------------------------------------------------------------------------
@@ -811,11 +864,20 @@ func _disable_enemy() -> void:
 			overlay.queue_free()
 	)
 
+	# Force drop stolen weapon on death so player doesn't lose it
+	if _stolen_weapon != null:
+		EventBus.weapon_dropped.emit(_stolen_weapon)
+		_stolen_weapon = null
+
 	# Clean up
 	if _dialogue_label and is_instance_valid(_dialogue_label):
 		_dialogue_label.queue_free()
 	if _sister_ally and is_instance_valid(_sister_ally):
 		_sister_ally.queue_free()
+	for zone in _liquidation_zones:
+		if is_instance_valid(zone):
+			zone.queue_free()
+	_liquidation_zones.clear()
 
 	if EventBus.dialog_choice_made.is_connected(_on_dialog_choice):
 		EventBus.dialog_choice_made.disconnect(_on_dialog_choice)
@@ -828,6 +890,10 @@ func _disable_enemy() -> void:
 
 
 func _exit_tree() -> void:
+	for zone in _liquidation_zones:
+		if is_instance_valid(zone):
+			zone.queue_free()
+	_liquidation_zones.clear()
 	if EventBus.dialog_choice_made.is_connected(_on_dialog_choice):
 		EventBus.dialog_choice_made.disconnect(_on_dialog_choice)
 

@@ -6,6 +6,7 @@ extends "res://scripts/ai/base_enemy.gd"
 # Ranged attack state
 var _throw_cooldown: float = 0.0
 var _throw_ready: bool = true
+var _active_knives: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func _physics_process(delta: float) -> void:
 	_throw_cooldown = maxf(0.0, _throw_cooldown - delta)
 	if _throw_cooldown <= 0.0:
 		_throw_ready = true
+	_process_active_knives(delta)
 	super._physics_process(delta)
 
 
@@ -92,30 +94,47 @@ func _throw_knife() -> void:
 	knife.set_meta("damage", 12.0)
 	knife.set_meta("source", self)
 
-	get_tree().current_scene.add_child(knife)
-	_move_projectile(knife)
+	get_parent().add_child(knife)
+	_active_knives.append({
+		"knife": knife,
+		"direction": dir,
+		"speed": 200.0,
+		"damage": 12.0,
+		"elapsed": 0.0,
+		"lifetime": 3.0,
+	})
 
 
-func _move_projectile(bolt: Area2D) -> void:
-	var speed: float = bolt.get_meta("speed", 200.0)
-	var damage: float = bolt.get_meta("damage", 12.0)
-	var lifetime := 3.0
-	var elapsed := 0.0
-
-	while is_instance_valid(bolt) and is_instance_valid(self) and elapsed < lifetime:
-		await get_tree().physics_frame
-		if not is_instance_valid(self): return
-		elapsed += get_physics_process_delta_time()
-		var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
-		bolt.global_position += dir * speed * get_physics_process_delta_time()
-
-		var bodies := bolt.get_overlapping_bodies()
+func _process_active_knives(delta: float) -> void:
+	var i := _active_knives.size() - 1
+	while i >= 0:
+		var entry: Dictionary = _active_knives[i]
+		var knife: Area2D = entry["knife"]
+		if not is_instance_valid(knife):
+			_active_knives.remove_at(i)
+			i -= 1
+			continue
+		entry["elapsed"] += delta
+		if entry["elapsed"] >= entry["lifetime"]:
+			knife.queue_free()
+			_active_knives.remove_at(i)
+			i -= 1
+			continue
+		var dir: Vector2 = entry["direction"]
+		var speed: float = entry["speed"]
+		var damage: float = entry["damage"]
+		knife.global_position += dir * speed * delta
+		# Check hits
+		var bodies := knife.get_overlapping_bodies()
+		var hit_player: bool = false
 		for body in bodies:
 			if body.is_in_group("player") and body.has_method("receive_damage"):
 				body.receive_damage(damage, DamageZone.Zone.TORSO, false)
-				if is_instance_valid(bolt):
-					bolt.queue_free()
-				return
-
-	if is_instance_valid(bolt):
-		bolt.queue_free()
+				knife.queue_free()
+				_active_knives.remove_at(i)
+				hit_player = true
+				break
+		if hit_player:
+			i -= 1
+			continue
+		i -= 1

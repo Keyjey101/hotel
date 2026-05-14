@@ -240,21 +240,9 @@ func _on_limb_lost(zone: int) -> void:
 	if DamageZone.is_leg(zone):
 		var lost_legs := int(severed_limbs.get(DamageZone.Zone.LEFT_LEG, false)) + \
 			int(severed_limbs.get(DamageZone.Zone.RIGHT_LEG, false))
-		match lost_legs:
-			1: move_speed *= 0.5
-			2: move_speed *= 0.15
 		# Stay in engage state — Gladiator NEVER retreats from the arena
 		if _current_state == "chase":
 			_enter_state("engage")
-
-	# Check for all-limbs-lost disable condition (same as base)
-	var all_severed := true
-	for z in DamageZone.all_limbs():
-		if not severed_limbs.get(z, false):
-			all_severed = false
-			break
-	if all_severed and limb_health.get(DamageZone.Zone.TORSO, torso_hp) <= torso_hp * 0.3:
-		_disable_enemy()
 
 
 func _evaluate_mutilated_behavior() -> void:

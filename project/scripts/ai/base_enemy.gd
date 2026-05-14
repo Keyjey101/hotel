@@ -34,7 +34,7 @@ extends CharacterBody2D
 # Runtime state
 var limb_health: Dictionary = {}
 var severed_limbs: Dictionary = {}   # zone -> bool
-var regen_timers: Dictionary = {}    # zone -> {current, max, paused}
+var regen_timers: Dictionary = {}    # zone -> {current, remaining, initial_max, paused}
 var base_regen_time: float = 30.0
 
 var _current_state: String = "patrol"
@@ -55,10 +55,12 @@ var _alert_sfx_played: bool = false
 var _regen_sfx_played: bool = false
 var _detection_lost_timer: SceneTreeTimer = null
 var _detection_lost_callback: Callable
-var _hurt_tween: Tween = null
+var _hurt_tween: Tween
+var _hazard_slow_mult: float = 1.0
 
 
 func _ready() -> void:
+	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	_initial_move_speed = move_speed
 	_load_sprite()
 	_init_health()
@@ -100,9 +102,11 @@ func _init_health() -> void:
 		DamageZone.Zone.LEFT_LEG: false,
 		DamageZone.Zone.RIGHT_LEG: false,
 	}
-	# Regen timers per limb
-	for zone in DamageZone.all_limbs():
-		regen_timers[zone] = {"current": 0.0, "max": base_regen_time / regen_speed_mult, "paused": false}
+	# Regen timers per limb (including HEAD so head HP regenerates)
+	var regen_zones: Array[int] = DamageZone.all_limbs()
+	regen_zones.append(DamageZone.Zone.HEAD)
+	for zone in regen_zones:
+		regen_timers[zone] = {"current": 0.0, "remaining": base_regen_time / regen_speed_mult, "initial_max": base_regen_time / regen_speed_mult, "paused": false}
 
 
 func _connect_signals() -> void:
@@ -185,14 +189,17 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	# Visual feedback
 	_flash_hurt()
 
-	AudioManager.SFXPlayer.play_sfx_with_pitch("enemy_hurt", randf_range(0.8, 1.2))
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx_with_pitch("enemy_hurt", randf_range(0.8, 1.2))
 
 	# Blood splash on every hit
-	GoreSystem.spawn_blood_splash(global_position, knockback_dir)
+	if GoreSystem:
+		GoreSystem.spawn_blood_splash(global_position, knockback_dir)
 
 	# Hit stop on significant limb damage
 	if DamageZone.is_limb(zone) and damage > 15.0:
-		ScreenEffects.hit_stop(0.05)
+		if ScreenEffects:
+			ScreenEffects.hit_stop(0.05)
 
 	# Alert on damage
 	if not _alerted:
@@ -210,19 +217,21 @@ func _sever_limb(zone: int) -> void:
 	limb_health[zone] = 0.0
 
 	# Spawn severed limb entity
-	GoreSystem.spawn_severed_limb(global_position, zone, self)
+	if GoreSystem:
+		GoreSystem.spawn_severed_limb(global_position, zone, self)
 
 	# Start extended regen timer for the severed limb
 	var next_regen_time := (base_regen_time / regen_speed_mult) * 3.0
-	regen_timers[zone] = {"current": 0.0, "max": next_regen_time, "paused": false}
+	regen_timers[zone] = {"current": 0.0, "remaining": next_regen_time, "initial_max": next_regen_time, "paused": false}
 
 	# Adjust behavior based on lost limb
 	_on_limb_lost(zone)
 
 	# Enhanced screen effects on sever
-	ScreenEffects.shake(6.0, 0.2)
-	ScreenEffects.flash(Color(1.0, 0.0, 0.0), 0.1, 0.5)
-	ScreenEffects.zoom(1.15, 0.05, 0.03, 0.15)
+	if ScreenEffects:
+		ScreenEffects.shake(6.0, 0.2)
+		ScreenEffects.flash(Color(1.0, 0.0, 0.0), 0.1, 0.5)
+		ScreenEffects.zoom(1.15, 0.05, 0.03, 0.15)
 
 	EventBus.enemy_limb_severed.emit(self, zone)
 
@@ -301,15 +310,15 @@ func _process_regen(delta: float) -> void:
 			continue
 
 		# Tick regen
-		timer.max -= delta * regen_speed_mult * blood_pact_mult
+		timer.remaining -= delta * regen_speed_mult * blood_pact_mult
 
 		# Legs regen faster when both lost
 		if DamageZone.is_leg(zone):
 			var legs_lost := int(severed_limbs[DamageZone.Zone.LEFT_LEG]) + int(severed_limbs[DamageZone.Zone.RIGHT_LEG])
 			if legs_lost >= 2:
-				timer.max -= delta * 0.3  # Extra speed
+				timer.remaining -= delta * 0.3  # Extra speed
 
-		if timer.max <= 0.0:
+		if timer.remaining <= 0.0:
 			_regenerate_limb(zone)
 
 
@@ -323,10 +332,11 @@ func _regenerate_limb(zone: int) -> void:
 	var next_regen_time := base_regen_time / regen_speed_mult
 	if was_severed:
 		next_regen_time *= 3.0
-	regen_timers[zone] = {"current": 0.0, "max": next_regen_time, "paused": false}
+	regen_timers[zone] = {"current": 0.0, "remaining": next_regen_time, "initial_max": next_regen_time, "paused": false}
 
 	if not _regen_sfx_played:
-		AudioManager.SFXPlayer.play_sfx("enemy_regen")
+		if AudioManager and AudioManager.SFXPlayer:
+			AudioManager.SFXPlayer.play_sfx("enemy_regen")
 		_regen_sfx_played = true
 		get_tree().create_timer(2.0).timeout.connect(func():
 			if is_instance_valid(self):
@@ -383,7 +393,8 @@ func _enter_state(state_name: String) -> void:
 		"alert":
 			_alerted = true
 			if not _alert_sfx_played:
-				AudioManager.SFXPlayer.play_sfx("enemy_alert")
+				if AudioManager and AudioManager.SFXPlayer:
+					AudioManager.SFXPlayer.play_sfx("enemy_alert")
 				_alert_sfx_played = true
 			_alert_nearby()
 		"chase":
@@ -413,6 +424,8 @@ func _process_state(delta: float) -> void:
 func _state_patrol(_delta: float) -> void:
 	if _patrol_points.is_empty():
 		velocity = Vector2.ZERO
+		if _state_timer <= 0.0:
+			_enter_state("alert")
 		return
 
 	var target_pos := _patrol_points[_patrol_index]
@@ -440,7 +453,7 @@ func _state_chase(_delta: float) -> void:
 	navigation.target_position = _target.global_position
 	var next_pos := navigation.get_next_path_position()
 	var dir := global_position.direction_to(next_pos)
-	velocity = dir * move_speed
+	velocity = dir * move_speed * _hazard_slow_mult
 	_direction = dir
 
 	# Check if in attack range
@@ -489,7 +502,7 @@ func _state_retreat(_delta: float) -> void:
 func _get_state_duration(state: String) -> float:
 	match state:
 		"alert": return 1.0
-		"patrol": return 999.0
+		"patrol": return 10.0
 		"chase": return 999.0
 		"engage": return 999.0
 		"retreat": return 5.0
@@ -512,6 +525,14 @@ func get_attack_damage() -> float:
 func apply_stun(duration: float) -> void:
 	_stunned = true
 	_stun_timer = duration
+
+
+func apply_hazard_slow(mult: float) -> void:
+	_hazard_slow_mult = mult
+
+
+func remove_hazard_slow(_mult: float) -> void:
+	_hazard_slow_mult = 1.0
 
 
 func drop_weapon() -> void:
@@ -541,8 +562,10 @@ func _disable_enemy() -> void:
 	_disabled_timer = 60.0  # Full regen takes 60-90s
 	velocity = Vector2.ZERO
 	sprite.modulate = Color.WHITE
-	AudioManager.SFXPlayer.play_sfx_2d("enemy_death", global_position, 5.0)
-	ScreenEffects.flash(Color(1.0, 0.2, 0.2), 0.08, 0.3)
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx_2d("enemy_death", global_position, 5.0)
+	if ScreenEffects:
+		ScreenEffects.flash(Color(1.0, 0.2, 0.2), 0.08, 0.3)
 	EventBus.enemy_disabled.emit(self)
 
 
@@ -595,6 +618,8 @@ func _on_detection_exited(body: Node2D) -> void:
 					_detection_lost_timer.timeout.disconnect(_detection_lost_callback)
 			_detection_lost_timer = get_tree().create_timer(1.5)
 			_detection_lost_callback = func():
+				if not is_instance_valid(self):
+					return
 				_detection_lost_timer = null
 				if _target == null or not is_instance_valid(_target) or global_position.distance_to(_target.global_position) > detection_range * 1.5:
 					_target = null
@@ -619,8 +644,10 @@ func set_patrol_points(points: Array[Vector2]) -> void:
 	_patrol_points = points
 
 
-func _exit_tree() -> void:
-	if detection_area and detection_area.body_entered.is_connected(_on_detection_entered):
-		detection_area.body_entered.disconnect(_on_detection_entered)
-	if detection_area and detection_area.body_exited.is_connected(_on_detection_exited):
-		detection_area.body_exited.disconnect(_on_detection_exited)
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		if detection_area and is_instance_valid(detection_area):
+			if detection_area.body_entered.is_connected(_on_detection_entered):
+				detection_area.body_entered.disconnect(_on_detection_entered)
+			if detection_area.body_exited.is_connected(_on_detection_exited):
+				detection_area.body_exited.disconnect(_on_detection_exited)

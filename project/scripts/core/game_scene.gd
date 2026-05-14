@@ -66,7 +66,11 @@ func _screen_shake(intensity: float) -> void:
 			return
 		var offset := Vector2(randf_range(-intensity, intensity), randf_range(-intensity, intensity))
 		camera.offset = offset
+		if camera.has_meta("_shake_tween") and is_instance_valid(camera.get_meta("_shake_tween")):
+			var old_tween: Tween = camera.get_meta("_shake_tween")
+			old_tween.kill()
 		var tween := camera.create_tween()
+		camera.set_meta("_shake_tween", tween)
 		tween.tween_property(camera, "offset", Vector2.ZERO, 0.1)
 
 

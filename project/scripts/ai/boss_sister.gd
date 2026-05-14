@@ -46,6 +46,9 @@ var _run_count: int = 1
 # ── Combat ──
 var _player_weapon_copies: Array = []
 var _attack_with_copies: bool = false
+var _combat_locked: bool = false
+var _pending_timer: float = 0.0
+var _pending_action: String = ""
 
 
 func _ready() -> void:
@@ -99,6 +102,16 @@ func _physics_process(delta: float) -> void:
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 	_state_timer -= delta
 	_phase_cooldown_tick(delta)
+
+	# Process pending actions
+	if _pending_timer > 0.0:
+		_pending_timer -= delta
+		if _pending_timer <= 0.0:
+			_process_pending_action()
+		velocity = Vector2.ZERO
+		move_and_slide()
+		_process_regen(delta)
+		return
 
 	# Hesitation timer
 	if _hesitating:
@@ -230,8 +243,10 @@ func _choose_fight() -> void:
 	aggression = 8.0
 	# Copy player's weapons
 	_copy_player_weapons()
+	_combat_locked = true
 	await get_tree().create_timer(2.0).timeout
 	if not is_instance_valid(self): return
+	_combat_locked = false
 	_enter_state("chase")
 
 
@@ -266,6 +281,8 @@ func _copy_player_weapons() -> void:
 
 
 func _process_combat(delta: float) -> void:
+	if _combat_locked:
+		return
 	if not is_instance_valid(_target):
 		return
 
@@ -324,12 +341,13 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 	_sister_damage_dealt += damage
 	_player_attack_pause_timer = 0.0  # Reset — player IS attacking
 
-	# Cap damage so killing blow doesn't bypass spare mechanic
+	# Cap damage so HP doesn't drop below 10% (spare mechanic threshold)
+	# but allow the kill if damage exactly drains to 0
 	if zone == DamageZone.Zone.TORSO:
 		var hp_threshold := _max_torso_hp * 0.1
 		var torso_hp := limb_health[DamageZone.Zone.TORSO]
-		if torso_hp - damage < hp_threshold:
-			damage = maxi(0, torso_hp - hp_threshold)  # Never drop below 10% via damage
+		if torso_hp > hp_threshold and torso_hp - damage < hp_threshold:
+			damage = maxf(0.0, torso_hp - hp_threshold)
 
 	# Check if killed
 	if zone == DamageZone.Zone.TORSO:
@@ -356,9 +374,12 @@ func _start_listen_path() -> void:
 	_encounter_phase = 3
 
 	# Check Void Contract — blocks Ending C
-	if GameManager.run_state and GameManager.run_state.has_artifact("a4_void_contract"):
+	if GameManager.run_state and GameManager.run_state.has_artifact("a12_void_contract"):
 		_show_dialogue("You signed the contract. No revelation for you.", 3.0)
+		_combat_locked = true
 		await get_tree().create_timer(3.0).timeout
+		if not is_instance_valid(self): return
+		_combat_locked = false
 		# Force combat
 		_player_chose_fight = true
 		_player_chose_listen = false
@@ -381,7 +402,10 @@ func _start_listen_path() -> void:
 	var total_dialogue_time := 0.0
 	for entry in truth_dialogue:
 		total_dialogue_time += entry.get("duration", 2.0) + 0.6
+	_combat_locked = true
 	await get_tree().create_timer(total_dialogue_time).timeout
+	if not is_instance_valid(self): return
+	_combat_locked = false
 	_trigger_ending("c")
 
 
@@ -394,20 +418,28 @@ func _start_embrace_path() -> void:
 
 	# Sister stabs player — lose 50% HP
 	_show_dialogue("I'm sorry.", 1.0)
+	_combat_locked = true
 	await get_tree().create_timer(1.0).timeout
+	if not is_instance_valid(self):
+		return
+	_combat_locked = false
 
 	var player := get_tree().get_first_node_in_group("player")
 	if player and player.has_method("receive_damage"):
-		var hp := player.get_hp() if player.has_method("get_hp") else (GameManager.run_state.player_hp if GameManager.run_state else 100.0)
+		var hp := player.get_hp() if player.has_method("get_hp") else (GameManager.run_state.player_hp if GameManager and GameManager.run_state and GameManager.run_state.player_hp != null else 100.0)
 		var stab_damage := hp * 0.5
 		player.receive_damage(stab_damage, DamageZone.Zone.TORSO, false)
 
 	# Check if player survives
+	_combat_locked = true
 	await get_tree().create_timer(0.5).timeout
+	if not is_instance_valid(self):
+		return
+	_combat_locked = false
 	var player_node := get_tree().get_first_node_in_group("player")
 	if player_node == null:
 		return
-	var current_hp := player_node.get_hp() if player_node and player_node.has_method("get_hp") else (GameManager.run_state.player_hp if GameManager.run_state else 0.0)
+	var current_hp := player_node.get_hp() if player_node and player_node.has_method("get_hp") else (GameManager.run_state.player_hp if GameManager and GameManager.run_state and GameManager.run_state.player_hp != null else 0.0)
 	if current_hp > 0.0:
 		_player_embraced = true
 		# Hidden path opens → Ending D
@@ -567,7 +599,36 @@ func become_ally() -> void:
 # State overrides for combat mode
 # ---------------------------------------------------------------------------
 
+func _find_ally_target() -> Node2D:
+	var enemies := get_tree().get_nodes_in_group("enemy")
+	var nearest: Node2D = null
+	var nearest_dist := 500.0
+	for enemy in enemies:
+		if not is_instance_valid(enemy):
+			continue
+		if enemy == self:
+			continue
+		if enemy.is_in_group("boss"):
+			continue
+		if enemy.is_in_group("sister_ally"):
+			continue
+		if enemy.has_method("is_disabled") and enemy.is_disabled():
+			continue
+		var dist := global_position.distance_to(enemy.global_position)
+		if dist < nearest_dist:
+			nearest = enemy
+			nearest_dist = dist
+	return nearest
+
+
 func _state_chase(delta: float) -> void:
+	if is_in_group("sister_ally"):
+		if _target == null or not is_instance_valid(_target) or _target.is_in_group("sister_ally"):
+			_target = _find_ally_target()
+		if _target == null:
+			velocity = Vector2.ZERO
+			return
+
 	if not _player_chose_fight and not is_in_group("sister_ally"):
 		return  # No chasing during non-combat phases
 
@@ -586,6 +647,13 @@ func _state_chase(delta: float) -> void:
 
 
 func _state_engage(_delta: float) -> void:
+	if is_in_group("sister_ally"):
+		if _target == null or not is_instance_valid(_target) or _target.is_in_group("sister_ally"):
+			_target = _find_ally_target()
+		if _target == null:
+			velocity = Vector2.ZERO
+			return
+
 	if not _player_chose_fight and not is_in_group("sister_ally"):
 		return
 

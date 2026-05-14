@@ -1,12 +1,20 @@
 [remap]
+
 importer="texture"
 type="CompressedTexture2D"
-path="res://.godot/imported/tile_door_closed_v.png-c4da266bd1cd855f.ctexture"
+uid="uid://bvv5kx0s5bocc"
+path="res://.godot/imported/tile_door_closed_v.png-96be47d5d0ec8abda4dfb1469678498f.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
+
 source_file="res://assets/sprites/tiles/floor_08/tile_door_closed_v.png"
+dest_files=["res://.godot/imported/tile_door_closed_v.png-96be47d5d0ec8abda4dfb1469678498f.ctex"]
 
 [params]
+
 compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
@@ -16,6 +24,7 @@ compress/channel_pack=0
 mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
+roughness/src_normal=""
 process/fix_alpha_border=true
 process/premult_alpha=false
 process/normal_map_invert_y=false
@@ -23,4 +32,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0

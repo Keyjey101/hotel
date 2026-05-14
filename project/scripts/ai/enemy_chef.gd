@@ -7,6 +7,8 @@ extends "res://scripts/ai/base_enemy.gd"
 var _oil_cooldown: float = 0.0
 var _pan_cooldown: float = 0.0
 
+const HAZARD_ZONE_SCENE := preload("res://scenes/combat/hazard_zone.tscn")
+
 # Wind-up state machine (avoids async/await in state chain)
 var _windup_type: String = ""  # "", "oil", "pan", "cleaver"
 var _windup_timer: float = 0.0
@@ -161,15 +163,17 @@ func _execute_cleaver_hit() -> void:
 	area.global_position = global_position + _direction * attack_range * 0.5
 	get_tree().current_scene.add_child(area)
 
+	var dir := _direction
+
 	# Check bodies already overlapping (missed by body_entered signal)
 	for body in area.get_overlapping_bodies():
 		if body.is_in_group("player") and body.has_method("receive_damage"):
-			body.receive_damage(attack_damage, DamageZone.Zone.TORSO, false, 25.0, _direction)
+			body.receive_damage(attack_damage, DamageZone.Zone.TORSO, false, 25.0, dir)
 			break
 
 	area.body_entered.connect(func(body: Node2D) -> void:
 		if body.is_in_group("player") and body.has_method("receive_damage"):
-			body.receive_damage(attack_damage, DamageZone.Zone.TORSO, false, 25.0, _direction)
+			body.receive_damage(attack_damage, DamageZone.Zone.TORSO, false, 25.0, dir)
 	)
 
 	get_tree().create_timer(0.2).timeout.connect(area.queue_free)
@@ -190,10 +194,7 @@ func _perform_attack() -> void:
 # ---------------------------------------------------------------------------
 
 func _throw_oil(target_pos: Vector2) -> void:
-	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
-	if hazard_scene == null:
-		return
-	var zone: Area2D = hazard_scene.instantiate()
+	var zone: Area2D = HAZARD_ZONE_SCENE.instantiate()
 
 	zone.damage_per_second = 0.0
 	zone.slow_factor = 0.3
@@ -296,10 +297,7 @@ func _process_pan_projectiles(delta: float) -> void:
 
 
 func _pan_impact(pos: Vector2) -> void:
-	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
-	if hazard_scene == null:
-		return
-	var zone: Area2D = hazard_scene.instantiate()
+	var zone: Area2D = HAZARD_ZONE_SCENE.instantiate()
 
 	zone.damage_per_second = 5.0
 	zone.slow_factor = 1.0

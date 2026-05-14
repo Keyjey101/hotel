@@ -28,6 +28,7 @@ var enter_time: float = 0.0
 var rooms: Dictionary = {}
 var _rng: RandomNumberGenerator
 var _basement_active: bool = false
+var _basement_escaped: bool = false
 
 
 func _ready() -> void:
@@ -35,6 +36,12 @@ func _ready() -> void:
 	_rng = RandomNumberGenerator.new()
 	if GameManager.seed_manager:
 		_rng.seed = GameManager.seed_manager.get_seed() * 313
+
+
+func _exit_tree() -> void:
+	# Cleanup: disconnect player_died signal if still connected
+	if GameManager.player_died.is_connected(_on_player_died):
+		GameManager.player_died.disconnect(_on_player_died)
 
 
 ## Called when player enters basement from a specific floor.
@@ -51,6 +58,10 @@ func enter_basement(floor_number: int) -> void:
 
 	# Spawn enemies based on floor scaling
 	_spawn_basement_enemies(floor_number)
+
+	# Connect player death signal
+	if not GameManager.player_died.is_connected(_on_player_died):
+		GameManager.player_died.connect(_on_player_died)
 
 	# Position player at START room
 	_position_player_at_start()
@@ -86,10 +97,18 @@ func _process(delta: float) -> void:
 
 ## Player reached exit stairs.
 func _on_exit_reached(_body: Node2D) -> void:
+	if _basement_escaped:
+		return
 	if _body == null:
 		return
 	if not _body.is_in_group("player"):
 		return
+
+	_basement_escaped = true
+
+	# Disconnect player_died signal — no longer needed after escape
+	if GameManager.player_died.is_connected(_on_player_died):
+		GameManager.player_died.disconnect(_on_player_died)
 
 	# Restore player weapons
 	_restore_weapons()
@@ -119,6 +138,8 @@ func _on_player_died() -> void:
 
 ## Strip all weapons except 1 random melee. If no melee, give Knife.
 func _strip_weapons() -> void:
+	if _rng == null:
+		_rng = RandomNumberGenerator.new()
 	player_weapons_backup.clear()
 	var rs: RunState = GameManager.run_state
 	if rs == null:
@@ -140,7 +161,7 @@ func _strip_weapons() -> void:
 	allowed_weapon_id = ""
 	if melee_weapons.is_empty():
 		# Give Knife (worst case backup)
-		var knife_path := "res://resources/weapons/knife.tres"
+		var knife_path := "res://resources/weapons/melee_knife.tres"
 		if ResourceLoader.exists(knife_path):
 			rs.weapon_slots[0] = load(knife_path)
 			allowed_weapon_id = "knife"
@@ -179,9 +200,7 @@ func _spawn_basement_enemies(floor_number: int) -> void:
 	var speed_mult: float = scaling["speed"]
 	var enemy_scenes: Dictionary = es.ENEMY_SCENES
 
-	_rng = RandomNumberGenerator.new()
-	if GameManager.seed_manager:
-		_rng.seed = GameManager.seed_manager.get_seed() * 997
+	# Use existing _rng from _ready (preserves determinism)
 
 	var total_count := _rng.randi_range(enemy_range[0], enemy_range[1])
 

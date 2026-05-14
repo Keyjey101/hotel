@@ -172,7 +172,7 @@ func _perform_attack() -> void:
 	# Sedative touch: apply slow directly to the player
 	if _target.has_method("apply_slow"):
 		_target.apply_slow(0.5, 3.0)		
-	AudioManager.SFXPlayer.play_sfx("enemy_attack")
+	AudioManager.SFXPlayer.play_sfx("enemy_grab")
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +186,8 @@ func _begin_heal_channel() -> void:
 
 
 func _complete_heal() -> void:
+	if _disabled:
+		return
 	_heal_cooldown = HEAL_COOLDOWN_TIME
 
 	var enemies := get_tree().get_nodes_in_group("enemy")

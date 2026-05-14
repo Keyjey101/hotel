@@ -181,7 +181,10 @@ func _perform_kiss() -> void:
 	EventBus.player_captured.emit()
 
 	var cooldown_timer := get_tree().create_timer(3.0)
-	cooldown_timer.timeout.connect(func() -> void: _kiss_on_cooldown = false)
+	cooldown_timer.timeout.connect(func() -> void:
+		if not is_instance_valid(self): return
+		_kiss_on_cooldown = false
+	)
 
 	_begin_retreat()
 
@@ -216,7 +219,7 @@ func _move_toward_bodyguard(delta: float) -> void:
 	else:
 		_retreating_to_guard = false
 		aggression = _base_aggression
-		var away_dir := global_position.direction_to(_target.global_position) * -1.0 if _target else Vector2.ZERO
+		var away_dir := global_position.direction_to(_target.global_position) * -1.0 if _target and is_instance_valid(_target) else Vector2.ZERO
 		velocity = away_dir * move_speed * 0.7
 
 

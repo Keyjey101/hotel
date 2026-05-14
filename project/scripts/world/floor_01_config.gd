@@ -22,9 +22,7 @@ var is_locked: bool = false
 
 
 static func _make(cfg: Dictionary):
-	# Create instance via load since class_name self-reference not allowed in static
-	var script := load("res://scripts/world/floor_01_config.gd")
-	var rc = script.new()
+	var rc = RoomConfig.new()
 	rc.room_id = cfg["room_id"]
 	rc.room_name = cfg["room_name"]
 	rc.room_type = cfg["room_type"]

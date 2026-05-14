@@ -39,9 +39,39 @@ signal artifact_collected(artifact_data: Resource)
 
 ## IMPORTANT: EventBus is a singleton Autoload. Do NOT re-instantiate or reload it.
 
+var _conn_limb_severed: Callable
+var _conn_weapon_thrown: Callable
+var _conn_basement_escaped: Callable
+
 
 func _ready() -> void:
-	enemy_limb_severed.connect(func(_e, _z): limb_severed.emit())
-	weapon_thrown.connect(func(_w, _o, _d): weapon_was_thrown.emit())
-	if GameManager and GameManager.has_signal("basement_escaped"):
-		GameManager.basement_escaped.connect(func(): basement_was_escaped.emit())
+	_conn_limb_severed = func(_e, _z): limb_severed.emit()
+	_conn_weapon_thrown = func(_w, _o, _d): weapon_was_thrown.emit()
+	enemy_limb_severed.connect(_conn_limb_severed)
+	weapon_thrown.connect(_conn_weapon_thrown)
+	if GameManager != null and GameManager.has_signal("basement_escaped"):
+		_conn_basement_escaped = func(): basement_was_escaped.emit()
+		GameManager.basement_escaped.connect(_conn_basement_escaped)
+	elif GameManager == null:
+		get_tree().node_added.connect(_on_node_added_for_gamemanager)
+
+
+func _exit_tree() -> void:
+	if enemy_limb_severed.is_connected(_conn_limb_severed):
+		enemy_limb_severed.disconnect(_conn_limb_severed)
+	if weapon_thrown.is_connected(_conn_weapon_thrown):
+		weapon_thrown.disconnect(_conn_weapon_thrown)
+	if _conn_basement_escaped.is_valid() and GameManager != null and GameManager.basement_escaped.is_connected(_conn_basement_escaped):
+		GameManager.basement_escaped.disconnect(_conn_basement_escaped)
+	if get_tree().node_added.is_connected(_on_node_added_for_gamemanager):
+		get_tree().node_added.disconnect(_on_node_added_for_gamemanager)
+
+
+func _on_node_added_for_gamemanager(node: Node) -> void:
+	if node.name == "GameManager" and node.has_signal("basement_escaped"):
+		if not _conn_basement_escaped.is_valid():
+			_conn_basement_escaped = func(): basement_was_escaped.emit()
+		if not node.basement_escaped.is_connected(_conn_basement_escaped):
+			node.basement_escaped.connect(_conn_basement_escaped)
+		if get_tree().node_added.is_connected(_on_node_added_for_gamemanager):
+			get_tree().node_added.disconnect(_on_node_added_for_gamemanager)

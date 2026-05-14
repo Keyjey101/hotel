@@ -5,6 +5,7 @@
 ## Blood: shifts with palette | BG: shifts with phases
 ## 8 rooms — intentionally smaller, escalation not sprawl.
 
+extends "res://scripts/world/floor_01_config.gd"
 const F9_FLOOR_P1 := Color(0.941, 0.941, 0.941, 1.0)  # #F0F0F0 sterile white
 const F9_FLOOR_P3 := Color(0.102, 0.039, 0.039, 1.0)  # #1A0A0A encroaching black
 const F9_WALL := Color(0.08, 0.08, 0.08, 1.0)
@@ -148,7 +149,7 @@ static func get_floor_09_rooms() -> Dictionary:
 		"floor_color": Color(0.04, 0.04, 0.04, 1.0),  # #0A0A0A near void
 		"wall_color": Color(0.02, 0.02, 0.02, 1.0),
 		"enemies": [{"type": "satan", "count": 1}],
-		"loot": [{"type": "cult_artifact", "id": "void_contract"}],
+		"loot": [{"type": "cult_artifact", "id": _safe_artifact_id("a12_void_contract")}],
 		"connections": ["boss1"],
 		"spawn_point_positions": RoomConfig._gen_spawn_points(Vector2(18 * TILE, 14 * TILE), 10),
 		"loot_zone_positions": RoomConfig._gen_loot_zones(Vector2(18 * TILE, 14 * TILE), 1),
@@ -161,6 +162,14 @@ static func get_floor_09_rooms() -> Dictionary:
 	})
 
 	return rooms
+
+
+## Safely resolve an artifact ID, deferring to "random" if ArtifactRegistry
+## is not yet available (e.g. static context during early initialization).
+static func _safe_artifact_id(artifact_id: String) -> String:
+	if ArtifactRegistry != null and ArtifactRegistry.get_artifact(artifact_id) != null:
+		return artifact_id
+	return "random"
 
 
 ## Apply Floor 9-specific elements: shifting palette, Memory Hall fragments

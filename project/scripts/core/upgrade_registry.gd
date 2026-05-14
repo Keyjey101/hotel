@@ -39,8 +39,14 @@ func get_random_upgrade_for_floor(floor_number: int, rng: RandomNumberGenerator)
 	# Filter upgrades available for this floor
 	var candidates: Array = []
 	var weights: Array = []
+	var unlocked_ids: Array = []
+	if SaveManager:
+		var meta := SaveManager.get_meta()
+		unlocked_ids = meta.get("unlocked_starting_stat_upgrades", [])
 	for upg in _all_upgrades:
 		if _is_available_on_floor(upg, floor_number):
+			if unlocked_ids.size() > 0 and upg.id not in unlocked_ids:
+				continue
 			candidates.append(upg)
 			var weight: float = float(upg.get("spawn_weight", 1.0))
 			weights.append(weight)
@@ -49,6 +55,11 @@ func get_random_upgrade_for_floor(floor_number: int, rng: RandomNumberGenerator)
 		if _all_upgrades.is_empty():
 			return null
 		candidates = _all_upgrades.duplicate()
+		if unlocked_ids.size() > 0:
+			candidates = candidates.filter(func(u): return u.id in unlocked_ids)
+		else:
+			# No unlock data available — only use upgrades that are available on this floor
+			candidates = candidates.filter(func(u): return _is_available_on_floor(u, floor_number))
 		weights.clear()
 		for upg in candidates:
 			weights.append(float(upg.get("spawn_weight", 1.0)))
@@ -59,6 +70,8 @@ func get_random_upgrade_for_floor(floor_number: int, rng: RandomNumberGenerator)
 	var total := 0.0
 	for w in weights:
 		total += w
+	if total <= 0.0:
+		return candidates[rng.randi_range(0, candidates.size() - 1)]
 	var roll := rng.randf() * total
 	var accumulated := 0.0
 	for i in range(candidates.size()):
@@ -72,15 +85,18 @@ func get_random_upgrade_for_floor(floor_number: int, rng: RandomNumberGenerator)
 
 func _is_available_on_floor(upg: StatUpgrade, floor_number: int) -> bool:
 	var floors_str: String = upg.spawn_floors
-	if floors_str == "1-9":
+	if floors_str == "" or floors_str == "1-9":
 		return true
-	# Parse "3-9" format
+	# Parse "3-9" or "5" format
 	var parts := floors_str.split("-")
 	if parts.size() == 2:
 		var min_floor := int(parts[0])
 		var max_floor := int(parts[1])
 		return floor_number >= min_floor and floor_number <= max_floor
-	return true
+	if parts.size() == 1:
+		var specific_floor := int(parts[0])
+		return floor_number == specific_floor
+	return false
 
 
 func get_all_upgrades() -> Array:

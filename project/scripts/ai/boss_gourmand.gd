@@ -1,4 +1,7 @@
 extends "res://scripts/ai/base_enemy.gd"
+
+const HAZARD_ZONE_SCENE := preload("res://scenes/combat/hazard_zone.tscn")
+
 ## The Gourmand — Floor 3 Banquet Hall boss (Gluttony).
 ## Consumption/growth system: eats corpses to grow bigger and stronger.
 ## 3 phases: Appetizer → Main Course → Digestif.
@@ -56,6 +59,7 @@ const GRAB_DPS: float = 10.0
 var _summon_timer: float = 15.0
 var _summon_count: int = 0
 const MAX_SUMMONS: int = 6
+var _summon_scene: PackedScene = null
 
 # ── Arena center ──────────────────────────────────────────────
 var _arena_center: Vector2 = Vector2.ZERO
@@ -94,6 +98,15 @@ func _ready() -> void:
 	_rng = _get_boss_rng()
 	add_to_group("boss")
 	_arena_center = global_position
+
+	# Pre-load summon scenes to avoid load() during physics process
+	var staff_path := "res://scenes/enemies/staff.tscn"
+	var taster_path := "res://scenes/enemies/taster.tscn"
+	if ResourceLoader.exists(staff_path):
+		# Store both scenes; _try_summon_enemy will pick based on phase
+		set_meta("_staff_scene", load(staff_path))
+	if ResourceLoader.exists(taster_path):
+		set_meta("_taster_scene", load(taster_path))
 
 	_select_phase_patterns()
 	if _target == null:
@@ -214,7 +227,6 @@ func _state_engage(delta: float) -> void:
 		var next_pos := navigation.get_next_path_position()
 		var dir := (next_pos - global_position).normalized()
 		velocity = dir * move_speed
-		move_and_slide()
 
 
 func _state_retreat(_delta: float) -> void:
@@ -255,7 +267,6 @@ func _move_to_corpse(delta: float) -> void:
 	var dir := (nearest.global_position - global_position).normalized()
 	velocity = dir * move_speed
 	_direction = dir
-	move_and_slide()
 
 	# Check if close enough to eat
 	var dist := global_position.distance_to(nearest.global_position)
@@ -482,11 +493,7 @@ func belly_bump() -> void:
 func vomit_spray() -> void:
 	# Cone attack: 15 dmg + slow 30% for 3s
 	# Create a hazard zone cone in front
-	var zone_scene := load("res://scenes/combat/hazard_zone.tscn")
-	if zone_scene == null:
-		_finish_attack()
-		return
-	var zone = zone_scene.instantiate()
+	var zone = HAZARD_ZONE_SCENE.instantiate()
 	zone.damage_per_second = 5.0
 	zone.slow_factor = 0.7
 	zone.duration = 3.0
@@ -542,7 +549,24 @@ func _process_flop(delta: float) -> void:
 		# Land
 		global_position = _flop_target_pos
 		_is_flopping = false
-		collision_mask = _original_collision_mask  # Restore default
+		# Check for overlaps before restoring collision mask
+		collision_mask = _original_collision_mask
+		# Nudge away from any overlapping geometry
+		if is_inside_tree():
+			var space := get_world_2d().direct_space_state
+			var params := PhysicsPointQueryParameters2D.new()
+			params.position = global_position
+			params.collision_mask = _original_collision_mask
+			params.exclude = [self.get_rid()]
+			var results := space.intersect_point(params)
+			if results.size() > 0:
+				# Nudge toward arena center to escape geometry
+				var nudge_dir := global_position.direction_to(_arena_center)
+				for _attempt in range(8):
+					global_position += nudge_dir * 10.0
+					var recheck := space.intersect_point(params)
+					if recheck.size() == 0:
+						break
 		_flop_height = 0.0
 
 		# AoE shockwave: 30 dmg + knockdown
@@ -592,7 +616,8 @@ func grab_devour() -> void:
 	var nearest_enemy := _find_nearest_enemy(80.0)
 	if nearest_enemy != null:
 		# Eat enemy instead of grabbing player
-		nearest_enemy._disable_enemy()
+		if nearest_enemy.has_method("_disable_enemy"):
+			nearest_enemy._disable_enemy()
 		corpses_eaten += 1
 		_apply_growth()
 		_heal_from_eating(30.0)
@@ -704,11 +729,7 @@ func _end_charge() -> void:
 
 func acid_pool() -> void:
 	# Persistent acid zone: 10 dmg/s, 6s, radius 48
-	var zone_scene := load("res://scenes/combat/hazard_zone.tscn")
-	if zone_scene == null:
-		_finish_attack()
-		return
-	var zone = zone_scene.instantiate()
+	var zone = HAZARD_ZONE_SCENE.instantiate()
 	zone.damage_per_second = 10.0
 	zone.slow_factor = 1.0
 	zone.duration = 6.0
@@ -765,21 +786,20 @@ func _try_summon_enemy() -> void:
 		return
 
 	var scene_path: String
+	var scene: PackedScene = null
 	match current_phase:
 		GourmandPhase.APPETIZER:
-			scene_path = "res://scenes/enemies/staff.tscn"
+			scene = get_meta("_staff_scene") as PackedScene
 			_summon_timer = 15.0
 		GourmandPhase.MAIN_COURSE:
-			scene_path = "res://scenes/enemies/taster.tscn"
+			scene = get_meta("_taster_scene") as PackedScene
 			_summon_timer = 20.0
 		GourmandPhase.DIGESTIF:
-			scene_path = "res://scenes/enemies/staff.tscn"
+			scene = get_meta("_staff_scene") as PackedScene
 			_summon_timer = 12.0
 		_:
 			_finish_attack()
 			return
-
-	var scene := load(scene_path) as PackedScene
 	if scene == null:
 		_finish_attack()
 		return

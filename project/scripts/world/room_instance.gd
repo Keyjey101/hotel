@@ -33,11 +33,11 @@ func _ready() -> void:
 	_collect_from_container("LootZones", loot_zones, "loot_zones")
 	_collect_from_container("Doors", doors, "doors")
 
-	for door in doors:
-		if door is Area2D and not door.body_entered.is_connected(_on_door_body_entered.bind(door)):
-			door.body_entered.connect(_on_door_body_entered.bind(door))
+	# Door signal connections are handled in _create_doors_from_config for
+	# config-created doors. Pre-existing scene doors are also wired there.
 
-	EventBus.enemy_disabled.connect(_enemy_disabled_callable)
+	if not EventBus.enemy_disabled.is_connected(_enemy_disabled_callable):
+		EventBus.enemy_disabled.connect(_enemy_disabled_callable)
 
 
 func _exit_tree() -> void:
@@ -62,11 +62,12 @@ func _collect_from_container(container_name: String, arr: Array, group_name: Str
 # ---------------------------------------------------------------------------
 
 var _activate_retries: int = 0
+var _signals_emitted: bool = false
+var _activate_sfx_played: bool = false
 
 func activate() -> void:
 	is_active = true
 	set_process(true)
-	AudioManager.SFXPlayer.play_sfx("door_open")
 	# Update camera bounds
 	var cameras := get_tree().get_nodes_in_group("camera")
 	if cameras.is_empty():
@@ -74,6 +75,9 @@ func activate() -> void:
 		if _activate_retries < 10:
 			call_deferred("activate")
 		return
+	if not _activate_sfx_played:
+		_activate_sfx_played = true
+		AudioManager.SFXPlayer.play_sfx("door_open")
 	for cam in cameras:
 		if cam.has_method("set_limits"):
 			cam.set_limits(room_bounds)
@@ -81,12 +85,15 @@ func activate() -> void:
 	for enemy in active_enemies:
 		if is_instance_valid(enemy):
 			enemy.process_mode = Node.PROCESS_MODE_INHERIT
-	player_entered.emit(self)
-	EventBus.room_entered.emit(GameManager.current_floor, room_id)
+	if not _signals_emitted:
+		_signals_emitted = true
+		player_entered.emit(self)
+		EventBus.room_entered.emit(GameManager.current_floor, room_id)
 
 
 func deactivate() -> void:
 	is_active = false
+	_activate_sfx_played = false
 	AudioManager.SFXPlayer.play_sfx("door_close")
 	# Freeze enemies — do NOT delete
 	for enemy in active_enemies:
@@ -134,8 +141,10 @@ func add_enemy(enemy_scene: PackedScene, position: Vector2) -> CharacterBody2D:
 func check_cleared() -> bool:
 	if is_cleared:
 		return true
+	# Clean up freed/disabled entries
+	active_enemies = active_enemies.filter(func(e): return is_instance_valid(e) and not (e.has_method("is_disabled") and e.is_disabled()))
 	for enemy in active_enemies:
-		if is_instance_valid(enemy) and not enemy.is_disabled():
+		if enemy.has_method("is_disabled") and not enemy.is_disabled():
 			return false
 	is_cleared = true
 	room_cleared.emit(self)

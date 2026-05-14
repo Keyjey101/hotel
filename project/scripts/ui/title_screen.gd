@@ -92,7 +92,7 @@ func _build_ui() -> void:
 	stats.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if SaveManager:
-		var records = SaveManager.load_records()
+		var records: Dictionary = SaveManager.load_records() if SaveManager else {}
 		stats.text = "Best: Floor %d  |  Runs: %d" % [records.get("deepest_floor", 0), records.get("total_runs", 0)]
 	else:
 		stats.text = ""
@@ -134,25 +134,28 @@ func _make_button(text: String) -> Button:
 
 
 func _on_stats_pressed() -> void:
-	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	if _stats_panel != null and is_instance_valid(_stats_panel):
 		return  # Already open
 	var stats_scene := preload("res://scenes/ui/stats_screen.tscn")
 	_stats_panel = stats_scene.instantiate()
-	_stats_panel.tree_exiting.connect(func(): _stats_panel = null)
+	_stats_panel.tree_exiting.connect(func(): if is_instance_valid(self): _stats_panel = null)
 	add_child(_stats_panel)
 
 
 func _on_new_run_pressed() -> void:
-	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	GameManager.show_loadout()
 
 
 func _on_settings_pressed() -> void:
-	AudioManager.SFXPlayer.play_sfx("ui_confirm")
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	if _settings_panel != null and is_instance_valid(_settings_panel):
 		return  # Already open
 	var settings_scene := preload("res://scenes/ui/settings_menu.tscn")
 	_settings_panel = settings_scene.instantiate()
-	_settings_panel.tree_exiting.connect(func(): _settings_panel = null)
+	_settings_panel.tree_exiting.connect(func(): if is_instance_valid(self): _settings_panel = null)
 	add_child(_settings_panel)

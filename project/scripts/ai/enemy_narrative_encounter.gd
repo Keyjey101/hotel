@@ -13,6 +13,7 @@ var _player_nearby: bool = false
 
 
 func _ready() -> void:
+	set_physics_process(false)
 	# Create interaction area for player proximity detection
 	var interaction_area := Area2D.new()
 	interaction_area.name = "InteractionArea"

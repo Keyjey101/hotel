@@ -15,6 +15,12 @@ var _ammo: Array = [0, 0]           # Current ammo per slot
 var _melee_pool: Node
 var _projectile_pool: Node
 var _thrown_pool: Node
+var _melee_hit_callable: Callable
+var _projectile_hit_callable: Callable
+var _thrown_hit_callable: Callable
+var _prev_melee_hit: Node = null
+var _prev_projectile: Node = null
+var _prev_thrown: Node = null
 
 
 func _ready() -> void:
@@ -74,7 +80,9 @@ func equip_weapon(weapon: WeaponData) -> void:
 
 	# Drop current weapon if replacing
 	if equipped[target_slot] != null:
-		_drop_weapon(equipped[target_slot], get_parent().global_position)
+		var parent := get_parent() as CharacterBody2D
+		if parent != null:
+			_drop_weapon(equipped[target_slot], parent.global_position)
 
 	equipped[target_slot] = weapon
 	active_slot = target_slot
@@ -100,6 +108,8 @@ func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
 
 	# Create melee hitbox
 	var hit = _melee_pool.get_instance()
+	if hit == null:
+		return
 	hit.setup(weapon, direction, get_parent())
 	var saved_pos := hit.global_position
 	# Reparent to scene tree if pooled
@@ -114,12 +124,14 @@ func melee_attack(weapon: WeaponData, direction: Vector2) -> void:
 	# Get melee damage multiplier from upgrades
 	var dmg_mult := _get_melee_damage_mult()
 
-	# Connect hit signal (clear old connections from pool reuse)
-	for conn in hit.hit.get_connections():
-		hit.hit.disconnect(conn.callable)
-	hit.hit.connect(func(target: Node2D, zone: int):
+	# Disconnect from previous hit instance if different
+	if _prev_melee_hit != null and is_instance_valid(_prev_melee_hit) and _melee_hit_callable.is_valid():
+		if _prev_melee_hit.hit.is_connected(_melee_hit_callable):
+			_prev_melee_hit.hit.disconnect(_melee_hit_callable)
+	_prev_melee_hit = hit
+	_melee_hit_callable = func(target: Node2D, zone: int):
 		_apply_damage_to_target(target, zone, weapon.damage * dmg_mult, weapon, true)
-	)
+	hit.hit.connect(_melee_hit_callable)
 
 
 func ranged_attack(weapon: WeaponData, direction: Vector2) -> void:
@@ -146,6 +158,8 @@ func ranged_attack(weapon: WeaponData, direction: Vector2) -> void:
 
 		var dir := direction.rotated(angle_offset)
 		var proj = _projectile_pool.get_instance()
+		if proj == null:
+			continue
 		proj.setup(weapon, dir, dmg_mult, weapon.piercing)
 		proj.global_position = get_parent().global_position
 		if proj.get_parent() != get_tree().current_scene:
@@ -155,14 +169,16 @@ func ranged_attack(weapon: WeaponData, direction: Vector2) -> void:
 				# Re-add to pool to avoid orphaning the projectile.
 				add_child(proj)
 				_projectile_pool.return_instance(proj)
-				return
+				continue
 			get_tree().current_scene.add_child(proj)
 
-		for conn in proj.hit.get_connections():
-			proj.hit.disconnect(conn.callable)
-		proj.hit.connect(func(target: Node2D, zone: int):
+		if _prev_projectile != null and is_instance_valid(_prev_projectile) and _projectile_hit_callable.is_valid():
+			if _prev_projectile.hit.is_connected(_projectile_hit_callable):
+				_prev_projectile.hit.disconnect(_projectile_hit_callable)
+		_prev_projectile = proj
+		_projectile_hit_callable = func(target: Node2D, zone: int):
 			_apply_damage_to_target(target, zone, weapon.damage * dmg_mult, weapon)
-		)
+		proj.hit.connect(_projectile_hit_callable)
 
 
 func throw_active_weapon(direction: Vector2) -> void:
@@ -176,18 +192,32 @@ func throw_active_weapon(direction: Vector2) -> void:
 
 	var throw_mult := _get_throw_damage_mult()
 	var thrown = _thrown_pool.get_instance()
+	if thrown == null:
+		return
 	thrown.setup(weapon, direction, throw_mult)
 	thrown.global_position = get_parent().global_position
 	# Reparent to scene tree if pooled
-	if thrown.get_parent() != get_tree().current_scene:
-		thrown.get_parent().remove_child(thrown)
-		get_tree().current_scene.add_child(thrown)
+	if is_instance_valid(get_tree().current_scene):
+		if thrown.get_parent() != get_tree().current_scene:
+			thrown.get_parent().remove_child(thrown)
+			get_tree().current_scene.add_child(thrown)
 
-	for conn in thrown.hit.get_connections():
-		thrown.hit.disconnect(conn.callable)
-	thrown.hit.connect(func(target: Node2D, zone: int):
+	if _prev_thrown != null and is_instance_valid(_prev_thrown) and _thrown_hit_callable.is_valid():
+		if _prev_thrown.hit.is_connected(_thrown_hit_callable):
+			_prev_thrown.hit.disconnect(_thrown_hit_callable)
+	_prev_thrown = thrown
+	_thrown_hit_callable = func(target: Node2D, zone: int):
 		_apply_damage_to_target(target, zone, weapon.throw_damage * throw_mult, weapon)
-	)
+	thrown.hit.connect(_thrown_hit_callable)
+
+	# Store weapon data and track thrown state so we can recover on miss
+	var _thrown_weapon_data := weapon
+	var _on_miss := func():
+		if not is_instance_valid(self):
+			return
+		# Spawn a weapon pickup at the thrown weapon's last position so the player can recover it
+		_drop_weapon(_thrown_weapon_data, thrown.global_position)
+	thrown.tree_exiting.connect(_on_miss)
 
 	# Remove from slot
 	equipped[active_slot] = null
@@ -203,17 +233,20 @@ func _drop_weapon(weapon: WeaponData, pos: Vector2) -> void:
 	var pickup := pickup_scene.instantiate()
 	pickup.weapon_data = weapon
 	pickup.global_position = pos
-	get_tree().current_scene.add_child(pickup)
+	if is_instance_valid(get_tree().current_scene):
+		get_tree().current_scene.add_child(pickup)
 	EventBus.weapon_dropped.emit(weapon)
 
 
 func _apply_damage_to_target(target: Node2D, zone: int, base_damage: float, weapon: WeaponData, is_melee: bool = false) -> void:
+	if target.has_method("is_disabled") and target.is_disabled():
+		return
 	if not target.has_method("receive_damage"):
 		return
 
 	# Apply limb multiplier
 	var limb_mult := 1.0
-	if zone != DamageZone.Zone.TORSO:
+	if DamageZone.is_limb(zone):
 		limb_mult = weapon.limb_damage_multiplier
 
 	var final_damage: float = base_damage * limb_mult

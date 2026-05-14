@@ -2,6 +2,7 @@
 ## All room data from 13_FLOOR_DESIGN.md section 5.
 ## Palette: floor #0E0E1E, walls #1A1A3A, accent #FFD700 gold, steel #5A6A7A, silver #C0C8D0.
 
+extends "res://scripts/world/floor_01_config.gd"
 const F4_FLOOR := Color(0.055, 0.055, 0.118, 1.0)  # #0E0E1E dark navy bg
 const F4_WALL := Color(0.102, 0.102, 0.227, 1.0)   # #1A1A3A dark navy
 const TILE := 32

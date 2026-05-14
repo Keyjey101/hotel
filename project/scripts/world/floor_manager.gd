@@ -27,7 +27,6 @@ const ENEMY_SCENES: Dictionary = {
 	"madame": "res://scenes/bosses/boss_madame.tscn",
 	"chef": "res://scenes/enemies/chef.tscn",
 	"taster": "res://scenes/enemies/taster.tscn",
-	"butcher": "res://scenes/enemies/butcher.tscn",
 	"gourmand": "res://scenes/bosses/boss_gourmand.tscn",
 	# Floor 4 — Vault (M7.2)
 	"banker": "res://scenes/enemies/banker.tscn",
@@ -48,7 +47,7 @@ const ENEMY_SCENES: Dictionary = {
 	"curator": "res://scenes/bosses/boss_curator.tscn",
 	# Floor 8 — Ballroom (M7.5)
 	"royal_guard": "res://scenes/enemies/royal_guard.tscn",
-	"champion_enemy": "res://scenes/enemies/champion.tscn",
+	"champion": "res://scenes/enemies/champion.tscn",
 	"consort": "res://scenes/bosses/boss_consort.tscn",
 	# Floor 9 — Satan's Sanctum (M7.6)
 	"demon": "res://scenes/enemies/demon.tscn",
@@ -59,11 +58,15 @@ const ENEMY_SCENES: Dictionary = {
 
 func _ready() -> void:
 	add_to_group("floor_manager")
-	EventBus.room_cleared.connect(_on_event_bus_room_cleared)
+	if EventBus:
+		EventBus.room_cleared.connect(_on_event_bus_room_cleared)
 
 	# Auto-load floor if GameManager has a run active
-	if GameManager.seed_manager and GameManager.current_state == GameManager.GameState.PLAYING:
-		load_floor(floor_number, GameManager.seed_manager)
+	if GameManager and GameManager.seed_manager and GameManager.current_state == GameManager.GameState.PLAYING:
+		await load_floor(floor_number, GameManager.seed_manager)
+		# Notify dependent nodes that rooms are now populated
+		if EventBus and EventBus.has_signal("floor_loaded"):
+			EventBus.floor_loaded.emit(floor_number)
 
 	# Register camera BEFORE spawning player (player._ready looks for camera group)
 	var cam := get_node_or_null("Camera")
@@ -78,9 +81,9 @@ func _ready() -> void:
 		spawn_player(spawn_node.global_position)
 
 	# Show tutorial on first run, Floor 1
-	if floor_number == 1:
+	if floor_number == 1 and SaveManager:
 		var settings := SaveManager.get_settings()
-		if not settings.get("tutorial_shown", false):
+		if settings != null and not settings.get("tutorial_shown", false):
 			_show_tutorial()
 
 
@@ -104,13 +107,16 @@ func spawn_player(spawn_pos: Vector2) -> void:
 
 
 func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
+	EnemySpawner.clear_cache()
 	floor_number = floor_num
 	for r in rooms.values():
 		if is_instance_valid(r):
 			if r.room_cleared.is_connected(_on_room_instance_cleared):
 				r.room_cleared.disconnect(_on_room_instance_cleared)
 			r.queue_free()
+	await get_tree().process_frame
 	rooms.clear()
+	_already_checked.clear()
 	room_configs.clear()
 	active_room_id = ""
 	has_key = false
@@ -152,6 +158,11 @@ func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 		rooms_container.name = "Rooms"
 		add_child(rooms_container)
 
+	# Cache floor extra scripts once before the loop
+	var floor_07_config_script = load("res://scripts/world/floor_07_config.gd") if floor_num == 7 else null
+	var floor_08_config_script = load("res://scripts/world/floor_08_config.gd") if floor_num == 8 else null
+	var floor_09_config_script = load("res://scripts/world/floor_09_config.gd") if floor_num == 9 else null
+
 	for room_id in room_configs:
 		var config: RoomConfig = room_configs[room_id]
 
@@ -164,14 +175,14 @@ func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 		rooms_container.add_child(room_instance)
 
 		# Floor 7: apply darkness zones, cameras, light sources
-		if floor_num == 7:
-			load("res://scripts/world/floor_07_config.gd").apply_floor_07_extras(room_instance)
+		if floor_07_config_script:
+			floor_07_config_script.apply_floor_07_extras(room_instance)
 		# Floor 8: apply chandeliers, carpet, gold fixtures
-		if floor_num == 8:
-			load("res://scripts/world/floor_08_config.gd").apply_floor_08_extras(room_instance)
+		if floor_08_config_script:
+			floor_08_config_script.apply_floor_08_extras(room_instance)
 		# Floor 9: apply memory hall fragments, narrative passages
-		if floor_num == 9:
-			load("res://scripts/world/floor_09_config.gd").apply_floor_09_extras(room_instance)
+		if floor_09_config_script:
+			floor_09_config_script.apply_floor_09_extras(room_instance)
 		rooms[room_id] = room_instance
 		room_instance.deactivate()
 		room_instance.room_cleared.connect(_on_room_instance_cleared)
@@ -318,7 +329,7 @@ func _spawn_enemies(room: RoomInstance, config: RoomConfig) -> void:
 		return
 
 	var enemy_count := 0
-	var spawn_points := room.spawn_points.duplicate()
+	var spawn_points: Array = room.spawn_points.duplicate()
 	var shuffle_rng := RandomNumberGenerator.new()
 	if GameManager.seed_manager:
 		# Create a local copy so we don't mutate the shared cached RNG
@@ -326,7 +337,14 @@ func _spawn_enemies(room: RoomInstance, config: RoomConfig) -> void:
 		shuffle_rng.seed = floor_rng.seed + hash("shuffle_%s" % room.room_id)
 	else:
 		shuffle_rng.seed = hash(room.room_id)
-	shuffle_rng.shuffle(spawn_points)
+		# Manual Fisher-Yates shuffle (RandomNumberGenerator has no shuffle() in Godot 4)
+		for __i in range(spawn_points.size() - 1, 0, -1):
+			var __j: int = shuffle_rng.randi_range(0, __i)
+			var __tmp = spawn_points[__i]
+			spawn_points[__i] = spawn_points[__j]
+			spawn_points[__j] = __tmp
+
+	var _scene_cache: Dictionary = {}
 
 	var spawn_idx := 0
 	for enemy_group: Dictionary in config.enemies:
@@ -342,7 +360,10 @@ func _spawn_enemies(room: RoomInstance, config: RoomConfig) -> void:
 			push_warning("FloorManager: enemy scene not found: %s" % scene_path)
 			continue
 
-		var scene: PackedScene = load(scene_path)
+		var scene: PackedScene = _scene_cache.get(scene_path, null) as PackedScene
+		if scene == null:
+			scene = load(scene_path)
+			_scene_cache[scene_path] = scene
 		var max_enemies := maxi(10, int(room.room_bounds.size.x * room.room_bounds.size.y / 10000.0))
 		for i in range(count):
 			if enemy_count >= max_enemies:
@@ -463,7 +484,10 @@ func _on_pickup_collected(body: Node2D, pickup: Area2D) -> void:
 						return
 					var weapon_rng := RandomNumberGenerator.new()
 					if GameManager.seed_manager:
-						weapon_rng = GameManager.seed_manager.get_floor_rng(floor_number)
+						var floor_rng := GameManager.seed_manager.get_floor_rng(floor_number)
+						weapon_rng.seed = hash(floor_rng.seed) + hash("weapon_" + str(loot_id))
+					else:
+						weapon_rng.seed = hash("weapon_" + str(loot_id))
 					weapon_id = available[weapon_rng.randi() % available.size()]
 			print("[FloorManager] Weapon picked up: %s" % weapon_id)
 			if player and player.has_node("WeaponManager"):

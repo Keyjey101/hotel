@@ -43,21 +43,27 @@ func _find_partner() -> void:
 		if g == self or not is_instance_valid(g):
 			continue
 		# Prefer guards that don't already have a partner assigned
-		if g.get("_partner") != null and is_instance_valid(g.get("_partner")) and g._partner != self:
+		var g_partner = g.get("_partner")
+		if g_partner != null and is_instance_valid(g_partner) and g_partner != self:
 			continue
 		var dist := global_position.distance_to(g.global_position)
 		if dist < best_dist:
 			best = g
 			best_dist = dist
 	if best != null:
+		var best_partner = best.get("_partner")
+		if best_partner != null and is_instance_valid(best_partner) and best_partner != self:
+			best_partner._partner = null
 		_partner = best
 		best._partner = self
 
 
 func _check_partner_alive() -> bool:
-	if _partner == null or not is_instance_valid(_partner):
+	var p = _partner
+	if p == null or not is_instance_valid(p):
+		_partner = null
 		return false
-	return not _partner._disabled
+	return not (p.has_method("is_disabled") and p.is_disabled())
 
 
 # ---------------------------------------------------------------------------
@@ -71,24 +77,26 @@ func _state_chase(delta: float) -> void:
 
 	var target_pos := _target.global_position
 	var has_alive_partner := _check_partner_alive()
+	var cached_partner := _partner
 
-	# Check if partner lost → more aggressive (+3)
-	if not has_alive_partner and _partner != null:
+	# Check if partner lost -> more aggressive (+3)
+	if not has_alive_partner and cached_partner != null:
 		aggression = _base_aggression + 3.0
 
-	if has_alive_partner and _partner.get("_target") != null and _partner._target == _target:
-		# Flanking: offset perpendicular to the player direction
-		var to_player := (target_pos - global_position).normalized()
-		var perpendicular := Vector2(-to_player.y, to_player.x)
-		# Offset away from partner's side
-		var partner_offset := global_position - _partner.global_position
-		var side: float = sign(perpendicular.dot(partner_offset))
-		if side == 0.0:
-			side = 1.0
-		var flank_target := target_pos + perpendicular * side * 100.0
-		navigation.target_position = flank_target
-	else:
-		navigation.target_position = target_pos
+	if has_alive_partner and cached_partner != null and is_instance_valid(cached_partner):
+		if cached_partner.get("_target") != null and cached_partner._target == _target:
+			# Flanking: offset perpendicular to the player direction
+			var to_player := (target_pos - global_position).normalized()
+			var perpendicular := Vector2(-to_player.y, to_player.x)
+			# Offset away from partner's side
+			var partner_offset := global_position - cached_partner.global_position
+			var side: float = sign(perpendicular.dot(partner_offset))
+			if side == 0.0:
+				side = 1.0
+			var flank_target := target_pos + perpendicular * side * 100.0
+			navigation.target_position = flank_target
+		else:
+			navigation.target_position = target_pos
 
 	var direction := navigation.get_next_path_position() - global_position
 	var dist := direction.length()
@@ -105,13 +113,16 @@ func _state_chase(delta: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _state_alert(delta: float) -> void:
-	# Radio alert: notify all guards
-	var guards := get_tree().get_nodes_in_group("guards")
-	for g in guards:
-		if g == self:
-			continue
-		if g.has_method("on_nearby_alert"):
-			g.on_nearby_alert(global_position)
+	# Radio alert: notify all guards (only once at start of alert)
+	if _state_timer > 0.9:
+		var guards := get_tree().get_nodes_in_group("guards")
+		for g in guards:
+			if g == self:
+				continue
+			if not is_instance_valid(g):
+				continue
+			if g.has_method("on_nearby_alert"):
+				g.on_nearby_alert(global_position)
 	super._state_alert(delta)
 
 

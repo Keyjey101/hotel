@@ -180,8 +180,9 @@ func _select_patterns(all: Array[String], required: String, rng: RandomNumberGen
 		var tmp = optional[i]
 		optional[i] = optional[j]
 		optional[j] = tmp
-	result.append(optional[0])
-	result.append(optional[1])
+	var pick_count := mini(2, optional.size())
+	for i in range(pick_count):
+		result.append(optional[i])
 	return result
 
 
@@ -225,19 +226,21 @@ func _spawn_wave_enemies(wave: int) -> void:
 			elif group["type"] == "berserker" and _berserker_scene != null:
 				scene = _berserker_scene
 
-				if scene != null:
-					var enemy := scene.instantiate() as CharacterBody2D
-					if enemy != null:
-						enemy.global_position = global_position + Vector2(_get_rng().randf_range(-100, 100), _get_rng().randf_range(-80, 80))
-						# Apply wave damage buff
-						if "attack_damage" in enemy:
-							enemy.attack_damage *= (1.0 + _wave_damage_buff)
-						# Connect death via EventBus.enemy_disabled (one-shot per enemy)
-						EventBus.enemy_disabled.connect(func(_e: CharacterBody2D) -> void:
-							if is_instance_valid(enemy) and _e == enemy:
-								enemy_died.emit(enemy)
-						, Object.CONNECT_ONE_SHOT)
+			if scene != null:
+				var enemy := scene.instantiate() as CharacterBody2D
+				if enemy != null:
+					enemy.global_position = global_position + Vector2(_get_rng().randf_range(-100, 100), _get_rng().randf_range(-80, 80))
+					# Connect death via EventBus.enemy_disabled — non-one-shot to avoid
+					# consuming signals from unrelated enemies. Disconnect manually.
+					var callable := func(_e: CharacterBody2D) -> void:
+						if is_instance_valid(enemy) and _e == enemy:
+							EventBus.enemy_disabled.disconnect(callable)
+							enemy_died.emit(enemy)
+					EventBus.enemy_disabled.connect(callable)
 					get_tree().current_scene.add_child(enemy)
+					# Apply wave damage buff AFTER add_child so _ready() has run
+					if "attack_damage" in enemy:
+						enemy.attack_damage *= (1.0 + _wave_damage_buff)
 			else:
 				print("[Champion] Wave enemy scene not found: %s" % group["type"])
 
@@ -287,6 +290,8 @@ func _process_descending(delta: float) -> void:
 		_enter_state("chase")
 		print("[Champion] Boss fight begins!")
 
+	move_and_slide()
+
 
 func _find_arena_center() -> Vector2:
 	var room := _find_room_instance()
@@ -308,7 +313,7 @@ func _screen_shake(duration: float) -> void:
 	var camera := get_tree().get_first_node_in_group("camera")
 	if camera and camera is Camera2D:
 		var cam := camera as Camera2D
-		var tween := create_tween()
+		var tween := cam.create_tween()
 		tween.tween_property(cam, "offset", Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.05)
 		tween.tween_property(cam, "offset", Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.05)
 		tween.tween_property(cam, "offset", Vector2(randf_range(-4, 4), randf_range(-4, 4)), 0.05)

@@ -5,6 +5,7 @@ extends "res://scripts/ai/base_enemy.gd"
 
 var _grab_active: bool = false
 var _original_grab_strength: float = 10.0
+var _grab_timer: Timer = null
 
 
 func _ready() -> void:
@@ -43,10 +44,13 @@ func grab_attempt() -> void:
 		EventBus.player_captured.emit()
 		# Player slowed 70% for 1.5s — handled by player script listening to signal
 		# If another enemy nearby → emit drag signal (full drag in M4)
-		get_tree().create_timer(1.5).timeout.connect(_release_grab)
+		_grab_timer = get_tree().create_timer(1.5)
+		_grab_timer.timeout.connect(_release_grab)
 
 
 func _release_grab() -> void:
+	if not is_instance_valid(self):
+		return
 	_grab_active = false
 
 
@@ -54,6 +58,8 @@ func _has_nearby_ally() -> bool:
 	var enemies := get_tree().get_nodes_in_group("enemy")
 	for e in enemies:
 		if e == self:
+			continue
+		if not is_instance_valid(e):
 			continue
 		if global_position.distance_to(e.global_position) <= 100.0:
 			return true
@@ -124,6 +130,15 @@ func _evaluate_mutilated_behavior() -> void:
 	# Handler NEVER retreats — override base evaluation
 	# The base class might transition to retreat; Handler ignores that
 	pass
+
+
+func _disable_enemy() -> void:
+	if _grab_timer and is_instance_valid(_grab_timer):
+		if _grab_timer.timeout.is_connected(_release_grab):
+			_grab_timer.timeout.disconnect(_release_grab)
+		_grab_timer = null
+	_grab_active = false
+	super._disable_enemy()
 
 
 func _perform_attack() -> void:

@@ -235,7 +235,9 @@ func _state_chase(delta: float) -> void:
 	# Crossbow if too far for halberd but within crossbow range
 	if dist_to_target > 80.0 and dist_to_target <= _crossbow_range:
 		velocity = dir * move_speed * 0.5  # Slow advance while shooting
-		_fire_crossbow()
+		if _attack_cooldown <= 0.0:
+			_fire_crossbow()
+			_attack_cooldown = 1.0 / attack_speed
 	else:
 		velocity = dir * move_speed
 
@@ -358,7 +360,7 @@ func _fire_crossbow() -> void:
 			bolt.queue_free()
 		# Apply damage only if player hasn't moved far from bolt arrival point
 		if _target != null and is_instance_valid(_target):
-			var dist := global_position.distance_to(_target.global_position)
+			var dist := target_pos.distance_to(_target.global_position)
 			if dist <= 30.0:
 				if _target.has_method("receive_damage"):
 					_target.receive_damage(_crossbow_damage, 0, false, 20.0, dir_to_target * -1.0)
@@ -444,3 +446,14 @@ func receive_command(cmd: String, target_pos: Vector2) -> void:
 		if _target == null or not is_instance_valid(_target):
 			_target = get_tree().get_first_node_in_group("player")
 		_enter_state("chase")
+
+
+func _disable_enemy() -> void:
+	super._disable_enemy()
+	# Clear commanded state so guard doesn't get stuck after re-enable
+	_commanded = false
+	_commanded_pos = Vector2.ZERO
+	_command_type = ""
+	_in_shield_wall = false
+	if _shield_wall_visual and is_instance_valid(_shield_wall_visual):
+		_shield_wall_visual.visible = false

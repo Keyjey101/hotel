@@ -68,6 +68,7 @@ func _spawn_wave(index: int) -> void:
 		return
 
 	current_wave = index
+	_enemy_cleanup_done.clear()
 	var config: Dictionary = wave_configs[index]
 	var types: Array = config.get("enemy_types", [])
 	var counts: Array = config.get("counts", [])
@@ -95,16 +96,17 @@ func _spawn_wave(index: int) -> void:
 			var enemy := _room_instance.add_enemy(scene, pos)
 			if enemy != null:
 				active_enemies.append(enemy)
+				enemy.tree_exited.connect(_on_enemy_tree_exited.bind(enemy.get_instance_id()))
 
 	print("[ArenaRoom] Wave %d spawned (%d enemies)" % [index, active_enemies.size()])
 
 
-# Enemy scene cache to avoid repeated load() calls
-var _enemy_scene_cache: Dictionary = {}
+# Enemy scene cache to avoid repeated load() calls — shared across all instances
+static var _shared_scene_cache: Dictionary = {}
 
 func _load_enemy_scene(type: String) -> PackedScene:
-	if _enemy_scene_cache.has(type):
-		return _enemy_scene_cache[type]
+	if _shared_scene_cache.has(type):
+		return _shared_scene_cache[type]
 	var paths: Dictionary = {
 		"gladiator": "res://scenes/enemies/gladiator.tscn",
 		"berserker": "res://scenes/enemies/berserker.tscn",
@@ -113,10 +115,10 @@ func _load_enemy_scene(type: String) -> PackedScene:
 	}
 	var path: String = paths.get(type, "")
 	if path.is_empty() or not ResourceLoader.exists(path):
-		_enemy_scene_cache[type] = null
+		_shared_scene_cache[type] = null
 		return null
 	var scene: PackedScene = load(path)
-	_enemy_scene_cache[type] = scene
+	_shared_scene_cache[type] = scene
 	return scene
 
 
@@ -167,7 +169,7 @@ func _check_wave_cleared() -> void:
 	# Filter out invalid/dead enemies
 	var alive: Array[CharacterBody2D] = []
 	for enemy in active_enemies:
-		if is_instance_valid(enemy) and not enemy.is_disabled():
+		if is_instance_valid(enemy) and not (enemy.has_method("is_disabled") and enemy.is_disabled()):
 			alive.append(enemy)
 	active_enemies = alive
 

@@ -7,10 +7,17 @@ signal continue_pressed()
 var _floor_label: Label
 var _stats_label: Label
 var _personal_best_label: Label
-var _auto_timer: Timer = null
+var _auto_timer: SceneTreeTimer = null
 var _continued: bool = false
 var _auto_cancelled: bool = false
 var _summary_active: bool = false
+
+
+func _exit_tree() -> void:
+	_auto_cancelled = true
+	if _auto_timer and is_instance_valid(_auto_timer):
+		_auto_timer.stop()
+		_auto_timer = null
 
 
 func _ready() -> void:
@@ -117,7 +124,10 @@ func show_summary(floor_number: int) -> void:
 	if AudioManager and AudioManager.SFXPlayer:
 		AudioManager.SFXPlayer.play_sfx("ui_floor_complete")
 	_auto_cancelled = false
-	get_tree().create_timer(3.0).timeout.connect(func():
+	_auto_timer = get_tree().create_timer(3.0)
+		_auto_timer.timeout.connect(func():
+		if not is_instance_valid(self):
+			return
 		if not _auto_cancelled and not _continued:
 			continue_pressed.emit()
 	)
@@ -154,6 +164,9 @@ func _refresh_stats() -> void:
 	)
 
 	# Personal best comparison
+	if not SaveManager:
+		_personal_best_label.text = ""
+		return
 	var records := SaveManager.load_records()
 	var best_floor: int = records.get("deepest_floor", 0)
 	var best_time: float = records.get("fastest_time", INF)

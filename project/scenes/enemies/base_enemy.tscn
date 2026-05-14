@@ -48,7 +48,7 @@ avoidance_enabled = true
 
 [node name="Hitbox" type="Area2D" parent="."]
 unique_name_in_owner = true
-collision_layer = 4
+collision_layer = 8
 collision_mask = 1
 groups = ["enemy_hitbox"]
 
@@ -59,16 +59,16 @@ shape = SubResource("CircleShape2D_hitbox")
 unique_name_in_owner = true
 
 [node name="TorsoHurtbox" type="Area2D" parent="HurtboxManager"]
-collision_layer = 3
-collision_mask = 6
+collision_layer = 4
+collision_mask = 48
 groups = ["enemy_hurtbox"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxManager/TorsoHurtbox"]
 shape = SubResource("RectangleShape2D_torso")
 
 [node name="HeadHurtbox" type="Area2D" parent="HurtboxManager"]
-collision_layer = 3
-collision_mask = 6
+collision_layer = 4
+collision_mask = 48
 groups = ["enemy_hurtbox"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxManager/HeadHurtbox"]
@@ -76,8 +76,8 @@ shape = SubResource("RectangleShape2D_head")
 transform = Transform2D(1, 0, 0, 1, 0, -10)
 
 [node name="LeftArmHurtbox" type="Area2D" parent="HurtboxManager"]
-collision_layer = 3
-collision_mask = 6
+collision_layer = 4
+collision_mask = 48
 groups = ["enemy_hurtbox"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxManager/LeftArmHurtbox"]
@@ -85,8 +85,8 @@ shape = SubResource("RectangleShape2D_arm_l")
 transform = Transform2D(1, 0, 0, 1, -10, 4)
 
 [node name="RightArmHurtbox" type="Area2D" parent="HurtboxManager"]
-collision_layer = 3
-collision_mask = 6
+collision_layer = 4
+collision_mask = 48
 groups = ["enemy_hurtbox"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxManager/RightArmHurtbox"]
@@ -94,8 +94,8 @@ shape = SubResource("RectangleShape2D_arm_r")
 transform = Transform2D(1, 0, 0, 1, 10, 4)
 
 [node name="LeftLegHurtbox" type="Area2D" parent="HurtboxManager"]
-collision_layer = 3
-collision_mask = 6
+collision_layer = 4
+collision_mask = 48
 groups = ["enemy_hurtbox"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxManager/LeftLegHurtbox"]
@@ -103,8 +103,8 @@ shape = SubResource("RectangleShape2D_leg_l")
 transform = Transform2D(1, 0, 0, 1, -5, 14)
 
 [node name="RightLegHurtbox" type="Area2D" parent="HurtboxManager"]
-collision_layer = 3
-collision_mask = 6
+collision_layer = 4
+collision_mask = 48
 groups = ["enemy_hurtbox"]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxManager/RightLegHurtbox"]

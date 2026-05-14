@@ -33,7 +33,7 @@ script = ExtResource("2")
 [node name="Hurtbox" type="Area2D" parent="."]
 unique_name_in_owner = true
 collision_layer = 1
-collision_mask = 4
+collision_mask = 8
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
 shape = SubResource("RectangleShape2D_hurtbox")
@@ -44,10 +44,14 @@ collision_layer = 2
 collision_mask = 3
 monitorable = false
 
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+shape = SubResource("RectangleShape2D_hurtbox")
+disabled = true
+
 [node name="PickupArea" type="Area2D" parent="."]
 unique_name_in_owner = true
 collision_layer = 0
-collision_mask = 7
+collision_mask = 135
 monitorable = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PickupArea"]
@@ -55,8 +59,8 @@ shape = SubResource("CircleShape2D_pickup")
 
 [node name="DetectionArea" type="Area2D" parent="."]
 unique_name_in_owner = true
-collision_layer = 0
-collision_mask = 0
+collision_layer = 1
+collision_mask = 4
 monitorable = false
 
 [node name="AnimPlayer" type="AnimationPlayer" parent="."]

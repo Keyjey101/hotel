@@ -8,6 +8,7 @@ signal quit_pressed
 
 var _settings_open: bool = false
 var _settings_ref: CanvasLayer = null
+var _closing: bool = false
 
 
 func _ready() -> void:
@@ -62,6 +63,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_resume() -> void:
+	if _closing:
+		return
+	_closing = true
 	if GameManager.current_state == GameManager.GameState.PAUSED:
 		GameManager.unpause_game()
 	queue_free()
@@ -84,6 +88,12 @@ func _on_settings() -> void:
 func _on_settings_closed() -> void:
 	_settings_open = false
 	_settings_ref = null
+
+
+func _exit_tree() -> void:
+	if _settings_ref and is_instance_valid(_settings_ref):
+		if _settings_ref.back_pressed.is_connected(_on_settings_closed):
+			_settings_ref.back_pressed.disconnect(_on_settings_closed)
 
 
 func _on_quit() -> void:

@@ -28,9 +28,13 @@ var _grab_cooldown: float = 10.0
 var _is_grabbing: bool = false
 var _grab_timer: float = 0.0
 var _is_blasting: bool = false
+var _blast_pending: bool = false
 
 # Mutilation
 var _arms_lost: int = 0
+
+# Pending steam blasts (timer-based, replacing await)
+var _pending_blasts: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -77,6 +81,7 @@ func _physics_process(delta: float) -> void:
 	_update_phase()
 	_process_fog_healing(delta)
 	_tick_timers(delta)
+	_process_pending_blasts(delta)
 	super._physics_process(delta)
 	_update_fog_visibility()
 
@@ -99,16 +104,16 @@ func _update_fog_state() -> void:
 
 func _update_phase() -> void:
 	var hp_pct: float = float(limb_health[DamageZone.Zone.TORSO]) / _max_torso_hp
-	var new_phase: int
+	var target_phase: int
 	if hp_pct > 0.6:
-		new_phase = 1
+		target_phase = 1
 	elif hp_pct > 0.25:
-		new_phase = 2
+		target_phase = 2
 	else:
-		new_phase = 3
-
-	if new_phase != _phase:
-		_phase = new_phase
+		target_phase = 3
+	# Phase transitions are one-directional only
+	if target_phase > _phase:
+		_phase = target_phase
 		_on_phase_changed()
 
 
@@ -170,6 +175,11 @@ func _state_chase(_delta: float) -> void:
 
 	# Faster in fog
 	var speed := 150.0 if is_in_fog else move_speed
+
+	# Stop moving while telegraphing steam blast
+	if _is_blasting or _blast_pending:
+		velocity = Vector2.ZERO
+		return
 
 	# Move toward player but prefer to stay in fog patches
 	navigation.target_position = _target.global_position
@@ -262,9 +272,11 @@ func _perform_sedative_touch() -> void:
 # ---------------------------------------------------------------------------
 
 func _perform_steam_blast() -> void:
-	if _is_blasting:
+	if _is_blasting or _blast_pending:
 		return
+	_blast_pending = true
 	if _target == null or not is_instance_valid(_target):
+		_blast_pending = false
 		return
 	var dist := global_position.distance_to(_target.global_position)
 	if dist > 200.0:
@@ -280,10 +292,30 @@ func _perform_steam_blast() -> void:
 	telegraph.z_index = 5
 	get_tree().current_scene.add_child(telegraph)
 
-	await get_tree().create_timer(0.3, true, false, true).timeout
-	if is_instance_valid(telegraph):
-		telegraph.queue_free()
+	# Store pending blast for deferred processing instead of await
+	_pending_blasts.append({
+		"telegraph_rect": telegraph,
+		"elapsed": 0.0,
+		"delay": 0.3,
+	})
 
+
+func _process_pending_blasts(delta: float) -> void:
+	var i := _pending_blasts.size() - 1
+	while i >= 0:
+		var entry: Dictionary = _pending_blasts[i]
+		entry["elapsed"] += delta
+		if entry["elapsed"] >= entry["delay"]:
+			var rect: ColorRect = entry["telegraph_rect"]
+			if is_instance_valid(rect):
+				rect.queue_free()
+			_blast_pending = false
+			_execute_steam_blast()
+			_pending_blasts.remove_at(i)
+		i -= 1
+
+
+func _execute_steam_blast() -> void:
 	if not is_instance_valid(self):
 		_is_blasting = false
 		return
@@ -299,7 +331,7 @@ func _perform_steam_blast() -> void:
 		_target.apply_stun(1.0)
 
 	# Hazard zone for visual
-	var zone = load("res://scenes/combat/hazard_zone.tscn").instantiate()
+	var zone = preload("res://scenes/combat/hazard_zone.tscn").instantiate()
 	zone.damage_per_second = 0.0
 	zone.slow_factor = 1.0
 	zone.duration = 0.5
@@ -376,7 +408,7 @@ func _make_fog_toxic() -> void:
 	for patch in fog_patches:
 		if not is_instance_valid(patch):
 			continue
-		var zone = load("res://scenes/combat/hazard_zone.tscn").instantiate()
+		var zone = preload("res://scenes/combat/hazard_zone.tscn").instantiate()
 		zone.damage_per_second = 3.0
 		zone.slow_factor = 0.7
 		zone.duration = 999.0  # Effectively permanent

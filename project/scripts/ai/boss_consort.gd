@@ -402,7 +402,15 @@ func _throw_dagger() -> void:
 	_move_projectile(dagger)
 
 
+var _active_dagger_count: int = 0
+const MAX_ACTIVE_DAGGERS := 5
+
 func _move_projectile(proj: Area2D) -> void:
+	if _active_dagger_count >= MAX_ACTIVE_DAGGERS:
+		if is_instance_valid(proj):
+			proj.queue_free()
+		return
+	_active_dagger_count += 1
 	var speed: float = proj.get_meta("speed", 250.0)
 	var dir: Vector2 = proj.get_meta("direction", Vector2.RIGHT)
 	var damage: float = proj.get_meta("damage", _dagger_damage)
@@ -413,8 +421,11 @@ func _move_projectile(proj: Area2D) -> void:
 	while is_instance_valid(proj) and is_instance_valid(self) and elapsed < lifetime:
 		await get_tree().physics_frame
 		if not is_instance_valid(self):
-			# Let the projectile continue flying even after boss death
-			break
+			_active_dagger_count -= 1
+			return
+		if not is_instance_valid(proj):
+			_active_dagger_count -= 1
+			return
 		var frame_delta: float = get_physics_process_delta_time()
 		elapsed += frame_delta
 		proj.global_position += dir * speed * frame_delta
@@ -425,8 +436,10 @@ func _move_projectile(proj: Area2D) -> void:
 				body.receive_damage(damage, DamageZone.Zone.TORSO, false, 30.0, dir * -1.0)
 				if is_instance_valid(proj):
 					proj.queue_free()
+				_active_dagger_count -= 1
 				return
 
+	_active_dagger_count -= 1
 	if is_instance_valid(proj):
 		proj.queue_free()
 
@@ -525,6 +538,9 @@ func _state_chase(delta: float) -> void:
 			var dir := global_position.direction_to(next_pos)
 			velocity = dir * move_speed
 			_direction = dir
+			var dist_p1 := global_position.distance_to(_target.global_position)
+			if dist_p1 <= attack_range:
+				_enter_state("engage")
 		2:
 			# More aggressive positioning
 			var safe_pos := _get_safe_position()
@@ -533,6 +549,9 @@ func _state_chase(delta: float) -> void:
 			var dir := global_position.direction_to(next_pos)
 			velocity = dir * move_speed * 1.2
 			_direction = dir
+			var dist_p2 := global_position.distance_to(_target.global_position)
+			if dist_p2 <= attack_range:
+				_enter_state("engage")
 		3:
 			# Personal chase — fast
 			navigation.target_position = _target.global_position
@@ -606,10 +625,10 @@ func _get_safe_position() -> Vector2:
 	if _target == null or not is_instance_valid(_target):
 		return global_position
 
-	# Position self opposite the player, behind guards
+	# Flanking position instead of retreating
 	var to_player := global_position.direction_to(_target.global_position)
-	var away_from_player := to_player * -1.0
-	return global_position + away_from_player * 60.0
+	var flank := Vector2(-to_player.y, to_player.x) * (1.0 if _consort_rng.randf() > 0.5 else -1.0)
+	return global_position + flank * 60.0
 
 
 # ---------------------------------------------------------------------------

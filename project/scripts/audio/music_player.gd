@@ -27,6 +27,7 @@ var _boss: AudioStreamPlayer
 var _silence_stream: AudioStream
 var _active_player: AudioStreamPlayer
 var _crossfade_tween: Tween = null
+var _floor09_version: int = 0
 
 
 func _ready() -> void:
@@ -79,9 +80,17 @@ func play_boss() -> void:
 	_active_player = _boss
 
 
+var _stop_tweens: Array[Tween] = []
+
+
 func stop_all(fade_time: float) -> void:
 	if _crossfade_tween and _crossfade_tween.is_valid():
 		_crossfade_tween.kill()
+	# Kill any lingering stop tweens before creating new ones
+	for tw in _stop_tweens:
+		if tw and tw.is_valid():
+			tw.kill()
+	_stop_tweens.clear()
 	var players := [_exploration, _combat, _boss]
 	for player in players:
 		if player and player.playing:
@@ -89,6 +98,7 @@ func stop_all(fade_time: float) -> void:
 				var tween := create_tween()
 				tween.tween_property(player, "volume_db", -80.0, fade_time)
 				tween.tween_callback(player.stop)
+				_stop_tweens.append(tween)
 			else:
 				player.stop()
 				player.volume_db = 0.0
@@ -105,8 +115,12 @@ func play_floor09_phase(phase: int) -> void:
 	# All phases use placeholder silence for now
 	match phase:
 		1:
+			_floor09_version += 1
+			var v := _floor09_version
 			stop_all(0.5)
 			await get_tree().process_frame
+			if not is_instance_valid(self) or _floor09_version != v:
+				return
 			_exploration.stream = _silence_stream
 			_exploration.play()
 		2:
@@ -116,8 +130,12 @@ func play_floor09_phase(phase: int) -> void:
 			_boss.stream = _silence_stream
 			_boss.play()
 		4:
+			_floor09_version += 1
+			var v := _floor09_version
 			stop_all(0.0)
 			await get_tree().process_frame
+			if not is_instance_valid(self) or _floor09_version != v:
+				return
 			_exploration.stream = _silence_stream
 			_exploration.play()
 
@@ -128,6 +146,8 @@ func _crossfade(from: AudioStreamPlayer, to: AudioStreamPlayer, duration: float)
 	to.play()
 
 	if _crossfade_tween and _crossfade_tween.is_valid():
+		from.volume_db = 0.0
+		from.stop()
 		_crossfade_tween.kill()
 	_crossfade_tween = create_tween()
 	_crossfade_tween.set_parallel(true)
@@ -142,7 +162,7 @@ func _generate_silence() -> AudioStream:
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_8_BITS
 	stream.mix_rate = 22050
-	stream.data = PackedByteArray([0, 0, 0, 0])
+	stream.data = PackedByteArray([128, 128, 128, 128])
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
 	stream.loop_end = 4

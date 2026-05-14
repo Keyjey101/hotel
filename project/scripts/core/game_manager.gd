@@ -95,18 +95,21 @@ func start_new_run() -> void:
 	_mini_boss_floors_cleared.clear()
 	_basement_escaped_this_run = false
 
-	run_started.emit(run_seed)
-	floor_entered.emit(current_floor)
-
 	# Save run state
 	SaveManager.save_run(run_state.to_dict())
 
 	# Load Floor 1
 	get_tree().change_scene_to_file("res://scenes/floors/floor_01.tscn")
+
+	# Emit signals deferred so handlers see the new scene after it loads
+	run_started.emit.call_deferred(run_seed)
+	floor_entered.emit.call_deferred(current_floor)
 	print("[GameManager] Run started. Seed: %d" % run_seed)
 
 
 func transition_to_floor(floor_number: int) -> void:
+	if run_state == null:
+		return
 	floor_exited.emit(current_floor)
 	current_floor = floor_number
 	run_state.current_floor = floor_number
@@ -145,23 +148,34 @@ func handle_player_death() -> void:
 
 func transition_to_basement() -> void:
 	basement_entered.emit()
-	get_tree().change_scene_to_file("res://scenes/basement/basement.tscn")
+	var err := get_tree().change_scene_to_file("res://scenes/basement/basement.tscn")
+	current_state = GameState.BASEMENT
+	if err != OK:
+		push_error("[GameManager] Failed to transition to basement (error %d)" % err)
+		_handling_death = false
+		current_state = GameState.GAME_OVER
+		player_died.emit()
+		run_ended.emit(false)
+		_commit_run_end("")
+		SaveManager.update_records(current_floor, run_state.get_run_time() if run_state else 0.0)
+		SaveManager.delete_run()
+		get_tree().change_scene_to_file("res://scenes/ui/game_over.tscn")
+		return
 	print("[GameManager] Player captured. Entering basement.")
 
 
 func handle_basement_success() -> void:
-	_handling_death = false
 	current_state = GameState.PLAYING
 	_basement_escaped_this_run = true
 	basement_escaped.emit()
 	SaveManager.save_run(run_state.to_dict())
 	# Check basement-related unlocks
 	_check_basement_unlocks()
+	_handling_death = false
 	print("[GameManager] Basement escaped. Returning to floor %d" % current_floor)
 
 
 func handle_basement_failure() -> void:
-	_handling_death = false
 	if run_state == null:
 		return
 	current_state = GameState.GAME_OVER
@@ -171,6 +185,10 @@ func handle_basement_failure() -> void:
 	_commit_run_end("")
 	SaveManager.update_records(current_floor, run_state.get_run_time())
 	SaveManager.delete_run()
+	if run_state:
+		run_state.cleanup()
+		run_state = null
+	_handling_death = false
 	get_tree().change_scene_to_file("res://scenes/ui/game_over.tscn")
 	print("[GameManager] Basement failed. Run over.")
 
@@ -189,6 +207,8 @@ func handle_mini_boss_cleared(floor_num: int) -> void:
 
 
 func handle_victory() -> void:
+	if run_state == null:
+		return
 	current_state = GameState.VICTORY
 	run_ended.emit(true)
 	# Commit pending unlocks with ending info
@@ -196,6 +216,9 @@ func handle_victory() -> void:
 	_commit_run_end(ending_id)
 	SaveManager.update_records(current_floor, run_state.get_run_time())
 	SaveManager.delete_run()
+	if run_state:
+		run_state.cleanup()
+		run_state = null
 	# Load ending scene or fallback to demo_complete
 	var scene_path := "res://scenes/endings/ending_%s.tscn" % ending_id
 	if ResourceLoader.exists(scene_path):
@@ -206,11 +229,16 @@ func handle_victory() -> void:
 
 
 func trigger_ending(ending_id: String) -> void:
+	if run_state == null:
+		return
 	current_state = GameState.VICTORY
 	run_ended.emit(true)
 	_commit_run_end(ending_id)
 	SaveManager.update_records(current_floor, run_state.get_run_time())
 	SaveManager.delete_run()
+	if run_state:
+		run_state.cleanup()
+		run_state = null
 	var scene_path := "res://scenes/endings/ending_%s.tscn" % ending_id
 	if ResourceLoader.exists(scene_path):
 		get_tree().change_scene_to_file(scene_path)
@@ -386,21 +414,27 @@ func _pending_unlock_stat(id: String, display_name: String) -> void:
 	print("[GameManager] Pending stat upgrade unlock: %s" % id)
 
 
+const UnlockToastScene := preload("res://scenes/ui/unlock_toast.tscn")
+
 func _show_unlock_toast(message: String) -> void:
 	# Instance toast overlay if in a valid scene
 	var tree := get_tree()
 	if tree == null or tree.current_scene == null:
 		return
 	var toast
-	if ResourceLoader.exists("res://scenes/ui/unlock_toast.tscn"):
-		toast = load("res://scenes/ui/unlock_toast.tscn").instantiate()
+	if UnlockToastScene != null:
+		toast = UnlockToastScene.instantiate()
 	else:
-		var toast_script := load("res://scripts/ui/unlock_toast.gd")
-		if toast_script == null:
-			return
-		toast = toast_script.new()
+		return
+	if toast == null:
+		return
 	tree.current_scene.add_child(toast)
-	toast.show_toast(message)
+	if toast.has_method("show_toast"):
+		toast.show_toast(message)
+	get_tree().create_timer(4.0, true, false, true).timeout.connect(func():
+		if is_instance_valid(toast):
+			toast.queue_free()
+	)
 
 
 func _is_unlocked(unlocked_list: Array, id: String) -> bool:
@@ -410,8 +444,7 @@ func _is_unlocked(unlocked_list: Array, id: String) -> bool:
 func _commit_run_end(ending_id: String) -> void:
 	if run_state == null:
 		return
-	var counters: Dictionary = {}
-	counters.merge(run_state.counters)
+	var counters: Dictionary = run_state.counters.duplicate(true)
 	SaveManager.commit_pending_unlocks(
 		_pending_artifact_unlocks.duplicate(),
 		_pending_stat_unlocks.duplicate(),

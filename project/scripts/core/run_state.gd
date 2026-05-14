@@ -38,6 +38,8 @@ var counters: Dictionary = {
 }
 
 
+var _cleaned_up: bool = false
+
 func _init() -> void:
 	run_start_time = Time.get_ticks_msec() / 1000.0
 	# Wire achievement counters to EventBus (deferred to handle autoload timing)
@@ -45,6 +47,8 @@ func _init() -> void:
 
 
 func _wire_events() -> void:
+	if _cleaned_up:
+		return
 	if EventBus:
 		if not EventBus.limb_severed.is_connected(_on_limb_severed):
 			EventBus.limb_severed.connect(_on_limb_severed)
@@ -60,7 +64,13 @@ func _wire_events() -> void:
 			EventBus.mini_boss_defeated.connect(_on_mini_boss_defeated)
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		cleanup()
+
+
 func cleanup() -> void:
+	_cleaned_up = true
 	if EventBus:
 		if EventBus.limb_severed.is_connected(_on_limb_severed):
 			EventBus.limb_severed.disconnect(_on_limb_severed)
@@ -132,7 +142,8 @@ func apply_upgrade(upg: Resource) -> void:
 	_upgrade_stack_counts[upg.id] = _upgrade_stack_counts.get(upg.id, 0) + 1
 	if upg.stat_key != "" and upg.behavioral_id == "":
 		var stat_stack_key := upg.stat_key
-		_upgrade_stack_counts[stat_stack_key] = _upgrade_stack_counts.get(stat_stack_key, 0) + 1
+		if stat_stack_key != upg.id:
+			_upgrade_stack_counts[stat_stack_key] = _upgrade_stack_counts.get(stat_stack_key, 0) + 1
 		apply_stat_upgrade(upg.stat_key, upg.delta)
 
 
@@ -171,7 +182,7 @@ func to_dict() -> Dictionary:
 		"player_max_hp": player_max_hp,
 		"player_speed": player_speed,
 		"active_slot": active_slot,
-		"stat_upgrades": stat_upgrades,
+		"stat_upgrades": stat_upgrades.duplicate(true),
 		"collected_upgrade_ids": collected_upgrade_ids,
 		"_upgrade_stack_counts": _upgrade_stack_counts,
 		"enemies_mutilated": enemies_mutilated,
@@ -196,7 +207,7 @@ func to_dict() -> Dictionary:
 		if ws == null:
 			d["weapon_slots"].append(null)
 		elif ws is Resource:
-			d["weapon_slots"].append({"resource_path": ws.resource_path, "resource_name": ws.resource_name})
+			d["weapon_slots"].append({"resource_path": ws.resource_path, "resource_name": ws.resource_name, "weapon_id": (ws.get("weapon_id") if ws.get("weapon_id") != null else "")})
 		else:
 			d["weapon_slots"].append(null)
 	for artifact in cult_artifacts:
@@ -208,7 +219,9 @@ func to_dict() -> Dictionary:
 
 
 static func from_dict(d: Dictionary) -> RunState:
-	if GameManager.run_state != null and GameManager.run_state is RunState:
+	if GameManager == null:
+		push_warning("[RunState] from_dict called but GameManager is null — save data may be lost. Populating available fields.")
+	elif GameManager.run_state != null and GameManager.run_state is RunState:
 		GameManager.run_state.cleanup()
 	var rs := RunState.new()
 	rs.current_floor = d.get("current_floor", 1)
@@ -234,11 +247,19 @@ static func from_dict(d: Dictionary) -> RunState:
 		rs.mini_boss_defeated[key] = mbd[key]
 	# Restore weapon_slots
 	var ws_arr: Array = d.get("weapon_slots", [null, null])
-	for i in range(mini(ws_arr.size(), 2)):
+	# Dynamic resize: support Crown of Thorns 3-slot and future expansion
+	var max_slots := maxi(ws_arr.size(), rs.weapon_slots.size())
+	while rs.weapon_slots.size() < max_slots:
+		rs.weapon_slots.append(null)
+	for i in range(mini(ws_arr.size(), max_slots)):
 		if ws_arr[i] == null:
 			rs.weapon_slots[i] = null
 		elif ws_arr[i] is Dictionary:
 			var path: String = ws_arr[i].get("resource_path", "")
+			if path.is_empty():
+				var wid: String = ws_arr[i].get("weapon_id", "")
+				if not wid.is_empty():
+					path = "res://resources/weapons/%s.tres" % wid
 			if not path.is_empty() and ResourceLoader.exists(path):
 				rs.weapon_slots[i] = load(path)
 	# Restore cult_artifacts
@@ -261,6 +282,10 @@ static func from_dict(d: Dictionary) -> RunState:
 	rs.bloodlust_timer = d.get("bloodlust_timer", 0.0)
 	rs.bloodlust_stacks = d.get("bloodlust_stacks", 0)
 	rs._recalculate_stats()
+	# Safety: if the caller did not assign this RunState to GameManager.run_state,
+	# clean up its signal connections to prevent EventBus leaks.
+	if GameManager == null or GameManager.run_state != rs:
+		rs.cleanup()
 	return rs
 
 

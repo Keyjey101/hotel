@@ -7,21 +7,21 @@ extends Node
 # Weapon loot weights (12_WEAPON_DESIGN.md section 7.2)
 const WEAPON_WEIGHTS: Dictionary = {
 	# Common (weight 10)
-	"knife": 10,
-	"pistol": 10,
-	"bottle": 10,
+	"melee_knife": 10,
+	"ranged_pistol": 10,
+	"melee_bottle": 10,
 	# Uncommon (weight 5)
-	"machete": 5,
-	"bat": 5,
-	"smg": 5,
-	"wire": 5,
+	"melee_machete": 5,
+	"melee_bat": 5,
+	"ranged_smg": 5,
+	"melee_wire": 5,
 	# Rare (weight 3)
-	"axe": 3,
-	"shotgun": 3,
-	"chair": 3,
+	"melee_axe": 3,
+	"ranged_shotgun": 3,
+	"melee_chair": 3,
 	# Very Rare (weight 1)
-	"cult_blade": 1,
-	"cult_pistol": 1,
+	"melee_cult_blade": 1,
+	"ranged_cult_pistol": 1,
 	# Ultra Rare (weight 0.5)
 	"cult_relic": 0.5,
 }
@@ -29,23 +29,23 @@ const WEAPON_WEIGHTS: Dictionary = {
 # Weapon availability per floor (12_WEAPON_DESIGN.md section 7.1)
 # true = available, false = not available
 const WEAPON_FLOOR_AVAILABILITY: Dictionary = {
-	"knife":       [1, 1, 1, 1, 1, 1, 1, 1, 1],
-	"pistol":      [1, 1, 1, 1, 1, 1, 1, 1, 1],
-	"bottle":      [1, 1, 1, 1, 1, 1, 1, 1, 1],
-	"machete":     [1, 1, 1, 1, 1, 1, 1, 1, 1],  # Start weapon
-	"bat":         [1, 1, 1, 1, 1, 1, 1, 1, 1],
-	"axe":         [1, 1, 1, 1, 1, 1, 1, 1, 1],
-	"smg":         [0, 1, 1, 1, 1, 1, 1, 1, 1],
-	"wire":        [0, 1, 1, 1, 1, 1, 1, 1, 1],
-	"shotgun":     [0, 0, 1, 1, 1, 1, 1, 1, 1],
-	"chair":       [1, 1, 1, 1, 1, 1, 1, 1, 1],
-	"cult_blade":  [0, 1, 1, 1, 1, 1, 1, 1, 1],  # Rare on F2
-	"cult_pistol": [0, 0, 1, 1, 1, 1, 1, 1, 1],  # Rare on F3-4
-	"cult_relic":  [0, 0, 0, 1, 0, 1, 0, 1, 1],  # Rare on F4,F6,F8,F9
+	"melee_knife":       [1, 1, 1, 1, 1, 1, 1, 1, 1],
+	"ranged_pistol":      [1, 1, 1, 1, 1, 1, 1, 1, 1],
+	"melee_bottle":      [1, 1, 1, 1, 1, 1, 1, 1, 1],
+	"melee_machete":     [1, 1, 1, 1, 1, 1, 1, 1, 1],
+	"melee_bat":         [1, 1, 1, 1, 1, 1, 1, 1, 1],
+	"melee_axe":         [1, 1, 1, 1, 1, 1, 1, 1, 1],
+	"ranged_smg":        [0, 1, 1, 1, 1, 1, 1, 1, 1],
+	"melee_wire":        [0, 1, 1, 1, 1, 1, 1, 1, 1],
+	"ranged_shotgun":    [0, 0, 1, 1, 1, 1, 1, 1, 1],
+	"melee_chair":       [1, 1, 1, 1, 1, 1, 1, 1, 1],
+	"melee_cult_blade":  [0, 1, 1, 1, 1, 1, 1, 1, 1],
+	"ranged_cult_pistol":[0, 0, 1, 1, 1, 1, 1, 1, 1],
+	"cult_relic":        [0, 0, 0, 1, 0, 1, 0, 1, 1],
 }
 
 # Starting loadout (01_GDD.md section 3.3)
-const STARTING_WEAPONS: Array[String] = ["machete", "sawed_off"]
+const STARTING_WEAPONS: Array[String] = ["melee_machete", "ranged_sawed_off"]
 
 # Stat upgrade types
 const STAT_UPGRADE_TYPES: Array[String] = [
@@ -280,6 +280,8 @@ static func _create_pickup_node(loot_item: Dictionary, pos: Vector2) -> Area2D:
 
 	# Connect body_entered for pickup collection
 	pickup.body_entered.connect(func(body: Node2D):
+		if not is_instance_valid(pickup):
+			return
 		if not body.is_in_group("player"):
 			return
 		if pickup.get_meta("collected", false):

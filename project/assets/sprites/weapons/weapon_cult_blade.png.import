@@ -1,12 +1,20 @@
 [remap]
+
 importer="texture"
 type="CompressedTexture2D"
-path="res://.godot/imported/weapon_cult_blade.png-7460bbccb6b6b27a.ctexture"
+uid="uid://dh4xaxkvpflrn"
+path="res://.godot/imported/weapon_cult_blade.png-ffad84e4e753385c5186d749bc633122.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
+
 source_file="res://assets/sprites/weapons/weapon_cult_blade.png"
+dest_files=["res://.godot/imported/weapon_cult_blade.png-ffad84e4e753385c5186d749bc633122.ctex"]
 
 [params]
+
 compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
@@ -16,6 +24,7 @@ compress/channel_pack=0
 mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
+roughness/src_normal=""
 process/fix_alpha_border=true
 process/premult_alpha=false
 process/normal_map_invert_y=false
@@ -23,4 +32,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0

@@ -44,11 +44,17 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_elapsed += delta
 	if _elapsed >= duration:
+		set_process(false)
 		# Remove slow from all affected bodies before freeing
 		var bodies := _affected_bodies.keys()
 		for body in bodies:
 			if is_instance_valid(body) and body.has_method("remove_hazard_slow"):
 				body.remove_hazard_slow(slow_factor)
+			# Disconnect tree_exiting callbacks to prevent stale calls
+			if _affected_bodies.has(body) and _affected_bodies[body].has("callable"):
+				if is_instance_valid(body) and body.tree_exiting.is_connected(_affected_bodies[body]["callable"]):
+					body.tree_exiting.disconnect(_affected_bodies[body]["callable"])
+		_affected_bodies.clear()
 		if body_entered.is_connected(_on_body_entered):
 			body_entered.disconnect(_on_body_entered)
 		if body_exited.is_connected(_on_body_exited):

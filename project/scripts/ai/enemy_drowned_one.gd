@@ -38,12 +38,8 @@ func _ready() -> void:
 	super._ready()
 	_rng = RandomNumberGenerator.new()
 	var gm := get_node_or_null("/root/GameManager")
-	if gm and gm.has_method("get_seed_manager"):
-		var sm = gm.get_seed_manager()
-		if sm and sm.has_method("get_seed_manager"):
-			_rng = sm.get_floor_rng(5)
-		else:
-			_rng.seed = hash("drowned_one") + get_instance_id()
+	if gm and gm.has_method("get_floor_rng"):
+		_rng = gm.get_floor_rng(5)
 	else:
 		_rng.seed = hash("drowned_one") + get_instance_id()
 

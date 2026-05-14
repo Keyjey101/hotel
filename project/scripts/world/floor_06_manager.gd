@@ -15,10 +15,19 @@ const LAYER_ENEMY := 2
 const LAYER_PROJECTILE := 4
 
 var _rng: RandomNumberGenerator
+var _arena_started: bool = false
 
 
-const HazardZoneScene := preload("res://scenes/combat/hazard_zone.tscn")
-const ArenaRoomScript := preload("res://scripts/world/arena_room.gd")
+var HazardZoneScene: PackedScene = null
+var ArenaRoomScript: GDScript = null
+
+
+func _ready() -> void:
+	super._ready()
+	if ResourceLoader.exists("res://scenes/combat/hazard_zone.tscn"):
+		HazardZoneScene = load("res://scenes/combat/hazard_zone.tscn")
+	if ResourceLoader.exists("res://scripts/world/arena_room.gd"):
+		ArenaRoomScript = load("res://scripts/world/arena_room.gd")
 
 func load_floor(floor_num: int, seed_mgr: SeedManager) -> void:
 	super.load_floor(floor_num, seed_mgr)
@@ -189,7 +198,11 @@ func _setup_arena_b1() -> void:
 
 	var arena := Node2D.new()
 	arena.name = "ArenaRoom"
-	arena.set_script(ArenaRoomScript)
+	if ArenaRoomScript == null:
+		return
+
+	room.add_child(arena)
+	arena.set_script.call_deferred(ArenaRoomScript)
 
 	# Configure waves for B1 per spec
 	var arena_script := arena as Node2D
@@ -206,10 +219,13 @@ func _setup_arena_b1() -> void:
 			"spawn_point_indices": [0, 1, 2],
 		},
 	])
-	room.add_child(arena)
 
 	# Connect room activation to arena start
 	room.player_entered.connect(_on_arena_room_entered.bind(arena))
+
+	# If room is already active (edge case), trigger arena manually
+	if room.is_active:
+		_on_arena_room_entered(room, arena)
 
 	# Collect door node paths relative to arena
 	var door_paths: Array[String] = []
@@ -220,6 +236,19 @@ func _setup_arena_b1() -> void:
 
 
 func _on_arena_room_entered(room: RoomInstance, arena: Node2D) -> void:
+	if not is_instance_valid(arena):
+		return
+	if _arena_started:
+		return
+	_arena_started = true
+	if not arena.is_node_ready():
+		await get_tree().process_frame
+	if not is_instance_valid(arena):
+		return
+	var player := get_tree().get_first_node_in_group("player") if is_instance_valid(get_tree()) else null
+	if not is_instance_valid(player):
+		_arena_started = false
+		return
 	if arena.has_method("start_arena"):
 		# Apply saved wave configs
 		if arena.has_meta("wave_configs"):

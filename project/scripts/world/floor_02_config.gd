@@ -2,6 +2,7 @@
 ## All room data from 13_FLOOR_DESIGN.md section 3.
 ## Palette: floor #1A0A15, walls #0A0A0F, accent #8B0035, neon #FF1A6D.
 
+extends "res://scripts/world/floor_01_config.gd"
 const F2_FLOOR := Color(0.102, 0.039, 0.082, 1.0)  # #1A0A15 dark red-black
 const F2_WALL := Color(0.039, 0.039, 0.059, 1.0)   # #0A0A0F near-black
 const TILE := 32

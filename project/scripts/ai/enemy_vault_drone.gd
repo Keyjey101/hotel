@@ -4,6 +4,8 @@ extends "res://scripts/ai/base_enemy.gd"
 ## Mechanical drone with no limbs — all damage redirected to torso.
 ## Shock attack and overcharge dash. Explodes on death.
 
+const HAZARD_SCENE := preload("res://scenes/combat/hazard_zone.tscn")
+
 # Overcharge state
 var _overcharge_charging: bool = false
 var _overcharge_timer: float = 0.0
@@ -92,8 +94,6 @@ func _create_spark_rect() -> void:
 # ---------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
-	if _disabled:
-		return
 
 	_process_overcharge(delta)
 	_process_spark(delta)
@@ -157,7 +157,6 @@ func receive_damage(damage: float, _zone: int, sever: bool, knockback_force: flo
 # ---------------------------------------------------------------------------
 
 func _death_explode() -> void:
-	_disabled = true
 	# AoE 15 damage to nearby bodies in radius 40px
 	var explosion_radius: float = 40.0
 	var bodies := get_tree().get_nodes_in_group("player")
@@ -173,7 +172,7 @@ func _death_explode() -> void:
 				target.receive_damage(15.0, DamageZone.Zone.TORSO, false, 20.0, global_position.direction_to(target.global_position))
 
 	# Spawn a brief hazard zone for visual effect
-	var hazard_scene: PackedScene = load("res://scenes/combat/hazard_zone.tscn")
+	var hazard_scene: PackedScene = HAZARD_SCENE
 	if hazard_scene != null:
 		var zone: Area2D = hazard_scene.instantiate()
 		zone.damage_per_second = 0.0
@@ -184,7 +183,6 @@ func _death_explode() -> void:
 		zone.global_position = global_position
 		get_tree().current_scene.add_child(zone)
 
-	EventBus.enemy_disabled.emit(self)
 	queue_free.call_deferred()
 
 
@@ -291,6 +289,33 @@ func _execute_overcharge() -> void:
 	var dir := global_position.direction_to(_target.global_position)
 	var dash_dist := global_position.distance_to(_target.global_position)
 	var dash_target := global_position + dir * dash_dist
+
+	# Check if destination is inside a wall before teleporting
+	if is_inside_tree():
+		# Use navigation server to find closest valid point
+		var map_rid := get_world_2d().navigation_map
+		var nav_point := NavigationServer2D.map_get_closest_point(map_rid, dash_target)
+		if nav_point.distance_to(dash_target) > 5.0:
+			dash_target = nav_point
+		var space := get_world_2d().direct_space_state
+		var params := PhysicsPointQueryParameters2D.new()
+		params.position = dash_target
+		params.collision_mask = collision_mask
+		params.exclude = [get_rid()]
+		var results := space.intersect_point(params)
+		if results.size() > 0:
+			# Destination is inside geometry — offset slightly toward self
+			var safe_dir := global_position.direction_to(dash_target) * -1.0
+			for attempt in range(4):
+				dash_target += safe_dir * 15.0
+				params.position = dash_target
+				var recheck := space.intersect_point(params)
+				if recheck.size() == 0:
+					break
+			else:
+				# Could not find a safe spot — abort teleport
+				_trigger_spark()
+				return
 
 	# Instant dash (teleport to target vicinity)
 	global_position = dash_target

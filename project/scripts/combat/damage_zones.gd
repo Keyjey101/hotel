@@ -13,8 +13,16 @@ enum Zone {
 }
 
 ## Returns true if the zone is a limb (not torso/head).
+## NOTE: HEAD is NOT considered a limb by is_limb(), but it IS tracked in
+## limb_health and severed_limbs. For checks that need to include HEAD
+## (e.g. severing, limb health), use is_severable() instead.
 static func is_limb(zone: Zone) -> bool:
 	return zone != Zone.HEAD and zone != Zone.TORSO
+
+## Returns true if the zone has its own health pool and can be severed.
+## This includes all limbs plus HEAD, but excludes TORSO.
+static func is_severable(zone: Zone) -> bool:
+	return zone != Zone.TORSO
 
 ## Returns true if the zone is an arm.
 static func is_arm(zone: Zone) -> bool:
@@ -24,7 +32,7 @@ static func is_arm(zone: Zone) -> bool:
 static func is_leg(zone: Zone) -> bool:
 	return zone == Zone.LEFT_LEG or zone == Zone.RIGHT_LEG
 
-static func name(zone: Zone) -> String:
+static func zone_name(zone: Zone) -> String:
 	match zone:
 		Zone.HEAD: return "head"
 		Zone.LEFT_ARM: return "left_arm"

@@ -6,6 +6,9 @@ extends Node
 
 const MAX_ENEMIES_PER_ROOM: int = 10
 
+# Scene cache to avoid repeated load() calls
+static var _scene_cache: Dictionary = {}
+
 # Enemy scene paths (M4: Floor 1 pool + placeholder entries for later floors)
 const ENEMY_SCENES: Dictionary = {
 	"staff": "res://scenes/enemies/staff.tscn",
@@ -122,7 +125,7 @@ static func spawn_enemies(room: RoomInstance, floor_number: int, room_index: int
 			else:
 				continue
 
-		var scene: PackedScene = load(scene_path)
+		var scene: PackedScene = _cached_load(scene_path)
 		var pos: Vector2 = room.spawn_points[point_idx].position
 
 		var enemy := room.add_enemy(scene, pos)
@@ -145,7 +148,14 @@ static func spawn_from_config(room: RoomInstance, enemies_config: Array[Dictiona
 	var speed_mult: float = scaling[1]
 
 	var spawn_points := room.spawn_points.duplicate()
-	spawn_points.shuffle()
+	var shuffle_rng := RandomNumberGenerator.new()
+	shuffle_rng.seed = hash(room.room_id) + floor_number
+	# Seeded Fisher-Yates shuffle instead of global shuffle()
+	for i in range(spawn_points.size() - 1, 0, -1):
+		var j := shuffle_rng.randi_range(0, i)
+		var tmp = spawn_points[i]
+		spawn_points[i] = spawn_points[j]
+		spawn_points[j] = tmp
 	var spawn_idx := 0
 	var enemy_count := 0
 
@@ -157,7 +167,7 @@ static func spawn_from_config(room: RoomInstance, enemies_config: Array[Dictiona
 		if scene_path.is_empty() or not ResourceLoader.exists(scene_path):
 			continue
 
-		var scene: PackedScene = load(scene_path)
+		var scene: PackedScene = _cached_load(scene_path)
 		for i in range(count):
 			if enemy_count >= MAX_ENEMIES_PER_ROOM:
 				return spawned
@@ -179,7 +189,8 @@ static func _apply_scaling(enemy: CharacterBody2D, hp_mult: float, speed_mult: f
 	# Scale HP — check for limb_health/torso_hp first (base_enemy), then max_hp/hp
 	if "limb_health" in enemy:
 		var lh: Dictionary = enemy.limb_health
-		for zone in lh:
+		var zones := lh.keys()
+		for zone in zones:
 			lh[zone] = float(lh[zone]) * hp_mult
 		if "torso_hp" in enemy:
 			enemy.torso_hp = float(enemy.torso_hp) * hp_mult
@@ -195,6 +206,22 @@ static func _apply_scaling(enemy: CharacterBody2D, hp_mult: float, speed_mult: f
 	# Store scaling metadata for reference
 	enemy.set_meta("floor_hp_mult", hp_mult)
 	enemy.set_meta("floor_speed_mult", speed_mult)
+
+
+## Cached scene loader — avoids repeated load() calls for the same path.
+static func _cached_load(scene_path: String) -> PackedScene:
+	if _scene_cache.has(scene_path):
+		return _scene_cache[scene_path]
+	var scene: PackedScene = load(scene_path)
+	if scene != null:
+		_scene_cache[scene_path] = scene
+	return scene
+
+
+## Clear the scene cache. Should be called on scene change to prevent
+## stale references from accumulating across floor transitions.
+static func clear_cache() -> void:
+	_scene_cache.clear()
 
 
 ## Basement-specific scaling (19_BASEMENT_DESIGN.md section 3.2)

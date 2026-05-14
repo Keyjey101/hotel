@@ -26,6 +26,14 @@ func _ready() -> void:
 
 
 func get_instance() -> Node:
+	if not is_inside_tree():
+		push_warning("[ObjectPool] get_instance called but pool is not in tree — _ready() never ran, pool is empty")
+		return null
+	if is_inside_tree() and _pool.is_empty():
+		for i in range(_initial_count):
+			_expand()
+	# Lazy cleanup: remove freed instances from _active
+	_active = _active.filter(func(n): return is_instance_valid(n))
 	if _pool.is_empty():
 		if _active.size() < _max_size:
 			_expand()
@@ -53,6 +61,9 @@ func get_instance() -> Node:
 			instance = _pool.pop_back()
 		else:
 			return null
+	# Reset state on reused instances
+	if instance.has_method("reset"):
+		instance.reset()
 	_active.append(instance)
 	instance.set_meta("_pool_busy", true)
 	instance.set_process(true)
@@ -85,6 +96,8 @@ func _return(instance: Node) -> void:
 
 func _expand() -> void:
 	if not is_inside_tree():
+		return
+	if _scene == null:
 		return
 	var instance: Node = _scene.instantiate()
 	instance.set_meta("_pool_busy", false)

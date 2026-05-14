@@ -29,6 +29,7 @@ var _invis_cooldown: float = 6.0
 # Shadow bolt
 var _bolt_cooldown: float = 0.0
 var _bolt_cooldown_max: float = 2.5
+var _active_bolts: Array[Dictionary] = []
 
 # Summon
 var _summon_cooldown: float = 0.0
@@ -399,6 +400,9 @@ func _fire_shadow_bolt() -> void:
 	bolt.set_meta("damage", 20.0)
 	bolt.set_meta("source", self)
 
+	# Connect tree_exiting to decrement bolt count if bolt is freed externally
+	bolt.tree_exiting.connect(_on_bolt_tree_exiting.bind(bolt))
+
 	get_tree().current_scene.add_child(bolt)
 	bolt.global_position = global_position
 
@@ -406,7 +410,19 @@ func _fire_shadow_bolt() -> void:
 	_move_projectile(bolt)
 
 
+var _active_bolt_count: int = 0
+const MAX_ACTIVE_BOLTS := 5
+
+func _on_bolt_tree_exiting(bolt: Area2D) -> void:
+	if _active_bolt_count > 0:
+		_active_bolt_count -= 1
+
 func _move_projectile(bolt: Area2D) -> void:
+	if _active_bolt_count >= MAX_ACTIVE_BOLTS:
+		if is_instance_valid(bolt):
+			bolt.queue_free()
+		return
+	_active_bolt_count += 1
 	var speed: float = bolt.get_meta("speed", 300.0)
 	var dir: Vector2 = bolt.get_meta("direction", Vector2.RIGHT)
 	var damage: float = bolt.get_meta("damage", 20.0)
@@ -414,9 +430,13 @@ func _move_projectile(bolt: Area2D) -> void:
 	var lifetime := 3.0
 	var elapsed := 0.0
 
-	while is_instance_valid(bolt) and elapsed < lifetime:
+	while is_instance_valid(bolt) and is_instance_valid(self) and elapsed < lifetime:
 		await get_tree().physics_frame
+		if not is_instance_valid(self):
+			_active_bolt_count -= 1
+			return
 		if not is_instance_valid(bolt):
+			_active_bolt_count -= 1
 			return
 		var frame_delta: float = get_physics_process_delta_time()
 		elapsed += frame_delta
@@ -429,8 +449,10 @@ func _move_projectile(bolt: Area2D) -> void:
 				body.receive_damage(damage, DamageZone.Zone.TORSO, false)
 				if is_instance_valid(bolt):
 					bolt.queue_free()
+				_active_bolt_count -= 1
 				return
 
+	_active_bolt_count -= 1
 	if is_instance_valid(bolt):
 		bolt.queue_free()
 
@@ -527,13 +549,14 @@ func _create_shadow_clone() -> void:
 	_shadow_clone.set("attack_damage", 5.0)  # 25% of Curator's
 	_shadow_clone.set("move_speed", 100.0)
 	_shadow_clone.modulate.a = 0.5
-	_shadow_clone.global_position = global_position + Vector2(60, 0)
 	# Set clone to chase state with player target
 	var players := get_tree().get_nodes_in_group("player")
 	if players.size() > 0:
 		_shadow_clone.set("_target", players[0])
 	get_tree().current_scene.add_child(_shadow_clone)
-	_shadow_clone.call("_enter_state", "chase")
+	_shadow_clone.global_position = global_position + Vector2(60, 0)
+	_shadow_clone.add_to_group("enemy")
+	_shadow_clone.call_deferred("_enter_state", "chase")
 
 
 # ---------------------------------------------------------------------------

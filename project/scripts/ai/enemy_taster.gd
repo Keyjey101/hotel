@@ -251,7 +251,8 @@ func _on_limb_lost(zone: int) -> void:
 	_spawn_poison_cloud(global_position, 2.0, 24.0, 10.0)
 
 	# Blood effect (poison-colored)
-	GoreSystem.spawn_blood_splash(global_position, _direction)
+	if is_instance_valid(GoreSystem):
+		GoreSystem.spawn_blood_splash(global_position, _direction)
 
 	# Check full dismemberment — big poison pool
 	var all_severed := true
@@ -274,11 +275,11 @@ func _spawn_poison_cloud(pos: Vector2, dps: float, radius: float, dur: float) ->
 	zone.duration = dur
 	zone.zone_color = Color(0.0, 1.0, 0.0)
 	zone.zone_radius = radius
-	zone.global_position = pos
 	zone.add_to_group("hazard_zone")
 	var parent := get_parent()
 	if parent:
 		parent.call_deferred("add_child", zone)
+		zone.set_deferred("global_position", pos)
 
 
 # ---------------------------------------------------------------------------

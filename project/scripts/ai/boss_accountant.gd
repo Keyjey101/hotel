@@ -5,6 +5,8 @@ extends "res://scripts/ai/base_enemy.gd"
 ## Phases: Audit (100-50%), Foreclosure (50-25%), Bankruptcy (25-0%).
 ## Design doc: 14_BOSS_DESIGN.md section 5.
 
+const HAZARD_ZONE_SCENE := preload("res://scenes/combat/hazard_zone.tscn")
+
 # Trap system
 var trap_zones: Array = []
 var lockdown_doors: Array[Area2D] = []
@@ -42,6 +44,12 @@ var _walls_revealed: bool = false
 # Phase tracking
 var _phase: int = 1
 var _max_torso_hp: float = 200.0
+
+var _hazard_pending: bool = false
+var _pending_hazards: Array[Dictionary] = []
+
+# Active gold projectiles (moved from await-loop to _physics_process tracking)
+var _active_gold_projectiles: Array[Dictionary] = []
 
 # Mutilation
 var _arms_lost: int = 0
@@ -98,6 +106,8 @@ func _physics_process(delta: float) -> void:
 	_update_phase()
 	if _phase >= 3:
 		_process_phase3_trap_decay()
+	_process_gold_projectiles(delta)
+	_process_pending_hazards(delta)
 	super._physics_process(delta)
 
 
@@ -187,7 +197,11 @@ func _state_engage(_delta: float) -> void:
 
 	var dir_to_player := global_position.direction_to(_target.global_position)
 	var strafe := Vector2(-dir_to_player.y, dir_to_player.x) * _strafe_dir
-	velocity = strafe * move_speed
+	# Stop moving while telegraphing a hazard
+	if _hazard_pending:
+		velocity = Vector2.ZERO
+	else:
+		velocity = strafe * move_speed
 	_direction = dir_to_player
 
 	# Activate traps (requires arms)
@@ -303,6 +317,9 @@ func _activate_all_traps() -> void:
 
 
 func _spawn_hazard_at_player(dps: float, dur: float, col: Color, radius: float, telegraph: float = 0.0) -> void:
+	if _hazard_pending:
+		return
+	_hazard_pending = true
 	var target_pos: Vector2 = global_position
 	if _target != null and is_instance_valid(_target):
 		target_pos = _target.global_position
@@ -315,15 +332,47 @@ func _spawn_hazard_at_player(dps: float, dur: float, col: Color, radius: float, 
 		telegraph_rect.color = Color(col.r, col.g, col.b, 0.3)
 		telegraph_rect.z_index = 5
 		get_tree().current_scene.add_child(telegraph_rect)
-		# Delay before actual hazard
-		await get_tree().create_timer(telegraph, true, false, true).timeout
-		if is_instance_valid(telegraph_rect):
-			telegraph_rect.queue_free()
 
-	if not is_instance_valid(self) or _disabled:
+		# Store pending hazard for deferred processing instead of await
+		_pending_hazards.append({
+			"telegraph_rect": telegraph_rect,
+			"target_pos": target_pos,
+			"dps": dps,
+			"dur": dur,
+			"col": col,
+			"radius": radius,
+			"elapsed": 0.0,
+			"telegraph": telegraph,
+		})
 		return
 
-	var zone := HazardZone.new()
+	_hazard_pending = false
+	_instantiate_hazard(target_pos, dps, dur, col, radius)
+
+
+func _process_pending_hazards(delta: float) -> void:
+	var i := _pending_hazards.size() - 1
+	while i >= 0:
+		var entry: Dictionary = _pending_hazards[i]
+		entry["elapsed"] += delta
+		if entry["elapsed"] >= entry["telegraph"]:
+			# Telegraph time elapsed — spawn the actual hazard
+			var rect: ColorRect = entry["telegraph_rect"]
+			if is_instance_valid(rect):
+				rect.queue_free()
+			_hazard_pending = false
+			if is_instance_valid(self) and not _disabled:
+				_instantiate_hazard(entry["target_pos"], entry["dps"], entry["dur"], entry["col"], entry["radius"])
+			else:
+				_hazard_pending = false
+			_pending_hazards.remove_at(i)
+		i -= 1
+
+
+func _instantiate_hazard(target_pos: Vector2, dps: float, dur: float, col: Color, radius: float) -> void:
+	var zone := HAZARD_ZONE_SCENE.instantiate() as HazardZone
+	if zone == null:
+		zone = HazardZone.new()
 	zone.damage_per_second = dps
 	zone.slow_factor = 1.0
 	zone.duration = dur
@@ -371,6 +420,8 @@ func _spawn_gold_projectile(dir: Vector2, damage: float) -> void:
 	proj.name = "GoldBar"
 	proj.global_position = global_position
 	proj.add_to_group("projectiles")
+	proj.collision_layer = 0
+	proj.collision_mask = 1  # Detect player on layer 1
 
 	var shape := RectangleShape2D.new()
 	shape.size = Vector2(8, 4)
@@ -392,32 +443,34 @@ func _spawn_gold_projectile(dir: Vector2, damage: float) -> void:
 	proj.body_entered.connect(_on_gold_bar_hit.bind(proj))
 
 	get_tree().current_scene.add_child(proj)
-	# Manual movement via scene tree — simple projectile
-	_move_projectile.bind(proj).call_deferred()
+	_active_gold_projectiles.append({
+		"proj": proj,
+		"direction": dir,
+		"speed": 200.0,
+		"elapsed": 0.0,
+		"lifetime": 3.0,
+	})
 
 
-func _move_projectile(proj: Area2D) -> void:
-	if not is_instance_valid(proj):
-		return
-	var dir: Vector2 = proj.get_meta("direction", Vector2.RIGHT)
-	var speed: float = proj.get_meta("speed", 200.0)
-	var lifetime: float = proj.get_meta("lifetime", 3.0)
-	var elapsed := 0.0
-
-	while is_instance_valid(proj) and elapsed < lifetime:
-		await get_tree().process_frame
+func _process_gold_projectiles(delta: float) -> void:
+	var i := _active_gold_projectiles.size() - 1
+	while i >= 0:
+		var entry: Dictionary = _active_gold_projectiles[i]
+		var proj: Area2D = entry["proj"]
 		if not is_instance_valid(proj):
-			return
-		if not is_instance_valid(self):
-			if is_instance_valid(proj):
-				proj.queue_free()
-			return
-		var frame_delta := get_physics_process_delta_time()
-		elapsed += frame_delta
-		proj.global_position += dir * speed * frame_delta
-
-	if is_instance_valid(proj):
-		proj.queue_free()
+			_active_gold_projectiles.remove_at(i)
+			i -= 1
+			continue
+		entry["elapsed"] += delta
+		if entry["elapsed"] >= entry["lifetime"]:
+			proj.queue_free()
+			_active_gold_projectiles.remove_at(i)
+			i -= 1
+			continue
+		var dir: Vector2 = entry["direction"]
+		var speed: float = entry["speed"]
+		proj.global_position += dir * speed * delta
+		i -= 1
 
 
 func _on_gold_bar_hit(body: Node2D, proj: Area2D) -> void:

@@ -2,6 +2,7 @@
 ## All room data from 13_FLOOR_DESIGN.md section 6.
 ## Palette: floor #D0E0E0, walls #8AABA0, accent #3CBEB0 turquoise, seafoam #B8D8D0.
 
+extends "res://scripts/world/floor_01_config.gd"
 const F5_FLOOR := Color(0.816, 0.878, 0.878, 1.0)  # #D0E0E0 light blue-grey
 const F5_WALL := Color(0.541, 0.671, 0.627, 1.0)   # #8AABA0 muted teal
 const TILE := 32

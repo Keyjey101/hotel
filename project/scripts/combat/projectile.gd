@@ -12,6 +12,7 @@ var _piercing: bool = false
 var _targets_hit: Array[Node2D] = []
 var _lifetime: float = 3.0
 var _returned_to_pool: bool = false
+var _lifetime_timer: SceneTreeTimer = null
 
 
 func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0, piercing: bool = false) -> void:
@@ -34,10 +35,19 @@ func setup(weapon: WeaponData, direction: Vector2, damage_mult: float = 1.0, pie
 	if lifetime_node:
 		lifetime_node.stop()
 		lifetime_node.start(_lifetime)
+	else:
+		# Disconnect old timer before creating new one to prevent accumulation
+		if _lifetime_timer and is_instance_valid(_lifetime_timer):
+			if _lifetime_timer.timeout.is_connected(_return_to_pool):
+				_lifetime_timer.timeout.disconnect(_return_to_pool)
+		_lifetime_timer = get_tree().create_timer(_lifetime)
+		_lifetime_timer.timeout.connect(_return_to_pool)
 
 
 func _ready() -> void:
-	$Lifetime.timeout.connect(_return_to_pool)
+	var lifetime_node = get_node_or_null("Lifetime")
+	if lifetime_node:
+		lifetime_node.timeout.connect(_return_to_pool)
 
 
 func _physics_process(delta: float) -> void:
@@ -68,6 +78,18 @@ func _return_to_pool() -> void:
 	velocity = Vector2.ZERO
 	_targets_hit.clear()
 	_lifetime = 3.0
+	# Disconnect lifetime timer to prevent double-fire
+	var lifetime_node = get_node_or_null("Lifetime")
+	if lifetime_node and lifetime_node.timeout.is_connected(_return_to_pool):
+		lifetime_node.timeout.disconnect(_return_to_pool)
+	if _lifetime_timer and is_instance_valid(_lifetime_timer):
+		if _lifetime_timer.timeout.is_connected(_return_to_pool):
+			_lifetime_timer.timeout.disconnect(_return_to_pool)
+	_lifetime_timer = null
+	# Disconnect hit signal connections to release closures
+	if has_signal("hit"):
+		for conn in hit.get_connections():
+			hit.disconnect(conn.callable)
 	set_process(false)
 	set_physics_process(false)
 	visible = false

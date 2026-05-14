@@ -93,8 +93,25 @@ func assert_lte(actual: float, expected: float, message: String = "") -> void:
 		_test_runner.report_failure(msg)
 
 
+func assert_null(value: Variant, message: String = "") -> void:
+	if value != null:
+		var msg := "Expected null, got %s" % str(value)
+		if message != "":
+			msg = message
+		_test_runner.report_failure(msg)
+
+
+func assert_not_null(value: Variant, message: String = "") -> void:
+	if value == null:
+		var msg := "Expected non-null value, got null"
+		if message != "":
+			msg = message
+		_test_runner.report_failure(msg)
+
+
 func assert_node_exists(group_name: String, message: String = "") -> void:
-	var node := Engine.get_main_loop().get_first_node_in_group(group_name) if Engine.get_main_loop() else null
+	var _ml := Engine.get_main_loop() as SceneTree
+	var node: Node = _ml.get_first_node_in_group(group_name) if _ml else null
 	if node == null:
 		var msg := "Expected node in group '%s' to exist" % group_name
 		if message != "":
@@ -108,7 +125,7 @@ func async_wait_for_signal(sig: Signal, timeout: float = 2.0) -> bool:
 		result = true
 	sig.connect(done, Object.CONNECT_ONE_SHOT)
 	# Wait with timeout
-	var timer := Engine.get_main_loop().create_timer(timeout)
+	var timer: SceneTreeTimer = (Engine.get_main_loop() as SceneTree).create_timer(timeout)
 	timer.one_shot = true
 	await timer.timeout
 	if sig.is_connected(done):

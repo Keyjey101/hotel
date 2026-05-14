@@ -7,6 +7,7 @@ extends StaticBody2D
 signal corpse_consumed(corpse: StaticBody2D)
 
 var is_consumed: bool = false
+var _is_destroyed: bool = false
 var corpse_hp: float = 30.0  # Player can attack to destroy
 var _visual: ColorRect = null
 var _fade_tween: Tween = null
@@ -27,11 +28,16 @@ func _ready() -> void:
 
 
 func consume() -> void:
-	if is_consumed:
+	if _is_destroyed:
 		return
+	_is_destroyed = true
 	is_consumed = true
 	corpse_consumed.emit(self)
 
+	# Disable collision before shrinking to avoid physics warnings
+	var _col := get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if _col:
+		_col.disabled = true
 	# Shrink + fade animation
 	_fade_tween = create_tween()
 	_fade_tween.tween_property(self, "scale", Vector2.ZERO, 0.4)
@@ -40,6 +46,8 @@ func consume() -> void:
 
 
 func take_damage(amount: float, _dir: Vector2 = Vector2.ZERO, _kb: float = 0.0) -> void:
+	if _is_destroyed:
+		return
 	if is_consumed:
 		return
 	corpse_hp -= amount
@@ -48,6 +56,9 @@ func take_damage(amount: float, _dir: Vector2 = Vector2.ZERO, _kb: float = 0.0) 
 
 
 func _destroy_corpse() -> void:
+	if _is_destroyed:
+		return
+	_is_destroyed = true
 	if is_consumed:
 		return
 	is_consumed = true
@@ -55,6 +66,10 @@ func _destroy_corpse() -> void:
 	# Kill any existing tween before creating new one
 	if _fade_tween and _fade_tween.is_valid():
 		_fade_tween.kill()
+	# Disable collision before shrinking to avoid physics warnings
+	var _col2 := get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if _col2:
+		_col2.disabled = true
 	# Quick destroy animation
 	_fade_tween = create_tween()
 	_fade_tween.tween_property(self, "scale", Vector2(1.2, 1.2), 0.1)

@@ -39,6 +39,7 @@ var _grab_active: bool = false
 var _grab_dot_damage: float = 0.0
 var _grab_duration: float = 0.0
 var _grab_elapsed: float = 0.0
+var _desperate_lunge: bool = false
 
 # ── Summon queue ─────────────────────────────────────────────
 var _summon_queue: Array[Dictionary] = []
@@ -46,12 +47,14 @@ var _summon_queue: Array[Dictionary] = []
 # ── Active tracked projectiles/effects ───────────────────────
 var _active_projectiles: Array[Dictionary] = []
 var _active_stoves: Array[Dictionary] = []
+var _active_fire_trails: Array = []
+var _dot_timers: Array = []
 
-	var _current_attack_name: String = ""
-	var _hit_targets: Dictionary = {}
+var _current_attack_name: String = ""
+var _hit_targets: Dictionary = {}
 
-	const STAFF_SCENE := preload("res://scenes/enemies/staff.tscn")
-	const GUARD_SCENE := preload("res://scenes/enemies/guard.tscn")
+const STAFF_SCENE := preload("res://scenes/enemies/staff.tscn")
+const GUARD_SCENE := preload("res://scenes/enemies/guard.tscn")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -381,6 +384,12 @@ func _disable_enemy() -> void:
 		if is_instance_valid(s.get("node")):
 			s["node"].queue_free()
 	_active_stoves.clear()
+	_dot_timers.clear()
+	# Clean up fire trails
+	for ft in _active_fire_trails:
+		if is_instance_valid(ft):
+			ft.queue_free()
+	_active_fire_trails.clear()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -468,9 +477,9 @@ func _create_melee_hitbox(range_px: float, _angle_deg: float, damage: float,
 	get_tree().current_scene.add_child(area)
 
 	area.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage") and not _hit_targets.has(body.get_instance_id()):
+		if body.is_in_group("player") and body.has_method("receive_damage") and not _hit_targets.has(body.get_instance_id()):
 			_hit_targets[body.get_instance_id()] = true
-			body.take_damage(damage, _direction, knockback)
+			body.receive_damage(damage, DamageZone.Zone.TORSO, false, knockback, _direction)
 	)
 
 	get_tree().create_timer(lifespan).timeout.connect(area.queue_free)
@@ -524,8 +533,8 @@ func _process_active_projectiles(delta: float) -> void:
 		var collision := node.move_and_collide(dir * speed * delta)
 		if collision:
 			var collider := collision.get_collider()
-			if collider and collider.is_in_group("player") and collider.has_method("take_damage"):
-				collider.take_damage(float(p["damage"]), dir, 10.0)
+			if collider and collider.is_in_group("player") and collider.has_method("receive_damage"):
+				collider.receive_damage(float(p["damage"]), DamageZone.Zone.TORSO, false, 10.0, dir)
 			node.queue_free()
 			to_remove.append(i)
 
@@ -565,11 +574,14 @@ func _process_active_stoves(delta: float) -> void:
 func _apply_dot_to_player(player: Node, dmg: float, dur: float) -> void:
 	var ticks := int(dur)
 	for i in range(ticks):
-		get_tree().create_timer(float(i + 1)).timeout.connect(func() -> void:
+		var timer := get_tree().create_timer(float(i + 1))
+		_dot_timers.append(timer)
+		timer.timeout.connect(func() -> void:
 			if not is_instance_valid(self):
 				return
-			if is_instance_valid(player) and player.has_method("take_damage"):
-				player.take_damage(dmg)
+			_dot_timers.erase(timer)
+			if is_instance_valid(player) and player.has_method("receive_damage"):
+				player.receive_damage(dmg, DamageZone.Zone.TORSO, false)
 		)
 
 
@@ -621,8 +633,8 @@ func _process_charge(delta: float) -> void:
 	var collision := move_and_collide(_charge_dir * _charge_speed * delta)
 	if collision:
 		var collider := collision.get_collider()
-		if collider and collider.is_in_group("player") and collider.has_method("take_damage"):
-			collider.take_damage(_charge_damage, _charge_dir, 30.0)
+		if collider and collider.is_in_group("player") and collider.has_method("receive_damage"):
+			collider.receive_damage(_charge_damage, DamageZone.Zone.TORSO, false, 30.0, _charge_dir)
 		_end_charge()
 		return
 	if _charge_elapsed >= _charge_duration:
@@ -643,10 +655,20 @@ func _process_grab(delta: float) -> void:
 	if not _grab_active:
 		return
 
+	# Preserve the desperate lunge velocity for one frame
+	if _desperate_lunge:
+		_desperate_lunge = false
+		move_and_slide()
+		_grab_elapsed += delta
+		if _grab_elapsed >= _grab_duration:
+			_grab_active = false
+			_finish_attack()
+		return
+
 	_grab_elapsed += delta
 
-	if _target and is_instance_valid(_target) and _target.has_method("take_damage"):
-		_target.take_damage(_grab_dot_damage * delta)
+	if _target and is_instance_valid(_target) and _target.has_method("receive_damage"):
+		_target.receive_damage(_grab_dot_damage * delta, DamageZone.Zone.TORSO, false)
 
 	if _target and is_instance_valid(_target):
 		var pull_dir := (global_position - _target.global_position).normalized()
@@ -677,11 +699,16 @@ func _create_fire_trail_at(pos: Vector2) -> void:
 		get_tree().create_timer(float(i + 1)).timeout.connect(func() -> void:
 			if is_instance_valid(zone):
 				for body in zone.get_overlapping_bodies():
-					if body.is_in_group("player") and body.has_method("take_damage"):
-						body.take_damage(8.0)
+					if body.is_in_group("player") and body.has_method("receive_damage"):
+						body.receive_damage(8.0, DamageZone.Zone.TORSO, false)
 		)
 
-	get_tree().create_timer(4.0).timeout.connect(zone.queue_free)
+	_active_fire_trails.append(zone)
+	get_tree().create_timer(4.0).timeout.connect(func() -> void:
+		if is_instance_valid(zone):
+			_active_fire_trails.erase(zone)
+			zone.queue_free()
+	)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -739,9 +766,9 @@ func meat_hook() -> void:
 
 	var boss_pos := global_position
 	area.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage") and not _hit_targets.has(body.get_instance_id()):
+		if body.is_in_group("player") and body.has_method("receive_damage") and not _hit_targets.has(body.get_instance_id()):
 			_hit_targets[body.get_instance_id()] = true
-			body.take_damage(30.0, Vector2.ZERO, 0.0)
+			body.receive_damage(30.0, DamageZone.Zone.TORSO, false)
 			var pull := (boss_pos - body.global_position).normalized()
 			body.global_position += pull * 80.0
 	)
@@ -786,8 +813,8 @@ func stove_push() -> void:
 
 	var s_dir := _direction
 	stove.body_entered.connect(func(body: Node2D) -> void:
-		if body.is_in_group("player") and body.has_method("take_damage"):
-			body.take_damage(30.0, s_dir, 20.0)
+		if body.is_in_group("player") and body.has_method("receive_damage"):
+			body.receive_damage(30.0, DamageZone.Zone.TORSO, false, 20.0, s_dir)
 	)
 
 	_active_stoves.append({
@@ -823,5 +850,5 @@ func desperate_grab() -> void:
 	_grab_dot_damage = 8.0
 	_grab_duration = 3.0
 	_grab_elapsed = 0.0
+	_desperate_lunge = true
 	velocity = _direction * 250.0
-	move_and_slide()

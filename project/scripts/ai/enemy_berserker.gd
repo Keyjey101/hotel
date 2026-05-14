@@ -77,12 +77,20 @@ func _on_limb_lost(zone: int) -> void:
 	attack_speed = 1.0 + (lost_count * 0.3)
 	grab_strength = 5.0 + (lost_count * 2.0)
 
-	# Visual: get REDDER per spec (11_ENEMY_DESIGN.md §3.5)
+	# Visual# Visual: get REDDER per spec (11_ENEMY_DESIGN.md Â§3.5)
+	# Use a child ColorRect overlay instead of sprite.modulate to avoid conflicts with _flash_hurt
+	var rage_overlay := sprite.get_node_or_null("RageOverlay")
+	if rage_overlay == null:
+		rage_overlay = ColorRect.new()
+		rage_overlay.name = "RageOverlay"
+		rage_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rage_overlay.size = Vector2(22.0, 36.0)
+		rage_overlay.position = Vector2(-11.0, -18.0)
+		sprite.add_child(rage_overlay)
 	match lost_count:
-		1: sprite.modulate = Color(1.2, 0.2, 0.2)
-		2: sprite.modulate = Color(1.5, 0.1, 0.1)
-		_: sprite.modulate = Color(2.0, 0.0, 0.0)  # 3+ lost
-
+		1: rage_overlay.color = Color(1.2, 0.2, 0.2, 0.3)
+		2: rage_overlay.color = Color(1.5, 0.1, 0.1, 0.4)
+		_: rage_overlay.color = Color(2.0, 0.0, 0.0, 0.5)  # 3+ lost
 	# Check for all-limbs-lost disable condition
 	var all_severed := true
 	for z in DamageZone.all_limbs():
@@ -101,8 +109,8 @@ func _count_missing_limbs() -> int:
 	return count
 
 
-func _on_limb_recovered(limb_name: String) -> void:
-	super._on_limb_recovered(limb_name)
+func _on_limb_recovered(zone: int) -> void:
+	super._on_limb_recovered(zone)
 	# Preserve rage speed boost even after limb regeneration
 	var lost_count := _count_missing_limbs()
 	if lost_count == 0:

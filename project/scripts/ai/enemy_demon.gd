@@ -183,12 +183,15 @@ func _start_phase() -> void:
 	_spawn_phase_particles()
 
 func _spawn_phase_particles() -> void:
+	var parent := get_parent()
+	if parent == null or not is_instance_valid(parent):
+		return
 	for i in range(6):
 		var p := ColorRect.new()
 		p.size = Vector2(2, 2)
 		p.color = Color(1.0, 0.0, 0.0, 0.9)
 		p.z_index = 10
-		get_tree().current_scene.add_child(p)
+		parent.add_child(p)
 		p.global_position = global_position + Vector2(randf_range(-10, 10), randf_range(-10, 10))
 		var tween := p.create_tween()
 		tween.tween_property(p, "modulate:a", 0.0, 0.5)
@@ -247,7 +250,7 @@ func _spawn_dark_bolt() -> void:
 	bolt.set_meta("homing_rate", _bolt_homing_rate)
 	bolt.set_meta("source", self)
 
-	get_tree().current_scene.add_child(bolt)
+	get_parent().add_child(bolt)
 	_dark_bolts.append(bolt)
 
 
@@ -333,7 +336,7 @@ func _disable_enemy() -> void:
 	hz.zone_color = Color(0.102, 0.039, 0.165)
 	hz.zone_radius = 30.0
 	hz.global_position = global_position
-	get_tree().current_scene.add_child(hz)
+	get_parent().add_child(hz)
 
 
 # ---------------------------------------------------------------------------
@@ -341,44 +344,35 @@ func _disable_enemy() -> void:
 # ---------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
+	# Demon-specific updates that must run even in disabled/stunned states
 	if _disabled:
 		_disabled_timer -= delta
 		if _disabled_timer <= 0.0:
 			_disabled = false
 			sprite.modulate.a = 1.0
 			_enter_state("patrol")
+		_update_bolts(delta)
 		_process_regen(delta)
 		return
 
 	if _stunned:
-		_stun_timer -= delta
-		if _stun_timer <= 0.0:
-			_stunned = false
-		velocity = _knockback_vel * 0.9
-		_knockback_vel *= 0.9
-		move_and_slide()
-		_process_regen(delta)
+		_update_bolts(delta)
+		super._physics_process(delta)
 		return
 
 	# Phase handling
 	if _phasing:
 		_phase_timer -= delta
 		velocity = Vector2.ZERO
-		move_and_slide()
+		_update_bolts(delta)
+		super._physics_process(delta)
 		if _phase_timer <= 0.0:
 			_finish_phase()
 		return
 
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 	_phase_cooldown = maxf(0.0, _phase_cooldown - delta)
-	_state_timer -= delta
 
-	_process_state(delta)
 	_update_bolts(delta)
 
-	_knockback_vel = _knockback_vel.move_toward(Vector2.ZERO, 500.0 * delta)
-	_process_regen(delta)
-
-	velocity += _knockback_vel
-
-	move_and_slide()
+	super._physics_process(delta)

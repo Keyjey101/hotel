@@ -22,6 +22,30 @@ var _backstab_multiplier: float = 2.5
 var _arms_lost: int = 0
 var _legs_lost: int = 0
 
+# Slow debuff tracking — reference-counted so overlapping slows don't cancel each other
+var _active_slow_count: int = 0
+var _slow_original_speed: float = 0.0
+
+
+# Override to coordinate slow debuffs via reference counting
+func apply_slow(mult: float, duration: float) -> void:
+	if _slow_original_speed == 0.0:
+		_slow_original_speed = move_speed
+	_active_slow_count += 1
+	move_speed = _slow_original_speed * mult
+	var count_ref := _active_slow_count
+	get_tree().create_timer(duration).timeout.connect(func() -> void:
+		if not is_instance_valid(self):
+			return
+		if _active_slow_count != count_ref:
+			return  # Another slow was applied more recently
+		_active_slow_count -= 1
+		if _active_slow_count <= 0:
+			_active_slow_count = 0
+			move_speed = _slow_original_speed
+			_slow_original_speed = 0.0
+	)
+
 
 func _ready() -> void:
 	enemy_name = "Spy"
@@ -55,6 +79,10 @@ func _go_invisible() -> void:
 	sprite.modulate.a = 0.1
 	if hurtbox_manager:
 		hurtbox_manager.process_mode = Node.PROCESS_MODE_DISABLED
+	# Disable collision shapes while invisible (skip root physics shape)
+	for child in get_children():
+		if child is CollisionShape2D and child.name != "CollisionShape2D":
+			child.disabled = true
 	var eye := sprite.get_node_or_null("EyeGlint")
 	if eye:
 		eye.modulate.a = 1.0
@@ -62,6 +90,12 @@ func _go_invisible() -> void:
 
 func _go_visible() -> void:
 	sprite.modulate.a = 1.0
+	# Re-enable collision shapes when visible (skip root physics shape)
+	for child in get_children():
+		if child is CollisionShape2D and child.name != "CollisionShape2D":
+			child.disabled = false
+	if hurtbox_manager:
+		hurtbox_manager.process_mode = Node.PROCESS_MODE_INHERIT
 
 
 func _decloak() -> void:
@@ -290,27 +324,8 @@ func _on_limb_lost(zone: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
-	if _disabled:
-		_disabled_timer -= delta
-		if _disabled_timer <= 0.0:
-			_disabled = false
-			_enter_state("patrol")
-		return
-
-	if _stunned:
-		_stun_timer -= delta
-		if _stun_timer <= 0.0:
-			_stunned = false
-		_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
-		velocity = _knockback_vel * 0.9
-		_knockback_vel *= 0.9
-		move_and_slide()
-		_process_regen(delta)
-		return
-
-	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+	# Spy-specific cooldowns and timers
 	_smoke_cooldown = maxf(0.0, _smoke_cooldown - delta)
-	_state_timer -= delta
 
 	# Tick reveal timer
 	if _revealed:
@@ -323,10 +338,4 @@ func _physics_process(delta: float) -> void:
 	# Check smoke bomb conditions
 	_try_smoke_bomb()
 
-	_process_state(delta)
-	_process_regen(delta)
-
-	_knockback_vel = _knockback_vel.move_toward(Vector2.ZERO, 500.0 * delta)
-	velocity += _knockback_vel
-
-	move_and_slide()
+	super._physics_process(delta)

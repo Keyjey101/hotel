@@ -170,7 +170,6 @@ func _state_chase(delta: float) -> void:
 	var dir := (next_pos - global_position).normalized()
 	velocity = dir * move_speed
 	_direction = dir
-	move_and_slide()
 
 	if global_position.distance_to(_target.global_position) <= attack_range * 1.2:
 		_enter_state("engage")
@@ -325,7 +324,8 @@ func _end_telegraph() -> void:
 
 func _execute_current_attack() -> void:
 	executing_attack = true
-	call(_current_attack_name)
+	if has_method(_current_attack_name):
+		call(_current_attack_name)
 
 
 func _finish_attack() -> void:
@@ -503,7 +503,11 @@ func _create_arena_mirrors() -> void:
 func _create_mirror_object(is_small: bool) -> StaticBody2D:
 	var mirror := StaticBody2D.new()
 	mirror.add_to_group("mirrors")
-	mirror.set_script(load("res://scripts/world/breakable_mirror.gd"))
+	var mirror_script := load("res://scripts/world/breakable_mirror.gd")
+	if mirror_script == null:
+		mirror.queue_free()
+		return null
+	mirror.set_script(mirror_script)
 	mirror.set_meta("is_small", is_small)
 
 	var size := Vector2(8.0, 48.0) if not is_small else Vector2(6.0, 32.0)
@@ -661,6 +665,8 @@ func _process_shard_projectile(data: Dictionary) -> void:
 func _continue_shard(node: CharacterBody2D, dir: Vector2, speed: float,
 		damage: float, elapsed: float, max_time: float) -> void:
 	if not is_instance_valid(self) or _disabled or not is_instance_valid(node):
+		if is_instance_valid(node):
+			node.queue_free()
 		return
 	var delta := get_physics_process_delta_time()
 	var collision := node.move_and_collide(dir * speed * delta)

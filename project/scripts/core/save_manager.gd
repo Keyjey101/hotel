@@ -22,6 +22,7 @@ const DEFAULT_UNLOCKED_STAT_UPGRADES: Array[String] = [
 var _current_settings: Dictionary = {}
 var _settings_loaded: bool = false
 var _meta_cache: Dictionary = {}  # in-memory cache, loaded once
+var _meta_loaded: bool = false
 
 
 func save_run(state: Dictionary) -> void:
@@ -47,7 +48,7 @@ func delete_run() -> void:
 	if FileAccess.file_exists(RUN_SAVE_PATH):
 		var dir := DirAccess.open("user://")
 		if dir:
-			dir.remove("hotel_run.json")
+			dir.remove(RUN_SAVE_PATH.get_file())
 
 
 func save_settings(settings: Dictionary) -> void:
@@ -71,20 +72,20 @@ func load_settings() -> Dictionary:
 
 func load_records() -> Dictionary:
 	if not FileAccess.file_exists(RECORDS_PATH):
-		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
+		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": 999999.0}
 	var file := FileAccess.open(RECORDS_PATH, FileAccess.READ)
 	if file == null:
 		push_error("Failed to open file for reading: %s" % RECORDS_PATH)
-		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
+		return {"deepest_floor": 0, "total_runs": 0, "fastest_time": 999999.0}
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	return parsed if parsed is Dictionary else {"deepest_floor": 0, "total_runs": 0, "fastest_time": INF}
+	return parsed if parsed is Dictionary else {"deepest_floor": 0, "total_runs": 0, "fastest_time": 999999.0}
 
 
 func update_records(deepest_floor: int, run_time: float) -> void:
 	var records := load_records()
 	if deepest_floor > records.get("deepest_floor", 0):
 		records["deepest_floor"] = deepest_floor
-	if run_time < records.get("fastest_time", INF):
+	if run_time < records.get("fastest_time", 999999.0):
 		records["fastest_time"] = run_time
 	records["total_runs"] = records.get("total_runs", 0) + 1
 	var file := FileAccess.open(RECORDS_PATH, FileAccess.WRITE)
@@ -170,7 +171,7 @@ func _apply_settings(s: Dictionary) -> void:
 # === Meta-progression persistence ===
 
 func load_meta() -> Dictionary:
-	if not _meta_cache.is_empty():
+	if _meta_loaded:
 		return _meta_cache.duplicate(true)
 	if FileAccess.file_exists(META_PATH):
 		var file := FileAccess.open(META_PATH, FileAccess.READ)
@@ -180,14 +181,17 @@ func load_meta() -> Dictionary:
 			var parsed: Variant = JSON.parse_string(file.get_as_text())
 			if parsed is Dictionary:
 				_meta_cache = parsed
+				_meta_loaded = true
 				_ensure_meta_defaults(_meta_cache)
 				return _meta_cache.duplicate(true)
 	_meta_cache = _default_meta()
+	_meta_loaded = true
 	return _meta_cache.duplicate(true)
 
 
 func save_meta(meta: Dictionary) -> void:
 	_meta_cache = meta
+	_meta_loaded = true
 	var file := FileAccess.open(META_PATH, FileAccess.WRITE)
 	if file == null:
 		push_error("Failed to open file for writing: %s" % META_PATH)
@@ -214,7 +218,8 @@ func commit_pending_unlocks(pending_artifacts: Array, pending_stats: Array, run_
 		if not unlocked_stats.has(id):
 			unlocked_stats.append(id)
 	meta["unlocked_starting_stat_upgrades"] = unlocked_stats
-	# Runs completed
+	# Runs completed (intentionally counts both victories and basement failures;
+	# this is standard roguelike behavior where every run counts toward progression)
 	meta["runs_completed"] = int(meta.get("runs_completed", 0)) + 1
 	# Deepest floor ever
 	if floor_reached > int(meta.get("deepest_floor_ever", 0)):

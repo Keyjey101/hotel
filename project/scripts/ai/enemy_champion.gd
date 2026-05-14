@@ -195,7 +195,7 @@ func _update_adaptive_ai() -> void:
 # Damage — Parry Master override
 # ---------------------------------------------------------------------------
 
-func receive_damage(damage: float, zone: int, sever: bool, knockback_force: float = 0.0, knockback_dir: Vector2 = Vector2.ZERO) -> void:
+func receive_damage(damage: float, zone: int, sever: bool, knockback_force: float = 0.0, knockback_dir: Vector2 = Vector2.ZERO, attack_type: String = "auto") -> void:
 	if _disabled:
 		return
 
@@ -204,9 +204,10 @@ func receive_damage(damage: float, zone: int, sever: bool, knockback_force: floa
 		damage *= 0.5
 
 	# Parry Master: parry frontal melee attacks
-	if knockback_dir != Vector2.ZERO and not _is_charging:
+	var is_melee: bool = attack_type == "melee" if attack_type != "auto" else (knockback_dir != Vector2.ZERO)
+	if is_melee and not _is_charging:
 		var facing_dir := _direction.normalized()
-		var incoming_dir := knockback_dir.normalized()
+		var incoming_dir := knockback_dir.normalized() if knockback_dir != Vector2.ZERO else -facing_dir
 		var dot := facing_dir.dot(incoming_dir)
 		if dot < 0.0:
 			# Frontal hit — attempt parry

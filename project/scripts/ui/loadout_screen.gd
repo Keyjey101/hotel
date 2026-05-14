@@ -196,13 +196,13 @@ func _on_upgrade_selected(btn: Button) -> void:
 
 func _on_start_pressed() -> void:
 	GameManager.selected_starting_upgrade = _selected_upgrade_id
-	if AudioManager:
+	if AudioManager and AudioManager.SFXPlayer:
 		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	GameManager.start_new_run()
 
 
 func _on_back_pressed() -> void:
-	if AudioManager:
+	if AudioManager and AudioManager.SFXPlayer:
 		AudioManager.SFXPlayer.play_sfx("ui_confirm")
 	GameManager.go_to_title()
 
@@ -211,7 +211,7 @@ func _get_upgrade_display_name(id: String) -> String:
 	# Try loading from UpgradeRegistry resource, else fall back to id
 	if UpgradeRegistry:
 		var upg := UpgradeRegistry.get_upgrade(id)
-		if upg and upg.get("display_name_en") != null:
+		if upg and "display_name_en" in upg:
 			return upg.display_name_en
 	# Fallback display names
 	match id:

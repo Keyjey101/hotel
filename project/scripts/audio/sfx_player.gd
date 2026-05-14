@@ -105,6 +105,7 @@ func play_sfx_with_pitch(name: String, pitch: float) -> void:
 	if player == null:
 		return
 	player.pitch_scale = pitch
+	player.volume_db = 0.0
 	player.stream = _get_sfx_stream(name)
 	player.play()
 
@@ -141,7 +142,7 @@ func _generate_silence() -> AudioStream:
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_8_BITS
 	stream.mix_rate = 22050
-	stream.data = PackedByteArray([0, 0, 0, 0])
+	stream.data = PackedByteArray([128, 128, 128, 128])
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
 	stream.loop_end = 4

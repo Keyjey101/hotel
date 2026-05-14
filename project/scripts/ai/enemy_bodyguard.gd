@@ -34,9 +34,9 @@ func _ready() -> void:
 	aggression = 5.0
 	coordination = 7.0
 
-	super._ready()
-
 	add_to_group("bodyguards")
+
+	super._ready()
 
 	# Create shield visual (after super so sprite exists)
 	_create_shield_visual()
@@ -48,6 +48,12 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if EventBus and EventBus.enemy_damaged.is_connected(_on_any_enemy_damaged):
 		EventBus.enemy_damaged.disconnect(_on_any_enemy_damaged)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		if EventBus and EventBus.enemy_damaged.is_connected(_on_any_enemy_damaged):
+			EventBus.enemy_damaged.disconnect(_on_any_enemy_damaged)
 
 
 func _create_shield_visual() -> void:
@@ -241,3 +247,9 @@ func _on_limb_lost(zone: int) -> void:
 			if _current_state == "chase":
 				_enter_state("engage")
 		return
+
+
+func _disable_enemy() -> void:
+	if EventBus and EventBus.enemy_damaged.is_connected(_on_any_enemy_damaged):
+		EventBus.enemy_damaged.disconnect(_on_any_enemy_damaged)
+	super._disable_enemy()

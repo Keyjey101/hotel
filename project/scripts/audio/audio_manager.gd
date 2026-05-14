@@ -18,6 +18,9 @@ enum MusicState {
 var current_music_state: MusicState = MusicState.SILENCE
 var current_floor: int = 1
 
+const MusicPlayerScript := preload("res://scripts/audio/music_player.gd")
+const SFXPlayerScript := preload("res://scripts/audio/sfx_player.gd")
+
 var _music_player: Node
 var _sfx_player: Node
 
@@ -30,12 +33,12 @@ var _connections_made: bool = false
 
 func _ready() -> void:
 	_music_player = Node.new()
-	_music_player.set_script(load("res://scripts/audio/music_player.gd"))
+	_music_player.set_script(MusicPlayerScript)
 	_music_player.name = "MusicPlayer"
 	add_child(_music_player)
 
 	_sfx_player = Node.new()
-	_sfx_player.set_script(load("res://scripts/audio/sfx_player.gd"))
+	_sfx_player.set_script(SFXPlayerScript)
 	_sfx_player.name = "SFXPlayer"
 	add_child(_sfx_player)
 
@@ -77,6 +80,41 @@ func _connect_events() -> void:
 	_connections_made = true
 
 
+func _disconnect_events() -> void:
+	if not _connections_made:
+		return
+
+	var event_bus: Node = _get_autoload("EventBus")
+	var game_manager: Node = _get_autoload("GameManager")
+
+	if event_bus and is_instance_valid(event_bus):
+		if event_bus.has_signal("room_entered") and event_bus.room_entered.is_connected(_on_room_entered):
+			event_bus.room_entered.disconnect(_on_room_entered)
+		if event_bus.has_signal("enemy_damaged") and event_bus.enemy_damaged.is_connected(_on_enemy_damaged):
+			event_bus.enemy_damaged.disconnect(_on_enemy_damaged)
+		if event_bus.has_signal("room_cleared") and event_bus.room_cleared.is_connected(_on_room_cleared):
+			event_bus.room_cleared.disconnect(_on_room_cleared)
+		if event_bus.has_signal("player_damaged") and event_bus.player_damaged.is_connected(_on_player_damaged):
+			event_bus.player_damaged.disconnect(_on_player_damaged)
+		if event_bus.has_signal("mini_boss_defeated") and event_bus.mini_boss_defeated.is_connected(_on_mini_boss_defeated):
+			event_bus.mini_boss_defeated.disconnect(_on_mini_boss_defeated)
+		if event_bus.has_signal("floor_completed") and event_bus.floor_completed.is_connected(_on_floor_completed):
+			event_bus.floor_completed.disconnect(_on_floor_completed)
+	if game_manager and is_instance_valid(game_manager):
+		if game_manager.has_signal("run_started") and game_manager.run_started.is_connected(_on_run_started):
+			game_manager.run_started.disconnect(_on_run_started)
+		if game_manager.has_signal("player_died") and game_manager.player_died.is_connected(_on_player_died):
+			game_manager.player_died.disconnect(_on_player_died)
+		if game_manager.has_signal("run_ended") and game_manager.run_ended.is_connected(_on_run_ended):
+			game_manager.run_ended.disconnect(_on_run_ended)
+
+	_connections_made = false
+
+
+func _exit_tree() -> void:
+	_disconnect_events()
+
+
 func _has_autoload(name: String) -> bool:
 	return get_tree().root.has_node(name)
 
@@ -90,8 +128,20 @@ func _get_autoload(name: String) -> Node:
 # === EventBus handlers ===
 
 func _on_room_entered(floor_number: int, _room_name: String) -> void:
+	# Cancel any pending room-cleared music transition to prevent stale callbacks
+	if _music_transition_timer != null and is_instance_valid(_music_transition_timer):
+		_music_transition_timer.timeout.disconnect(_on_music_transition_timeout)
+		_music_transition_timer = null
 	current_floor = floor_number
-	if current_music_state == MusicState.SILENCE:
+	# Transition back to EXPLORATION when entering a new room
+	# (if there are no active enemies, combat music shouldn't persist)
+	if current_music_state == MusicState.COMBAT or current_music_state == MusicState.INTENSE or current_music_state == MusicState.TENSION:
+		_enemy_damage_count = 0
+		_engaged_enemies = 0
+		_tension_timer = 0.0
+		_transition_to(MusicState.EXPLORATION)
+		_music_player.play_exploration(floor_number)
+	elif current_music_state == MusicState.SILENCE:
 		_transition_to(MusicState.EXPLORATION)
 		_music_player.play_exploration(floor_number)
 

@@ -60,7 +60,8 @@ func _count_nearby_staff(radius: float) -> int:
 			continue
 		if not e.has_method("get_enemy_type"):
 			continue
-		if e.get_enemy_type() != "staff":
+		var etype: String = e.get_enemy_type()
+		if etype != "staff" and etype != "guard":
 			continue
 		if global_position.distance_to(e.global_position) <= radius:
 			count += 1
@@ -135,6 +136,9 @@ func _find_nearest_ally(radius: float) -> Node2D:
 		if not is_instance_valid(e):
 			continue
 		if not e.has_method("get_enemy_type"):
+			continue
+		var etype: String = e.get_enemy_type()
+		if etype != "staff" and etype != "guard":
 			continue
 		var dist := global_position.distance_to(e.global_position)
 		if dist < best_dist:

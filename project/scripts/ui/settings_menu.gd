@@ -16,7 +16,7 @@ func _build_ui() -> void:
 	var bg := ColorRect.new()
 	bg.name = "Background"
 	bg.color = Color(0, 0, 0, 0.85)
-	bg.size = get_viewport().get_visible_rect().size
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bg)
 

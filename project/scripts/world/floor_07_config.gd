@@ -4,6 +4,7 @@
 ##   purple #4B0082, starlight #E6E6FA.
 ## Blood: #CC2222 | BG: #0A0A2A
 
+extends "res://scripts/world/floor_01_config.gd"
 const F7_FLOOR := Color(0.102, 0.102, 0.416, 1.0)  # #1A1A6A deep indigo
 const F7_WALL := Color(0.039, 0.039, 0.165, 1.0)   # #0A0A2A deep space blue
 const TILE := 32
@@ -394,6 +395,8 @@ static func _on_camera_hit(area: Area2D, cam: Area2D, room: RoomInstance) -> voi
 
 ## Light source body entered -> reveal invisible enemies
 static func _on_light_body_entered(body: Node2D) -> void:
+	if body == null:
+		return
 	if body.is_in_group("spies") or body.is_in_group("shadow_stalkers"):
 		var sprite_node = body.get("sprite") if body else null
 		if sprite_node and is_instance_valid(sprite_node):

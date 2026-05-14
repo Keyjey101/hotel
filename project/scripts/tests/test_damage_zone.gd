@@ -38,12 +38,12 @@ func test_is_leg() -> void:
 
 
 func test_name_returns_strings() -> void:
-	assert_eq(DamageZone.name(DamageZone.Zone.HEAD), "head")
-	assert_eq(DamageZone.name(DamageZone.Zone.LEFT_ARM), "left_arm")
-	assert_eq(DamageZone.name(DamageZone.Zone.RIGHT_ARM), "right_arm")
-	assert_eq(DamageZone.name(DamageZone.Zone.LEFT_LEG), "left_leg")
-	assert_eq(DamageZone.name(DamageZone.Zone.RIGHT_LEG), "right_leg")
-	assert_eq(DamageZone.name(DamageZone.Zone.TORSO), "torso")
+	assert_eq(DamageZone.zone_name(DamageZone.Zone.HEAD), "head")
+	assert_eq(DamageZone.zone_name(DamageZone.Zone.LEFT_ARM), "left_arm")
+	assert_eq(DamageZone.zone_name(DamageZone.Zone.RIGHT_ARM), "right_arm")
+	assert_eq(DamageZone.zone_name(DamageZone.Zone.LEFT_LEG), "left_leg")
+	assert_eq(DamageZone.zone_name(DamageZone.Zone.RIGHT_LEG), "right_leg")
+	assert_eq(DamageZone.zone_name(DamageZone.Zone.TORSO), "torso")
 
 
 func test_all_limbs_returns_5() -> void:

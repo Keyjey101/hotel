@@ -8,8 +8,7 @@ var _shake_tween: Tween
 var _flash_tween: Tween
 var _zoom_tween: Tween
 var _vignette_tween: Tween
-var _hit_stop_count: int = 0
-var _hit_stop_timer: SceneTreeTimer = null
+var _hit_stop_end_msec: int = 0
 
 var _flash_overlay: ColorRect
 var _vignette_overlay: ColorRect
@@ -59,6 +58,9 @@ func _refresh_camera() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _hit_stop_end_msec > 0 and Time.get_ticks_msec() >= _hit_stop_end_msec:
+		_hit_stop_end_msec = 0
+		Engine.time_scale = 1.0
 	# Pulse vignette if active
 	if _vignette_target_alpha > 0.0:
 		_vignette_base_alpha = _vignette_target_alpha + sin(Time.get_ticks_msec() / 400.0) * 0.1
@@ -113,23 +115,18 @@ func flash(color: Color = Color.WHITE, duration: float = 0.05, max_alpha: float 
 # ============================================================
 
 func hit_stop(duration: float = 0.05) -> void:
-	_hit_stop_count += 1
-	if _hit_stop_count == 1:
-		Engine.time_scale = 0.01
-	_hit_stop_timer = get_tree().create_timer(duration, true, false, true)
-	_hit_stop_timer.timeout.connect(_on_hit_stop_timeout)
-
-
-func _on_hit_stop_timeout() -> void:
-	_hit_stop_count -= 1
-	if _hit_stop_count <= 0:
-		_hit_stop_count = 0
-		Engine.time_scale = maxf(Engine.time_scale, 1.0)
+	var end_msec := Time.get_ticks_msec() + int(duration * 1000.0)
+	_hit_stop_end_msec = maxi(_hit_stop_end_msec, end_msec)
+	Engine.time_scale = 0.01
+	set_process(true)
 
 
 func _exit_tree() -> void:
 	if Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
+	_hit_stop_end_msec = 0
+	if get_viewport() and get_viewport().size_changed.is_connected(_resize_overlays):
+		get_viewport().size_changed.disconnect(_resize_overlays)
 
 
 # ============================================================

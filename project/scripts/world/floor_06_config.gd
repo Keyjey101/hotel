@@ -2,6 +2,7 @@
 ## All room data from 13_FLOOR_DESIGN.md section 7.
 ## Palette: floor #0F0505, walls #1A0A0A, accent #CC1100 blood red, ember #FF5500, rust #B74A0E.
 
+extends "res://scripts/world/floor_01_config.gd"
 const F6_FLOOR := Color(0.059, 0.020, 0.020, 1.0)  # #0F0505 near-black red
 const F6_WALL := Color(0.102, 0.039, 0.039, 1.0)   # #1A0A0A dark red-black
 const TILE := 32

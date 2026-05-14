@@ -8,7 +8,7 @@ config/name="Hotel"
 config/description="The Raid meets Hotline Miami in a satanic luxury hotel"
 run/main_scene="res://scenes/ui/title_screen.tscn"
 config/features=PackedStringArray("4.3", "Forward+")
-config/icon="res://icon.svg"
+config/icon=""
 
 [autoload]
 
@@ -90,5 +90,5 @@ textures/canvas_textures/default_texture_filter=0
 [debug]
 
 gdscript/warnings/enable=true
-gdscript/warnings/exclude_addons=false
+gdscript/warnings/exclude_addons=true
 gdscript/warnings/treat_warnings_as_errors=false

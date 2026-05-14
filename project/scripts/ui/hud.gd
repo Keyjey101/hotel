@@ -32,6 +32,14 @@ var floor_names := {
 }
 
 var _edge_tweens: Dictionary = {}
+
+# Cached styles for weapon slot borders (Bug #79)
+var _slot_style_active: StyleBoxFlat
+var _slot_style_inactive: StyleBoxFlat
+var _slot_style_active_bg: Color = Color(0.1, 0.1, 0.1, 0.8)
+var _slot_style_inactive_bg: Color = Color(0.1, 0.1, 0.1, 0.5)
+var _slot_style_active_border: Color = Color(0.855, 0.647, 0.125)
+var _slot_style_inactive_border: Color = Color(0.29, 0.29, 0.29)
 var _low_hp_tween: Tween = null
 var _floor_tween: Tween = null
 var _conn_damaged: Callable
@@ -45,6 +53,14 @@ var _hud_slot_count: int = 2
 
 func _ready() -> void:
 	add_to_group("hud")
+	_slot_style_active = StyleBoxFlat.new()
+	_slot_style_active.bg_color = _slot_style_active_bg
+	_slot_style_active.border_color = _slot_style_active_border
+	_slot_style_active.set_border_width_all(2)
+	_slot_style_inactive = StyleBoxFlat.new()
+	_slot_style_inactive.bg_color = _slot_style_inactive_bg
+	_slot_style_inactive.border_color = _slot_style_inactive_border
+	_slot_style_inactive.set_border_width_all(1)
 	_determine_slot_count()
 	_build_ui()
 	_connect_events()
@@ -267,12 +283,7 @@ func _update_weapon_slots() -> void:
 
 
 func _apply_slot_border(panel: Panel, active: bool) -> void:
-	var style := StyleBoxFlat.new()
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(0)
-	style.border_color = Color(0.855, 0.647, 0.125) if active else Color(0.29, 0.29, 0.29)
-	style.bg_color = Color(0.1, 0.1, 0.1, 0.8) if active else Color(0.1, 0.1, 0.1, 0.5)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", _slot_style_active if active else _slot_style_inactive)
 
 
 # ============================================================
@@ -324,17 +335,28 @@ func _update_buffs() -> void:
 func flash_damage_direction(knockback_dir: Vector2) -> void:
 	if knockback_dir == Vector2.ZERO:
 		return
-	AudioManager.SFXPlayer.play_sfx("ui_damage_edge")
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_damage_edge")
 	# Source is opposite of knockback direction
 	var source_dir := -knockback_dir
 	var abs_x := absf(source_dir.x)
 	var abs_y := absf(source_dir.y)
 	var edge: ColorRect
+	var edge_name: String
 	if abs_x > abs_y:
-		edge = dmg_edges["right"] if source_dir.x > 0 else dmg_edges["left"]
+		if source_dir.x > 0:
+			edge = dmg_edges["right"]
+			edge_name = "right"
+		else:
+			edge = dmg_edges["left"]
+			edge_name = "left"
 	else:
-		edge = dmg_edges["bottom"] if source_dir.y > 0 else dmg_edges["top"]
-	var edge_name := "right" if source_dir.x > 0 else ("left" if abs_x > abs_y else ("bottom" if source_dir.y > 0 else "top"))
+		if source_dir.y > 0:
+			edge = dmg_edges["bottom"]
+			edge_name = "bottom"
+		else:
+			edge = dmg_edges["top"]
+			edge_name = "top"
 	if _edge_tweens.has(edge_name) and _edge_tweens[edge_name].is_valid():
 		_edge_tweens[edge_name].kill()
 	var tween := create_tween()
@@ -351,7 +373,8 @@ func show_interaction_prompt(text: String) -> void:
 	interaction_prompt.text = "[E] %s" % text
 	interaction_prompt.visible = true
 	interaction_prompt.modulate.a = 0.0
-	AudioManager.SFXPlayer.play_sfx("ui_prompt_show", -5.0)
+	if AudioManager and AudioManager.SFXPlayer:
+		AudioManager.SFXPlayer.play_sfx("ui_prompt_show", -5.0)
 	var tween := create_tween()
 	tween.tween_property(interaction_prompt, "modulate:a", 1.0, 0.15)
 
